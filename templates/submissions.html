@@ -197,7 +197,24 @@
     </div>
 </div>
 
-<<<<<<< HEAD
+<!-- US Submissions Map -->
+<div class="glass-panel p-4 mb-6">
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">US Submissions Map</h2>
+        <div class="text-xs opacity-70">Click a state to filter</div>
+    </div>
+    <div id="us_map_wrap" class="usmap-wrap relative">
+        <svg id="us_map" viewBox="0 0 975 610" class="w-full h-auto block"></svg>
+        <div id="us_map_tooltip" class="map-tooltip hidden"></div>
+        <div class="map-legend">
+            <span class="text-xs opacity-70 mr-2">Fewer</span>
+            <div class="legend-bar" aria-hidden="true"></div>
+            <span class="text-xs opacity-70 ml-2">More</span>
+        </div>
+    </div>
+    <div class="text-xs opacity-70 mt-2" id="us_map_summary"></div>
+</div>
+
 <!-- Enhanced Submissions Table -->
 <div class="submissions-table-panel card p-0">
     <div class="table-header bg-gradient-to-r from-gray-50/50 to-gray-100/50 p-4 border-b border-white/10">
@@ -251,31 +268,8 @@
     <!-- Table Container -->
     <div class="table-container overflow-x-auto">
         <!-- Enhanced Table -->
-        <table class="enhanced-submissions-table w-full text-sm">
-=======
-<!-- US Submissions Map -->
-<div class="glass-panel p-4 mb-6">
-    <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">US Submissions Map</h2>
-        <div class="text-xs opacity-70">Click a state to filter</div>
-    </div>
-    <div id="us_map_wrap" class="usmap-wrap relative">
-        <svg id="us_map" viewBox="0 0 975 610" class="w-full h-auto block"></svg>
-        <div id="us_map_tooltip" class="map-tooltip hidden"></div>
-        <div class="map-legend">
-            <span class="text-xs opacity-70 mr-2">Fewer</span>
-            <div class="legend-bar" aria-hidden="true"></div>
-            <span class="text-xs opacity-70 ml-2">More</span>
-        </div>
-    </div>
-    <div class="text-xs opacity-70 mt-2" id="us_map_summary"></div>
-</div>
-
-<!-- Enhanced Table -->
-<div class="enhanced-table">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
+        <div class="overflow-x-auto">
+            <table class="enhanced-submissions-table w-full text-sm">
             <thead class="border-b border-white border-opacity-10">
                 <tr>
                     <th class="checkbox-col py-4 px-3">
@@ -492,14 +486,10 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-<<<<<<< HEAD
                 <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
                     <td class="td py-4 px-3 text-center">
                         <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
                     </td>
-=======
-                <tr class="table-row ${appetiteClass}" onclick="if(${r.id || 'null'}) window.location.href='/detail/${r.id || ''}?mode=${encodeURIComponent(document.getElementById('f_mode')?.value || '')}'">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
                     <td class="td py-4 px-6">
                         <div class="flex items-center gap-2">
                             <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>
@@ -1382,6 +1372,36 @@
         document.getElementById('export-submissions-btn')?.addEventListener('click', createExportModal);
         document.getElementById('columns-btn')?.addEventListener('click', createColumnsModal);
         
+        // Save filter preset functionality
+        document.getElementById('save_filter_preset')?.addEventListener('click', () => {
+            const presetName = prompt('Enter a name for this filter preset:');
+            if (presetName && presetName.trim()) {
+                const filters = {
+                    state: document.getElementById('f_state')?.value || '',
+                    status: document.getElementById('f_status')?.value || '',
+                    mode: document.getElementById('f_mode')?.value || '',
+                    min_premium: document.getElementById('f_min')?.value || '',
+                    max_premium: document.getElementById('f_max')?.value || '',
+                    search: document.getElementById('f_q')?.value || ''
+                };
+                
+                const savedPresets = JSON.parse(localStorage.getItem('filterPresets') || '{}');
+                savedPresets[presetName.trim()] = filters;
+                localStorage.setItem('filterPresets', JSON.stringify(savedPresets));
+                
+                toast(`Filter preset "${presetName}" saved successfully`, 'success');
+                updateFilterPresets();
+            }
+        });
+        
+        // Clear all filters functionality
+        document.getElementById('clear_all_filters')?.addEventListener('click', () => {
+            if (confirm('Clear all current filters?')) {
+                clearAllFilters();
+                toast('All filters cleared', 'success');
+            }
+        });
+        
         // View toggle handlers
         document.querySelectorAll('[data-view]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1412,6 +1432,11 @@
             });
         }
     });
+    
+    function updateFilterPresets() {
+        // This would update the filter presets display
+        console.log('Filter presets updated');
+    }
 </script>
 <!-- D3 + TopoJSON for the US map -->
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>

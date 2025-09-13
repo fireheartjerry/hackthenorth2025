@@ -826,6 +826,27 @@
                 const sel = document.getElementById('home_mode');
                 if (sel) sel.value = 'balanced_growth';
                 loadHome();
+                toast('Switched to Balanced Growth mode', 'success');
+            });
+            
+            document.getElementById('btn_relax')?.addEventListener('click', () => {
+                // Relax filters by expanding the search criteria
+                toast('Relaxing filter criteria...', 'info');
+                
+                // Store current mode as fallback
+                const currentMode = getActiveMode();
+                localStorage.setItem('LAST_STRICT_MODE', currentMode);
+                
+                // Switch to a more permissive mode
+                setActiveMode('loose_fits');
+                const sel = document.getElementById('home_mode');
+                if (sel) sel.value = 'loose_fits';
+                
+                loadHome().then(() => {
+                    toast('Filters relaxed - showing broader results', 'success');
+                }).catch(() => {
+                    toast('Could not relax filters', 'error');
+                });
             });
             return;
         }
@@ -1045,6 +1066,89 @@
         return modal;
     }
     
+    function createWorkloadSettingsModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 workload-settings-modal';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-lg mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>⚙️</span>
+                        Workload Settings
+                    </h3>
+                    <button class="close-modal text-2xl hover:text-red-400">×</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="setting-group">
+                        <label class="setting-label">Items per page</label>
+                        <select class="setting-select" id="items_per_page">
+                            <option value="5">5 items</option>
+                            <option value="10" selected>10 items</option>
+                            <option value="15">15 items</option>
+                            <option value="20">20 items</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label">Auto-refresh interval</label>
+                        <select class="setting-select" id="refresh_interval">
+                            <option value="30">30 seconds</option>
+                            <option value="45" selected>45 seconds</option>
+                            <option value="60">1 minute</option>
+                            <option value="120">2 minutes</option>
+                            <option value="0">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="show_priorities" checked class="setting-checkbox">
+                            <span>Show priority scores</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="compact_view" class="setting-checkbox">
+                            <span>Compact view</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button class="btn-cancel close-modal">Cancel</button>
+                    <button class="btn-primary" onclick="applyWorkloadSettings()">Apply</button>
+                </div>
+            </div>
+        `;
+        
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => modal.remove();
+        });
+        
+        // Load current settings
+        document.getElementById('items_per_page').value = localStorage.getItem('workload_items_per_page') || '10';
+        document.getElementById('refresh_interval').value = localStorage.getItem('workload_refresh_interval') || '45';
+        document.getElementById('show_priorities').checked = localStorage.getItem('workload_show_priorities') !== 'false';
+        document.getElementById('compact_view').checked = localStorage.getItem('workload_compact_view') === 'true';
+        
+        return modal;
+    }
+    
+    function applyWorkloadSettings() {
+        const itemsPerPage = document.getElementById('items_per_page').value;
+        const refreshInterval = document.getElementById('refresh_interval').value;
+        const showPriorities = document.getElementById('show_priorities').checked;
+        const compactView = document.getElementById('compact_view').checked;
+        
+        localStorage.setItem('workload_items_per_page', itemsPerPage);
+        localStorage.setItem('workload_refresh_interval', refreshInterval);
+        localStorage.setItem('workload_show_priorities', showPriorities);
+        localStorage.setItem('workload_compact_view', compactView);
+        
+        toast('Workload settings saved', 'success');
+        document.querySelector('.workload-settings-modal')?.remove();
+        
+        // Reload workload with new settings
+        loadHome();
+    }
+    
     function performExport() {
         const activeFormat = document.querySelector('.export-option.active')?.dataset.format || 'csv';
         toast(`Exporting as ${activeFormat.toUpperCase()}...`, 'info');
@@ -1085,15 +1189,12 @@
         };
     }
 
-    const refreshBtn2 = document.getElementById("btn_refresh_home_2");
-    if (refreshBtn2) {
-        refreshBtn2.onclick = () => {
-            fetchJSON("/api/refresh", { method: "POST" })
-                .then(() => {
-                    toast("Data refreshed", "success");
-                    loadHome();
-                })
-                .catch((err) => toast("Refresh failed: " + err.message, "error"));
+    // Workload settings button
+    const workloadSettingsBtn = document.getElementById("workload_settings");
+    if (workloadSettingsBtn) {
+        workloadSettingsBtn.onclick = () => {
+            const modal = createWorkloadSettingsModal();
+            document.body.appendChild(modal);
         };
     }
 
