@@ -1,225 +1,461 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-  <div class="card glass hover-up">
-    <div class="card-title">Total Submissions</div>
-    <div class="card-value">{{ total }}</div>
-  </div>
-  <div class="card glass hover-up">
-    <div class="card-title">In-Appetite</div>
-    <div class="card-value text-emerald-300">{{ in_ct }}</div>
-  </div>
-  <div class="card glass hover-up">
-    <div class="card-title">Target</div>
-    <div class="card-value text-indigo-300">{{ tgt_ct }}</div>
-  </div>
-  <div class="card glass hover-up">
-    <div class="card-title">Out-of-Appetite</div>
-    <div class="card-value text-rose-300">{{ out_ct }}</div>
-  </div>
+    <div class="card glass hover-up">
+        <div class="card-title">Total Submissions</div>
+        <div class="card-value">{{ total }}</div>
+    </div>
+    <div class="card glass hover-up">
+        <div class="card-title">In-Appetite</div>
+        <div class="card-value text-emerald-300">{{ in_ct }}</div>
+    </div>
+    <div class="card glass hover-up">
+        <div class="card-title">Target</div>
+        <div class="card-value text-indigo-300">{{ tgt_ct }}</div>
+    </div>
+    <div class="card glass hover-up">
+        <div class="card-title">Out-of-Appetite</div>
+        <div class="card-value text-rose-300">{{ out_ct }}</div>
+    </div>
 </div>
 
 <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <!-- Left: Recent workload with tabs -->
-  <div class="lg:col-span-2 glass-panel">
-    <div class="flex items-center justify-between">
-<<<<<<< HEAD
-      <div class="flex items-center gap-3">
-        <h2 class="text-lg font-semibold">Today’s Prioritized Worklist</h2>
-        <div>
-          <label class="lbl">Mode</label>
-          <select id="home_mode" class="inp text-xs"></select>
+    <!-- Left: Recent workload with tabs -->
+    <div class="lg:col-span-2 glass-panel">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <h2 class="text-lg font-semibold">
+                    Today’s Prioritized Worklist
+                </h2>
+                <div>
+                    <label class="lbl">Mode</label>
+                    <select id="home_mode" class="inp text-xs"></select>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    id="btn_refresh_home"
+                    class="text-sm pill pill-sub hover-glow"
+                >
+                    Refresh
+                </button>
+                <button
+                    id="btn_persona"
+                    class="text-sm pill pill-sub hover-glow"
+                >
+                    Build Persona
+                </button>
+                <a
+                    href="{{ url_for('submissions') }}"
+                    class="text-indigo-300 text-sm hover:underline"
+                    >Open full table →</a
+                >
+            </div>
         </div>
-      </div>
-      <div class="flex items-center gap-3">
-=======
-      <h2 class="text-lg font-semibold">Recent Workload</h2>
-      <div class="flex items-center gap-2">
->>>>>>> c6ebcd2dc12204a3f10b72c6b62dff625215cd03
-        <button id="btn_refresh_home" class="text-sm pill pill-sub hover-glow">Refresh</button>
-        <a href="{{ url_for('submissions') }}" class="text-indigo-300 text-sm hover:underline">Open full table →</a>
-      </div>
-    </div>
-    <!-- Tabs -->
-    <div class="mt-3 flex items-center gap-2 text-xs">
-      <button id="tab_assigned" class="pill pill-sub hover-glow">Assigned to me <span id="ct_assigned" class="ml-1 opacity-75">—</span></button>
-      <button id="tab_related" class="pill pill-sub hover-glow">Related to me <span id="ct_related" class="ml-1 opacity-75">—</span></button>
-      <button id="tab_referrals" class="pill pill-sub hover-glow">Referrals <span id="ct_referrals" class="ml-1 opacity-75">—</span></button>
-    </div>
-    <div id="worklist" class="mt-4 text-sm"></div>
-  </div>
-
-  <!-- Right: Goals and quick stats -->
-  <div class="space-y-6">
-    <div class="glass-panel">
-      <h2 class="text-lg font-semibold">My Portfolio Goals</h2>
-      <div class="mt-3 grid grid-cols-1 gap-4 text-sm">
-        <div>
-          <div class="font-semibold text-emerald-300">Overperforming Goals</div>
-          <ul class="list-disc pl-5 mt-1 opacity-90">
-            <li>Retain 90% of accounts with a loss ratio ≤ 50%</li>
-            <li>No more than $150M of TIV in Zone 6</li>
-          </ul>
+        <!-- Tabs -->
+        <div class="mt-3 flex items-center gap-2 text-xs">
+            <button id="tab_assigned" class="pill pill-sub hover-glow">
+                Assigned to me
+                <span id="ct_assigned" class="ml-1 opacity-75">—</span>
+            </button>
+            <button id="tab_related" class="pill pill-sub hover-glow">
+                Related to me
+                <span id="ct_related" class="ml-1 opacity-75">—</span>
+            </button>
+            <button id="tab_referrals" class="pill pill-sub hover-glow">
+                Referrals
+                <span id="ct_referrals" class="ml-1 opacity-75">—</span>
+            </button>
         </div>
-        <div>
-          <div class="font-semibold text-rose-300">Underperforming Goals</div>
-          <ul class="list-disc pl-5 mt-1 opacity-90">
-            <li>Get more rate on accounts with loss ≥ 100k</li>
-            <li>20% rate target on West Commercial</li>
-            <li>30% rate increase on hazmat truckers with high LR</li>
-          </ul>
-        </div>
-      </div>
+        <div id="worklist" class="mt-4 text-sm"></div>
     </div>
 
-    <div class="glass-panel">
-      <h2 class="text-lg font-semibold">Quick Stats</h2>
-      <div class="mt-4 space-y-2 text-sm">
-        <div class="flex justify-between"><span>Avg Premium</span><span>${{ '%.0f'|format(avg_premium) }}</span></div>
-        <div class="flex justify-between"><span>Focus Metric</span><span>Winnability-weighted</span></div>
-        <div class="flex justify-between"><span>Alerts</span><span>—</span></div>
-      </div>
+    <!-- Right: Goals and quick stats -->
+    <div class="space-y-6">
+        <div class="glass-panel">
+            <h2 class="text-lg font-semibold">My Portfolio Goals</h2>
+            <div class="mt-3 grid grid-cols-1 gap-4 text-sm">
+                <div>
+                    <div class="font-semibold text-emerald-300">
+                        Overperforming Goals
+                    </div>
+                    <ul class="list-disc pl-5 mt-1 opacity-90">
+                        <li>Retain 90% of accounts with a loss ratio ≤ 50%</li>
+                        <li>No more than $150M of TIV in Zone 6</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="font-semibold text-rose-300">
+                        Underperforming Goals
+                    </div>
+                    <ul class="list-disc pl-5 mt-1 opacity-90">
+                        <li>Get more rate on accounts with loss ≥ 100k</li>
+                        <li>20% rate target on West Commercial</li>
+                        <li>
+                            30% rate increase on hazmat truckers with high LR
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <h2 class="text-lg font-semibold">Quick Stats</h2>
+            <div class="mt-4 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span>Avg Premium</span
+                    ><span>${{ '%.0f'|format(avg_premium) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Focus Metric</span><span>Winnability-weighted</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Alerts</span><span>—</span>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- Accounts table -->
 <div class="mt-6 glass-panel p-0 overflow-x-auto">
-  <div class="flex items-center justify-between px-4 py-3">
-    <h2 class="text-lg font-semibold">My Accounts</h2>
-    <div class="text-xs opacity-70">Top prioritized accounts • <a href="{{ url_for('submissions') }}" class="link">view all</a></div>
-  </div>
-  <table class="table table-glass text-sm">
-    <thead>
-      <tr>
-        <th class="th">Account Name</th>
-        <th class="th">Type</th>
-        <th class="th">Estimated Premium</th>
-        <th class="th">Broker</th>
-        <th class="th">Effective Date</th>
-        <th class="th">Loss Ratio</th>
-        <th class="th">Status</th>
-        <th class="th">Appetite</th>
-        <th class="th">Triage Score</th>
-        <th class="th">Winnability</th>
-        <th class="th">Rated Premium</th>
-      </tr>
-    </thead>
-    <tbody id="acct_body"></tbody>
-  </table>
-  <div class="px-4 py-3 text-xs opacity-70">Showing top results by priority score</div>
+    <div class="flex items-center justify-between px-4 py-3">
+        <h2 class="text-lg font-semibold">My Accounts</h2>
+        <div class="text-xs opacity-70">
+            Top prioritized accounts •
+            <a href="{{ url_for('submissions') }}" class="link">view all</a>
+        </div>
+    </div>
+    <table class="table table-glass text-sm">
+        <thead>
+            <tr>
+                <th class="th">Account Name</th>
+                <th class="th">Type</th>
+                <th class="th">Estimated Premium</th>
+                <th class="th">Broker</th>
+                <th class="th">Effective Date</th>
+                <th class="th">Loss Ratio</th>
+                <th class="th">Status</th>
+                <th class="th">Appetite</th>
+                <th class="th">Triage Score</th>
+                <th class="th">Winnability</th>
+                <th class="th">Rated Premium</th>
+            </tr>
+        </thead>
+        <tbody id="acct_body"></tbody>
+    </table>
+    <div class="px-4 py-3 text-xs opacity-70">
+        Showing top results by priority score
+    </div>
+</div>
+
+<!-- Persona Modal -->
+<div id="persona_modal" class="overlay hidden">
+    <div class="overlay-inner">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold">
+                Persona-Based Appetite Builder
+            </h3>
+            <button id="persona_close" class="pill pill-sub">Close</button>
+        </div>
+        <div id="persona_steps" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Step containers (simple wizard) -->
+            <div class="space-y-3">
+                <label class="lbl"
+                    >Risk posture (1=Conservative, 5=Aggressive)</label
+                >
+                <input
+                    id="ans_aggr"
+                    type="range"
+                    min="1"
+                    max="5"
+                    value="3"
+                    class="w-full"
+                />
+            </div>
+            <div class="space-y-3">
+                <label class="lbl">Primary objective</label>
+                <select id="ans_obj" class="inp">
+                    <option value="expected_premium">Expected premium</option>
+                    <option value="win_rate">Win rate</option>
+                    <option value="freshness">Freshness</option>
+                    <option value="balance" selected>Balance</option>
+                </select>
+            </div>
+            <div class="space-y-3">
+                <label class="lbl">Premium band ($)</label>
+                <div class="flex gap-2">
+                    <input
+                        id="ans_prem_lo"
+                        type="number"
+                        class="inp w-full"
+                        placeholder="100000"
+                        value="100000"
+                    />
+                    <input
+                        id="ans_prem_hi"
+                        type="number"
+                        class="inp w-full"
+                        placeholder="1500000"
+                        value="1500000"
+                    />
+                </div>
+            </div>
+            <div class="space-y-3">
+                <label class="lbl">Loss ratio tolerance (max)</label>
+                <input
+                    id="ans_lr"
+                    type="range"
+                    min="0.4"
+                    max="1.0"
+                    step="0.05"
+                    value="0.65"
+                    class="w-full"
+                />
+            </div>
+            <div class="space-y-3">
+                <label class="lbl">TIV ceiling ($)</label>
+                <input
+                    id="ans_tiv"
+                    type="number"
+                    class="inp w-full"
+                    placeholder="150000000"
+                    value="150000000"
+                />
+            </div>
+            <div class="space-y-3">
+                <label class="lbl">Business focus</label>
+                <div class="flex gap-4 items-center">
+                    <label class="flex items-center gap-2"
+                        ><input id="ans_new_only" type="checkbox" checked />
+                        <span>New business only</span></label
+                    >
+                    <label class="flex items-center gap-2"
+                        ><input id="ans_good_con" type="checkbox" />
+                        <span>Prefer good construction</span></label
+                    >
+                </div>
+            </div>
+            <div class="space-y-3 md:col-span-2">
+                <label class="lbl"
+                    >Construction preferences (comma-separated)</label
+                >
+                <input
+                    id="ans_con_list"
+                    class="inp w-full"
+                    placeholder="Fire Resistive, Masonry Non-Combustible"
+                />
+            </div>
+            <div class="space-y-3 md:col-span-2">
+                <label class="lbl">Additional comments</label>
+                <textarea
+                    id="ans_comments"
+                    class="inp w-full"
+                    rows="3"
+                    placeholder="Push West Coast but watch LR <= 0.6"
+                ></textarea>
+            </div>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+            <button id="persona_seed" class="btn-subtle btn">Seed Only</button>
+            <button id="persona_submit" class="btn">Propose with Gemini</button>
+            <div id="persona_status" class="text-xs opacity-80"></div>
+        </div>
+    </div>
 </div>
 
 <script>
-let ALL = [];
-let currentTab = "ASSIGNED"; // ASSIGNED | RELATED | REFERRALS
+    let ALL = [];
+    let currentTab = "ASSIGNED"; // ASSIGNED | RELATED | REFERRALS
 
-async function loadHome(){
-  const el = document.getElementById("worklist");
-  await withLoading(el, async ()=>{
-    const mode = document.getElementById('home_mode')?.value || 'balanced_growth'
-    const j = await fetchJSON("/api/classified_mode?mode="+encodeURIComponent(mode))
-    const rows = (j.data||[]).slice(0,8)
-    el.innerHTML = rows.map(r=>`
+    function getActiveMode() {
+        return localStorage.getItem("ACTIVE_MODE") || "balanced_growth";
+    }
+    function setActiveMode(m) {
+        localStorage.setItem("ACTIVE_MODE", m);
+    }
+
+    async function loadHome() {
+        const el = document.getElementById("worklist");
+        await withLoading(el, async () => {
+            const sel = document.getElementById("home_mode");
+            const mode = sel?.value || getActiveMode();
+            const j = await fetchJSON(
+                `/api/classified_mode?mode=${encodeURIComponent(mode)}`
+            );
+            // Fallback if custom yields no rows
+            if ((j.count || 0) === 0 && mode === "custom") {
+                const last =
+                    localStorage.getItem("LAST_NON_EMPTY_MODE") ||
+                    "balanced_growth";
+                toast("Custom mode empty — showing " + last, "error");
+                setActiveMode(last);
+                if (sel) sel.value = last;
+                const jj = await fetchJSON(
+                    `/api/classified_mode?mode=${encodeURIComponent(last)}`
+                );
+                renderWorklistRows(jj.data || [], last);
+                return;
+            }
+            if ((j.count || 0) > 0) {
+                localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
+            }
+            renderWorklistRows(j.data || [], mode);
+        });
+    }
+    function renderWorklistRows(rows, mode) {
+        const el = document.getElementById("worklist");
+        rows = rows.slice(0, 8);
+        el.innerHTML = rows
+            .map(
+                (r) => `
     <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
       <div class="row-main">
-        <div class="row-title">${r.account_name||"-"}</div>
-        <div class="row-sub">${r.primary_risk_state||"-"} · ${r.line_of_business||"-"} · $${Math.round(r.total_premium||0).toLocaleString()}</div>
+        <div class="row-title">${r.account_name || "-"}</div>
+        <div class="row-sub">${r.primary_risk_state || "-"} · ${
+                    r.line_of_business || "-"
+                } · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
       </div>
       <div class="row-badges">
         ${badge(r.appetite_status)}
-        <span class="chip">Score ${Number(r.priority_score||0).toFixed(2)}</span>
+        <span class="chip">Score ${Number(r.priority_score || 0).toFixed(
+            2
+        )}</span>
       </div>
     </a>
-    `).join("")
-  })
-}
-function badge(s){
-  if(s==="TARGET") return `<span class="pill pill-indigo">Target</span>`
-  if(s==="IN") return `<span class="pill pill-emerald">In</span>`
-  return `<span class="pill pill-rose">Out</span>`
-}
-document.getElementById("btn_refresh_home").onclick=()=>{
-  fetchJSON("/api/refresh",{method:"POST"})
-    .then(()=>{ toast("Data refreshed","success"); loadHome() })
-    .catch(err=>toast("Refresh failed: "+err.message, "error"))
-}
+  `
+            )
+            .join("");
+    }
+    function badge(s) {
+        if (s === "TARGET")
+            return `<span class="pill pill-indigo">Target</span>`;
+        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
+        return `<span class="pill pill-rose">Out</span>`;
+    }
+    document.getElementById("btn_refresh_home").onclick = () => {
+        fetchJSON("/api/refresh", { method: "POST" })
+            .then(() => {
+                toast("Data refreshed", "success");
+                loadHome();
+            })
+            .catch((err) => toast("Refresh failed: " + err.message, "error"));
+    };
 
-<<<<<<< HEAD
-async function populateHomeModes(){
-  try{
-    const j = await fetchJSON('/api/modes')
-    const modes = j.modes||[]
-    const sel = document.getElementById('home_mode')
-    if(!sel) return
-    sel.innerHTML = modes.map(m=>`<option value="${m}">${m}</option>`).join('')
-    sel.value = modes.includes('balanced_growth')? 'balanced_growth' : (modes[0]||'')
-    sel.addEventListener('change', ()=> loadHome().catch(err=>toast('Load failed: '+err.message,'error')))
-  }catch(e){ console.warn('Failed to load modes', e) }
-}
+    async function populateHomeModes() {
+        try {
+            const j = await fetchJSON("/api/modes");
+            const modes = j.modes || [];
+            const sel = document.getElementById("home_mode");
+            if (!sel) return;
+            sel.innerHTML = modes
+                .map((m) => `<option value="${m}">${m}</option>`)
+                .join("");
+            const active = getActiveMode();
+            sel.value = modes.includes(active)
+                ? active
+                : modes.includes("balanced_growth")
+                ? "balanced_growth"
+                : modes[0] || "";
+            setActiveMode(sel.value);
+            sel.addEventListener("change", () => {
+                setActiveMode(sel.value);
+                loadHome().catch((err) =>
+                    toast("Load failed: " + err.message, "error")
+                );
+            });
+        } catch (e) {
+            console.warn("Failed to load modes", e);
+        }
+    }
 
-populateHomeModes().then(()=>{
-  loadHome().catch(err=>toast("Failed to load worklist: "+err.message, "error"))
-}).catch(()=>{
-  loadHome().catch(err=>toast("Failed to load worklist: "+err.message, "error"))
-})
-=======
-// Tabs handlers
-document.getElementById("tab_assigned").onclick=()=>{ currentTab="ASSIGNED"; renderWorklist(); };
-document.getElementById("tab_related").onclick=()=>{ currentTab="RELATED"; renderWorklist(); };
-document.getElementById("tab_referrals").onclick=()=>{ currentTab="REFERRALS"; renderWorklist(); };
+    // Persona modal wiring
+    const modal = document.getElementById("persona_modal");
+    document.getElementById("btn_persona").onclick = () => {
+        modal.classList.remove("hidden");
+    };
+    document.getElementById("persona_close").onclick = () => {
+        modal.classList.add("hidden");
+    };
 
-function updateCounts(){
-  const ct_assigned = ALL.filter(r=>r.appetite_status==="TARGET").length; // proxy
-  const ct_related = ALL.filter(r=>r.appetite_status==="IN").length;
-  const ct_referrals = ALL.filter(r=>r.appetite_status==="OUT").length;
-  document.getElementById("ct_assigned").textContent = `(${ct_assigned})`;
-  document.getElementById("ct_related").textContent = `(${ct_related})`;
-  document.getElementById("ct_referrals").textContent = `(${ct_referrals})`;
-}
+    function gatherAnswers() {
+        const con = (document.getElementById("ans_con_list").value || "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        return {
+            aggressiveness: Number(
+                document.getElementById("ans_aggr").value || 3
+            ),
+            objective: document.getElementById("ans_obj").value || "balance",
+            premium_lo: Number(
+                document.getElementById("ans_prem_lo").value || 100000
+            ),
+            premium_hi: Number(
+                document.getElementById("ans_prem_hi").value || 1500000
+            ),
+            max_lr: Number(document.getElementById("ans_lr").value || 0.65),
+            tiv_max: Number(
+                document.getElementById("ans_tiv").value || 150000000
+            ),
+            new_only: !!document.getElementById("ans_new_only").checked,
+            strict_construction:
+                !!document.getElementById("ans_good_con").checked,
+            construction_pref: con,
+            comments: document.getElementById("ans_comments").value || "",
+        };
+    }
 
-function renderWorklist(){
-  const el = document.getElementById("worklist");
-  let rows = ALL;
-  if(currentTab==="ASSIGNED") rows = ALL.filter(r=>r.appetite_status==="TARGET");
-  else if(currentTab==="RELATED") rows = ALL.filter(r=>r.appetite_status==="IN");
-  else if(currentTab==="REFERRALS") rows = ALL.filter(r=>r.appetite_status==="OUT");
-  rows = rows.slice(0,8);
-  el.innerHTML = rows.map(r=>`
-    <a href="/detail/${r.id}" class="row">
-      <div class="row-main">
-        <div class="row-title">${r.account_name||"-"}</div>
-        <div class="row-sub">${r.primary_risk_state||"-"} · ${r.line_of_business||"-"} · $${Math.round(r.total_premium||0).toLocaleString()}</div>
-      </div>
-      <div class="row-badges">
-        ${badge(r.appetite_status)}
-        <span class="chip">Score ${Number(r.priority_score||0).toFixed(2)}</span>
-      </div>
-    </a>`).join("");
-}
+    document.getElementById("persona_seed").onclick = async () => {
+        const ans = gatherAnswers();
+        const status = document.getElementById("persona_status");
+        try {
+            status.textContent = "Seeding…";
+            const res = await fetchJSON("/api/persona/seed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ answers: ans }),
+            });
+            toast("Seed created", "success");
+            setActiveMode("custom");
+            await populateHomeModes();
+            document.getElementById("home_mode").value = "custom";
+            await loadHome();
+        } catch (e) {
+            toast("Seed failed: " + e.message, "error");
+        } finally {
+            status.textContent = "";
+        }
+    };
 
-function renderAccounts(){
-  const tb = document.getElementById("acct_body");
-  const top = [...ALL].sort((a,b)=>(b.priority_score||0)-(a.priority_score||0)).slice(0,12);
-  tb.innerHTML = top.map(r=>{
-    const win = (typeof r.winnability==="number") ? (r.winnability>1? r.winnability : r.winnability*100) : null;
-    return `<tr class="tr">
-      <td class="td"><a class="link" href="/detail/${r.id}">${r.account_name||"-"}</a></td>
-      <td class="td">${r.renewal_or_new_business||"-"}</td>
-      <td class="td">$${Math.round(r.total_premium||0).toLocaleString()}</td>
-      <td class="td">${r.broker||"-"}</td>
-      <td class="td">${r.effective_date? new Date(r.effective_date).toISOString().slice(0,10): "-"}</td>
-      <td class="td">${(typeof r.loss_ratio==="number")? (r.loss_ratio*100).toFixed(0)+"%" : (r.loss_ratio||"-")}</td>
-      <td class="td">${r.status||"Submitted"}</td>
-      <td class="td">${badge(r.appetite_status)}</td>
-      <td class="td">${Number(r.priority_score||0).toFixed(2)}</td>
-      <td class="td">${win!=null? Math.round(win)+"%":"-"}</td>
-      <td class="td">$${Math.round(r.rated_premium||r.total_premium||0).toLocaleString()}</td>
-    </tr>`
-  }).join("");
-}
+    document.getElementById("persona_submit").onclick = async () => {
+        const ans = gatherAnswers();
+        const status = document.getElementById("persona_status");
+        try {
+            status.textContent = "Calling Gemini…";
+            const res = await fetchJSON("/api/persona/propose", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    answers: ans,
+                    goal_text: ans.comments || "",
+                }),
+            });
+            toast("Persona proposed and set as custom", "success");
+            setActiveMode("custom");
+            await populateHomeModes();
+            document.getElementById("home_mode").value = "custom";
+            await loadHome();
+            modal.classList.add("hidden");
+        } catch (e) {
+            toast("Propose failed: " + e.message, "error");
+        } finally {
+            status.textContent = "";
+        }
+    };
 
-loadHome().catch(err=>toast("Failed to load dashboard: "+err.message, "error"))
->>>>>>> c6ebcd2dc12204a3f10b72c6b62dff625215cd03
+    // Initial load
+    populateHomeModes()
+        .then(() => loadHome())
+        .catch(() => loadHome());
 </script>
 {% endblock %}

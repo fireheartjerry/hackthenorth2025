@@ -11,6 +11,7 @@ from utils_data import load_df
 from scoring import score_row
 from guidelines import classify_for_mode_row
 from modes import MODES
+from gemini_test import summarize_dataframe, seeds_from_answers, propose_with_gemini
 
 load_dotenv()
 
@@ -145,6 +146,22 @@ def toDataFrame(items):
     else:
         df["building_age"] = np.nan
     return df
+
+
+def get_role():
+    """Return a simple role flag for insights tabs.
+    Prefers explicit `?role=` query, then cookie, else defaults to 'uw'.
+    """
+    try:
+        role_q = (request.args.get("role") or "").strip().lower()
+        if role_q in ("uw", "leader", "admin"):
+            return role_q
+        cookie_val = (request.cookies.get("role") or "").strip().lower()
+        if cookie_val in ("uw", "leader", "admin"):
+            return cookie_val
+    except Exception:
+        pass
+    return "uw"
 
 
 def classifyRow(row):
@@ -399,6 +416,9 @@ def insights():
         {"id": "premium_by_state", "title": "Premium by State", "protected": False},
         {"id": "status_mix", "title": "Status Mix", "protected": False},
         {"id": "tiv_bands", "title": "TIV Bands", "protected": True},
+        {"id": "geo", "title": "US Map", "protected": False},
+        {"id": "scatter3d", "title": "3D Scatter", "protected": False},
+        {"id": "flows", "title": "Flows (Sankey)", "protected": False},
     ]
     resp = make_response(render_template("insights.html", role=role, tabs=tabs))
     # Persist role if provided via query
@@ -791,6 +811,46 @@ def api_classified_mode():
         out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
 
     return jsonify({"count": len(out_rows), "data": out_rows})
+
+
+@app.route("/api/persona/seed", methods=["POST"])
+def api_persona_seed():
+    try:
+        data = request.get_json(silent=True) or {}
+        answers = data.get("answers") or {}
+        df = load_df("data.json")
+        # Build seed deterministically from answers
+        seed = seeds_from_answers(answers)
+        # Register as custom mode
+        MODES["custom"] = seed
+        return jsonify({"ok": True, "mode": "custom", "seed": seed})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/persona/propose", methods=["POST"])
+def api_persona_propose():
+    try:
+        data = request.get_json(silent=True) or {}
+        answers = data.get("answers") or {}
+        goal_text = data.get("goal_text") or ""
+        # Load dataset and summarize
+        df = load_df("data.json")
+        summary = summarize_dataframe(df)
+        # Seed and propose
+        seed = seeds_from_answers(answers)
+        proposal = propose_with_gemini(summary, seed, goal_text)
+        # Register proposal as custom mode
+        MODES["custom"] = proposal
+        return jsonify({
+            "ok": True,
+            "mode": "custom",
+            "seed": seed,
+            "proposal": proposal,
+            "debug_summary": summary,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 def _apply_common_filters(df):

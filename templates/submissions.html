@@ -1,194 +1,276 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="flex items-end gap-3 flex-wrap glass-panel p-4">
-  <div>
-    <label class="lbl">State</label>
-    <input id="f_state" class="inp" placeholder="e.g., CA"/>
-  </div>
-  <div>
-    <label class="lbl">Status</label>
-    <select id="f_status" class="inp">
-      <option value="">Any</option>
-      <option value="TARGET">Target</option>
-      <option value="IN">In-Appetite</option>
-      <option value="OUT">Out-of-Appetite</option>
-    </select>
-  </div>
-  <div>
-    <label class="lbl">Mode</label>
-    <select id="f_mode" class="inp"></select>
-  </div>
-  <div>
-    <label class="lbl">Min Premium</label>
-    <input id="f_min" class="inp" type="number" placeholder="50000"/>
-  </div>
-  <div>
-    <label class="lbl">Max Premium</label>
-    <input id="f_max" class="inp" type="number" placeholder="175000"/>
-  </div>
-  <div class="flex-1">
-    <label class="lbl">Search</label>
-    <input id="f_q" class="inp" placeholder="Account name..."/>
-  </div>
-  <button id="btn_apply" class="btn hover-glow">Apply</button>
-  <div class="flex-1"></div>
-  <div class="flex items-end gap-2">
-    <input id="nlq" class="inp w-72" placeholder="NL query e.g. out-of-appetite in FL >100k"/>
-    <button id="btn_nlq" class="btn btn-subtle">Ask</button>
-    <button id="btn_refresh" class="btn btn-subtle">Refresh</button>
-  </div>
+    <div>
+        <label class="lbl">State</label>
+        <input id="f_state" class="inp" placeholder="e.g., CA" />
+    </div>
+    <div>
+        <label class="lbl">Status</label>
+        <select id="f_status" class="inp">
+            <option value="">Any</option>
+            <option value="TARGET">Target</option>
+            <option value="IN">In-Appetite</option>
+            <option value="OUT">Out-of-Appetite</option>
+        </select>
+    </div>
+    <div>
+        <label class="lbl">Mode</label>
+        <select id="f_mode" class="inp"></select>
+    </div>
+    <div>
+        <label class="lbl">Min Premium</label>
+        <input id="f_min" class="inp" type="number" placeholder="50000" />
+    </div>
+    <div>
+        <label class="lbl">Max Premium</label>
+        <input id="f_max" class="inp" type="number" placeholder="175000" />
+    </div>
+    <div class="flex-1">
+        <label class="lbl">Search</label>
+        <input id="f_q" class="inp" placeholder="Account name..." />
+    </div>
+    <button id="btn_apply" class="btn hover-glow">Apply</button>
+    <div class="flex-1"></div>
+    <div class="flex items-end gap-2">
+        <input
+            id="nlq"
+            class="inp w-72"
+            placeholder="NL query e.g. out-of-appetite in FL >100k"
+        />
+        <button id="btn_nlq" class="btn btn-subtle">Ask</button>
+        <button id="btn_refresh" class="btn btn-subtle">Refresh</button>
+    </div>
 </div>
 
 <div class="mt-6 overflow-x-auto glass-panel p-0">
-  <table class="w-full text-sm table-glass">
-    <thead>
-      <tr>
-        <th class="th th-sort" data-key="id">ID <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="account_name">Account <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="primary_risk_state">State <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="line_of_business">LOB <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="total_premium">Premium <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="tiv">TIV <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="winnability">Win <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="appetite_status">Appetite <span class="arrow"></span></th>
-        <th class="th th-sort" data-key="priority_score">Priority <span class="arrow"></span></th>
-        <th class="th"></th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
+    <table class="w-full text-sm table-glass">
+        <thead>
+            <tr>
+                <th class="th th-sort" data-key="id">
+                    ID <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="account_name">
+                    Account <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="primary_risk_state">
+                    State <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="line_of_business">
+                    LOB <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="total_premium">
+                    Premium <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="tiv">
+                    TIV <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="winnability">
+                    Win <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="appetite_status">
+                    Appetite <span class="arrow"></span>
+                </th>
+                <th class="th th-sort" data-key="priority_score">
+                    Priority <span class="arrow"></span>
+                </th>
+                <th class="th"></th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
 </div>
 
 <script>
-let SORT_BY = 'priority_score';
-let SORT_DIR = 'desc';
+    let SORT_BY = "priority_score";
+    let SORT_DIR = "desc";
 
-async function load(params={}){
-  const qs = new URLSearchParams(params).toString()
-  const tb = document.getElementById("tbody")
-  await withLoading(tb, async ()=>{
-    const j = await fetchJSON("/api/classified_mode?"+qs)
-    tb.innerHTML = (j.data||[]).map(r=>`
+    async function load(params = {}) {
+        const qs = new URLSearchParams(params).toString();
+        const tb = document.getElementById("tbody");
+        await withLoading(tb, async () => {
+            const j = await fetchJSON("/api/classified_mode?" + qs);
+            tb.innerHTML = (j.data || [])
+                .map(
+                    (r) => `
       <tr class="tr">
         <td class="td">${r.id}</td>
-        <td class="td"><a class="link" href="/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode').value||'')}">${r.account_name||"-"}</a></td>
-        <td class="td">${r.primary_risk_state||"-"}</td>
-        <td class="td">${r.line_of_business||"-"}</td>
-        <td class="td">$${Math.round(r.total_premium||0).toLocaleString()}</td>
-        <td class="td">$${Math.round(r.tiv||0).toLocaleString()}</td>
-        <td class="td">${typeof r.winnability==="number"? Number(r.winnability>1?r.winnability:r.winnability*100).toFixed(0)+"%":"-"}</td>
+        <td class="td"><a class="link" href="/detail/${
+            r.id
+        }?mode=${encodeURIComponent(
+                        document.getElementById("f_mode").value || ""
+                    )}">${r.account_name || "-"}</a></td>
+        <td class="td">${r.primary_risk_state || "-"}</td>
+        <td class="td">${r.line_of_business || "-"}</td>
+        <td class="td">$${Math.round(
+            r.total_premium || 0
+        ).toLocaleString()}</td>
+        <td class="td">$${Math.round(r.tiv || 0).toLocaleString()}</td>
+        <td class="td">${
+            typeof r.winnability === "number"
+                ? Number(
+                      r.winnability > 1 ? r.winnability : r.winnability * 100
+                  ).toFixed(0) + "%"
+                : "-"
+        }</td>
         <td class="td">${badge(r.appetite_status)}</td>
-        <td class="td">${Number(r.priority_score||0).toFixed(2)}</td>
-        <td class="td"><button class="pill pill-sub" onclick="explain(${r.id})">Explain</button></td>
+        <td class="td">${Number(r.priority_score || 0).toFixed(2)}</td>
+        <td class="td"><button class="pill pill-sub" onclick="explain(${
+            r.id
+        })">Explain</button></td>
       </tr>
-    `).join("")
-  })
-}
-function badge(s){
-  if(s==="TARGET") return `<span class="pill pill-indigo">Target</span>`
-  if(s==="IN") return `<span class="pill pill-emerald">In</span>`
-  return `<span class="pill pill-rose">Out</span>`
-}
-function explain(id){
-  const mode = document.getElementById('f_mode').value||''
-  const url = mode? `/api/explain/${id}?mode=${encodeURIComponent(mode)}` : `/api/explain/${id}`
-  fetch(url,{method:"POST"}).then(r=>r.json()).then(j=>{
-    if(j.ok){ alert(j.explanation) } else { alert("Error") }
-  })
-}
-document.getElementById("btn_apply").onclick=()=>{
-  const params={
-    state:document.getElementById("f_state").value||"",
-    status:document.getElementById("f_status").value||"",
-    min_premium:document.getElementById("f_min").value||"",
-    max_premium:document.getElementById("f_max").value||"",
-    q:document.getElementById("f_q").value||"",
-    mode:document.getElementById("f_mode").value||"",
-    sort_by:SORT_BY,
-    sort_dir:SORT_DIR
-  }
-  load(params).catch(err=>toast("Failed to load: "+err.message, "error"))
-}
-document.getElementById("btn_nlq").onclick=()=>{
-  const q = document.getElementById("nlq").value||""
-  fetchJSON("/api/nlq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q})})
-    .then(j=>{
-      const f=j.filters||{}
-      document.getElementById("f_state").value=f.state||""
-      document.getElementById("f_status").value=f.status||""
-      document.getElementById("f_min").value=f.min_premium||""
-      document.getElementById("f_max").value=f.max_premium||""
-      document.getElementById("f_q").value=f.search||""
-      document.getElementById("btn_apply").click()
-    }).catch(err=>toast("NLQ failed: "+err.message, "error"))
-}
-document.getElementById("btn_refresh").onclick=()=>{
-  fetchJSON("/api/refresh", {method:"POST"})
-   .then(()=>{ toast("Data refreshed","success"); document.getElementById("btn_apply").click() })
-   .catch(err=>toast("Refresh failed: "+err.message, "error"))
-}
-
-async function populateModes(){
-  try{
-    const j = await fetchJSON('/api/modes')
-    const modes = j.modes||[]
-    const sel = document.getElementById('f_mode')
-    sel.innerHTML = modes.map(m=>`<option value="${m}">${m}</option>`).join('')
-    // default
-    sel.value = modes.includes('balanced_growth')? 'balanced_growth' : (modes[0]||'')
-  }catch(e){
-    console.error('Failed to load modes', e)
-  }
-}
-
-// Sorting handlers
-function updateSortHeaders(){
-  document.querySelectorAll('th.th-sort').forEach(th=>{
-    const key = th.dataset.key;
-    const arrow = th.querySelector('.arrow');
-    th.classList.toggle('active', key===SORT_BY);
-    if(arrow){
-      if(key===SORT_BY){ arrow.textContent = SORT_DIR==='asc' ? '▲' : '▼'; }
-      else { arrow.textContent = ''; }
+    `
+                )
+                .join("");
+        });
     }
-  })
-}
-document.querySelectorAll('th.th-sort').forEach(th=>{
-  th.style.cursor='pointer';
-  th.addEventListener('click', ()=>{
-    const key = th.dataset.key;
-    if(SORT_BY===key){
-      SORT_DIR = SORT_DIR==='asc' ? 'desc' : 'asc';
-    }else{
-      SORT_BY = key;
-      // Default direction: numeric desc, text asc
-      const numeric = ['id','total_premium','tiv','winnability','priority_score'];
-      SORT_DIR = numeric.includes(key) ? 'desc' : 'asc';
+    function badge(s) {
+        if (s === "TARGET")
+            return `<span class="pill pill-indigo">Target</span>`;
+        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
+        return `<span class="pill pill-rose">Out</span>`;
     }
-    updateSortHeaders();
-    document.getElementById('btn_apply').click();
-  })
-})
+    function explain(id) {
+        const mode = document.getElementById("f_mode").value || "";
+        const url = mode
+            ? `/api/explain/${id}?mode=${encodeURIComponent(mode)}`
+            : `/api/explain/${id}`;
+        fetch(url, { method: "POST" })
+            .then((r) => r.json())
+            .then((j) => {
+                if (j.ok) {
+                    alert(j.explanation);
+                } else {
+                    alert("Error");
+                }
+            });
+    }
+    document.getElementById("btn_apply").onclick = () => {
+        const params = {
+            state: document.getElementById("f_state").value || "",
+            status: document.getElementById("f_status").value || "",
+            min_premium: document.getElementById("f_min").value || "",
+            max_premium: document.getElementById("f_max").value || "",
+            q: document.getElementById("f_q").value || "",
+            mode: document.getElementById("f_mode").value || "",
+            sort_by: SORT_BY,
+            sort_dir: SORT_DIR,
+        };
+        load(params).catch((err) =>
+            toast("Failed to load: " + err.message, "error")
+        );
+    };
+    document.getElementById("btn_nlq").onclick = () => {
+        const q = document.getElementById("nlq").value || "";
+        fetchJSON("/api/nlq", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q }),
+        })
+            .then((j) => {
+                const f = j.filters || {};
+                document.getElementById("f_state").value = f.state || "";
+                document.getElementById("f_status").value = f.status || "";
+                document.getElementById("f_min").value = f.min_premium || "";
+                document.getElementById("f_max").value = f.max_premium || "";
+                document.getElementById("f_q").value = f.search || "";
+                document.getElementById("btn_apply").click();
+            })
+            .catch((err) => toast("NLQ failed: " + err.message, "error"));
+    };
+    document.getElementById("btn_refresh").onclick = () => {
+        fetchJSON("/api/refresh", { method: "POST" })
+            .then(() => {
+                toast("Data refreshed", "success");
+                document.getElementById("btn_apply").click();
+            })
+            .catch((err) => toast("Refresh failed: " + err.message, "error"));
+    };
 
-// Auto-apply on filter changes (debounced for inputs)
-function apply(){ document.getElementById('btn_apply').click(); }
-let t;
-function debouncedApply(){ clearTimeout(t); t=setTimeout(apply, 300); }
-['f_state','f_status','f_mode'].forEach(id=>{
-  const el=document.getElementById(id); if(!el) return;
-  el.addEventListener('change', apply);
-});
-['f_min','f_max','f_q'].forEach(id=>{
-  const el=document.getElementById(id); if(!el) return;
-  el.addEventListener('input', debouncedApply);
-});
+    async function populateModes() {
+        try {
+            const j = await fetchJSON("/api/modes");
+            const modes = j.modes || [];
+            const sel = document.getElementById("f_mode");
+            sel.innerHTML = modes
+                .map((m) => `<option value="${m}">${m}</option>`)
+                .join("");
+            // default
+            sel.value = modes.includes("balanced_growth")
+                ? "balanced_growth"
+                : modes[0] || "";
+        } catch (e) {
+            console.error("Failed to load modes", e);
+        }
+    }
 
-populateModes().then(()=>{
-  updateSortHeaders();
-  apply();
-}).catch(()=>{
-  updateSortHeaders();
-  load().catch(err=>toast("Initial load failed: "+err.message, "error"))
-})
+    // Sorting handlers
+    function updateSortHeaders() {
+        document.querySelectorAll("th.th-sort").forEach((th) => {
+            const key = th.dataset.key;
+            const arrow = th.querySelector(".arrow");
+            th.classList.toggle("active", key === SORT_BY);
+            if (arrow) {
+                if (key === SORT_BY) {
+                    arrow.textContent = SORT_DIR === "asc" ? "▲" : "▼";
+                } else {
+                    arrow.textContent = "";
+                }
+            }
+        });
+    }
+    document.querySelectorAll("th.th-sort").forEach((th) => {
+        th.style.cursor = "pointer";
+        th.addEventListener("click", () => {
+            const key = th.dataset.key;
+            if (SORT_BY === key) {
+                SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
+            } else {
+                SORT_BY = key;
+                // Default direction: numeric desc, text asc
+                const numeric = [
+                    "id",
+                    "total_premium",
+                    "tiv",
+                    "winnability",
+                    "priority_score",
+                ];
+                SORT_DIR = numeric.includes(key) ? "desc" : "asc";
+            }
+            updateSortHeaders();
+            document.getElementById("btn_apply").click();
+        });
+    });
+
+    // Auto-apply on filter changes (debounced for inputs)
+    function apply() {
+        document.getElementById("btn_apply").click();
+    }
+    let t;
+    function debouncedApply() {
+        clearTimeout(t);
+        t = setTimeout(apply, 300);
+    }
+    ["f_state", "f_status", "f_mode"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", apply);
+    });
+    ["f_min", "f_max", "f_q"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", debouncedApply);
+    });
+
+    populateModes()
+        .then(() => {
+            updateSortHeaders();
+            apply();
+        })
+        .catch(() => {
+            updateSortHeaders();
+            load().catch((err) =>
+                toast("Initial load failed: " + err.message, "error")
+            );
+        });
 </script>
 {% endblock %}

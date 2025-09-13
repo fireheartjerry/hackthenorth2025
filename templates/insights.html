@@ -1,109 +1,157 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="flex items-center justify-between mb-4">
-  <div>
-    <h1 class="text-xl font-semibold">Portfolio Insights</h1>
-    <div class="text-sm opacity-75">Configurable dashboards to interrogate your portfolio — fullscreen, edit, share, and download.</div>
-  </div>
-  <div class="flex items-center gap-2 text-xs">
-    <span class="chip">Role: {{ role }}</span>
-    <a href="?role=uw" class="pill pill-sub">UW</a>
-    <a href="?role=leader" class="pill pill-sub">Leader</a>
-    <a href="?role=admin" class="pill pill-sub">Admin</a>
-  </div>
+    <div>
+        <h1 class="text-xl font-semibold">Portfolio Insights</h1>
+        <div class="text-sm opacity-75">
+            Configurable dashboards to interrogate your portfolio — fullscreen,
+            edit, share, and download.
+        </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+        <span class="chip">Role: {{ role }}</span>
+        <a href="?role=uw" class="pill pill-sub">UW</a>
+        <a href="?role=leader" class="pill pill-sub">Leader</a>
+        <a href="?role=admin" class="pill pill-sub">Admin</a>
+    </div>
 </div>
 
 <div class="glass-panel p-2">
-  <div class="flex gap-2 text-sm">
-    {% for t in tabs %}
-      {% set is_disabled = (t.protected and role not in ['leader','admin']) %}
-      <button class="pill {% if loop.first %}pill-indigo{% else %}pill-sub{% endif %} tabbtn" data-tab="{{ t.id }}" {% if is_disabled %}disabled title="Restricted to leaders/admins"{% endif %}>{{ t.title }}</button>
-    {% endfor %}
-  </div>
+    <div class="flex gap-2 text-sm">
+        {% for t in tabs %} {% set is_disabled = (t.protected and role not in
+        ['leader','admin']) %}
+        <button
+            class="pill {% if loop.first %}pill-indigo{% else %}pill-sub{% endif %} tabbtn"
+            data-tab="{{ t.id }}"
+            {%
+            if
+            is_disabled
+            %}disabled
+            title="Restricted to leaders/admins"
+            {%
+            endif
+            %}
+        >
+            {{ t.title }}
+        </button>
+        {% endfor %}
+    </div>
 </div>
 
 <div id="tab_content" class="mt-4 space-y-6"></div>
 
 <!-- Fullscreen overlay -->
 <div id="fs_overlay" class="overlay hidden">
-  <div class="overlay-inner">
-    <div class="flex items-center justify-between mb-2">
-      <div class="text-sm opacity-80">Fullscreen</div>
-      <button class="pill pill-sub" onclick="closeFullscreen()">Close</button>
+    <div class="overlay-inner">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm opacity-80">Fullscreen</div>
+            <button class="pill pill-sub" onclick="closeFullscreen()">
+                Close
+            </button>
+        </div>
+        <div id="fs_host" class="h-[70vh]"></div>
     </div>
-    <div id="fs_host" class="h-[70vh]"></div>
-  </div>
 </div>
 
 <!-- Data modal -->
 <div id="data_modal" class="overlay hidden">
-  <div class="overlay-inner max-w-5xl">
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center gap-2">
-        <div class="text-sm opacity-80">Underlying Data</div>
-        <button id="dl_raw_csv" class="pill pill-sub">Download CSV</button>
-      </div>
-      <button class="pill pill-sub" onclick="closeDataModal()">Close</button>
+    <div class="overlay-inner max-w-5xl">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <div class="text-sm opacity-80">Underlying Data</div>
+                <button id="dl_raw_csv" class="pill pill-sub">
+                    Download CSV
+                </button>
+            </div>
+            <button class="pill pill-sub" onclick="closeDataModal()">
+                Close
+            </button>
+        </div>
+        <div id="data_table" class="overflow-auto max-h-[70vh]"></div>
     </div>
-    <div id="data_table" class="overflow-auto max-h-[70vh]"></div>
-  </div>
- </div>
+</div>
 
-<!-- Chart.js CDN -->
+<!-- Chart.js + Advanced libs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
 <script>
-// --- Utilities ---
-function copyToClipboard(txt){
-  navigator.clipboard?.writeText(txt).then(()=>toast('Link copied','success')).catch(()=>{
-    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Link copied','success')
-  })
-}
-function downloadBlob(filename, content, mime='text/plain'){
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:mime})); a.download=filename; a.click(); URL.revokeObjectURL(a.href)
-}
-function csvFromAgg(agg){
-  const {labels, series} = agg; if(!labels||!series||!series.length) return '';
-  const header = ['Label', ...series.map(s=>s.name)].join(',');
-  const rows = labels.map((lab,i)=> [lab, ...series.map(s=>s.data[i] ?? '')].join(','));
-  return [header, ...rows].join('\n');
-}
+    // --- Utilities ---
+    function copyToClipboard(txt) {
+        navigator.clipboard
+            ?.writeText(txt)
+            .then(() => toast("Link copied", "success"))
+            .catch(() => {
+                const ta = document.createElement("textarea");
+                ta.value = txt;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                toast("Link copied", "success");
+            });
+    }
+    function downloadBlob(filename, content, mime = "text/plain") {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    function csvFromAgg(agg) {
+        const { labels, series } = agg;
+        if (!labels || !series || !series.length) return "";
+        const header = ["Label", ...series.map((s) => s.name)].join(",");
+        const rows = labels.map((lab, i) =>
+            [lab, ...series.map((s) => s.data[i] ?? "")].join(",")
+        );
+        return [header, ...rows].join("\n");
+    }
 
-// Fullscreen
-function openFullscreen(node){
-  const host=document.getElementById('fs_host'); host.innerHTML='';
-  host.appendChild(node);
-  document.getElementById('fs_overlay').classList.remove('hidden');
-}
-function closeFullscreen(){
-  const host=document.getElementById('fs_host');
-  const chartCard = document.querySelector('.chart-card[data-active="true"] .chart-canvas-host');
-  if(chartCard){ chartCard.appendChild(host.firstElementChild); }
-  document.getElementById('fs_overlay').classList.add('hidden');
-}
+    // Fullscreen
+    function openFullscreen(node) {
+        const host = document.getElementById("fs_host");
+        host.innerHTML = "";
+        host.appendChild(node);
+        document.getElementById("fs_overlay").classList.remove("hidden");
+    }
+    function closeFullscreen() {
+        const host = document.getElementById("fs_host");
+        const chartCard = document.querySelector(
+            '.chart-card[data-active="true"] .chart-canvas-host'
+        );
+        if (chartCard) {
+            chartCard.appendChild(host.firstElementChild);
+        }
+        document.getElementById("fs_overlay").classList.add("hidden");
+    }
 
-// Data modal
-function openDataModal(html){
-  const el=document.getElementById('data_table'); el.innerHTML=html||'';
-  document.getElementById('data_modal').classList.remove('hidden');
-}
-function closeDataModal(){ document.getElementById('data_modal').classList.add('hidden'); }
+    // Data modal
+    function openDataModal(html) {
+        const el = document.getElementById("data_table");
+        el.innerHTML = html || "";
+        document.getElementById("data_modal").classList.remove("hidden");
+    }
+    function closeDataModal() {
+        document.getElementById("data_modal").classList.add("hidden");
+    }
 
-// API
-async function aggLoad(params){
-  const qs = new URLSearchParams(params).toString();
-  return fetchJSON('/api/aggregate?'+qs)
-}
-async function underlying(params){
-  const qs = new URLSearchParams(params).toString();
-  return fetchJSON('/api/underlying?'+qs)
-}
+    // API
+    async function aggLoad(params) {
+        const qs = new URLSearchParams(params).toString();
+        return fetchJSON("/api/aggregate?" + qs);
+    }
+    async function underlying(params) {
+        const qs = new URLSearchParams(params).toString();
+        return fetchJSON("/api/underlying?" + qs);
+    }
 
-// Chart component
-function createChartCard(id, title, cfg){
-  const card = document.createElement('div');
-  card.className='glass-panel chart-card';
-  card.dataset.chartId=id;
-  card.innerHTML = `
+    // Chart component
+    function createChartCard(id, title, cfg) {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.dataset.chartId = id;
+        card.innerHTML = `
     <div class="flex items-center justify-between">
       <div class="text-lg font-semibold">${title}</div>
       <div class="flex items-center gap-2 text-xs">
@@ -156,163 +204,851 @@ function createChartCard(id, title, cfg){
     <div class="mt-3 chart-canvas-host"><canvas></canvas></div>
   `;
 
-  const canvas = card.querySelector('canvas');
-  const ctx = canvas.getContext('2d');
-  const opts = {
-    group: cfg.group||'primary_risk_state',
-    metric: cfg.metric||'count',
-    series_by: cfg.series_by||'',
-    type: cfg.type||'bar',
-    filters: cfg.filters||{}
-  };
+        const canvas = card.querySelector("canvas");
+        const ctx = canvas.getContext("2d");
+        const opts = {
+            group: cfg.group || "primary_risk_state",
+            metric: cfg.metric || "count",
+            series_by: cfg.series_by || "",
+            type: cfg.type || "bar",
+            filters: cfg.filters || {},
+        };
 
-  // init selects
-  card.querySelector('.opt-group').value = opts.group;
-  card.querySelector('.opt-metric').value = opts.metric;
-  card.querySelector('.opt-series').value = opts.series_by;
-  card.querySelector('.opt-type').value = opts.type;
+        // init selects
+        card.querySelector(".opt-group").value = opts.group;
+        card.querySelector(".opt-metric").value = opts.metric;
+        card.querySelector(".opt-series").value = opts.series_by;
+        card.querySelector(".opt-type").value = opts.type;
 
-  let chart;
-  let lastAgg;
+        let chart;
+        let lastAgg;
 
-  async function render(){
-    const params = { group: opts.group, metric: opts.metric };
-    if(opts.series_by) params.series_by = opts.series_by;
-    Object.assign(params, opts.filters||{});
-    const agg = await aggLoad(params);
-    lastAgg = agg;
-    const colors = ['#818cf8','#22c55e','#f43f5e','#f59e0b','#06b6d4','#e879f9','#a3e635'];
-    const datasets = agg.series.map((s,i)=>({
-      label: s.name,
-      data: s.data,
-      backgroundColor: opts.type==='line' ? 'transparent' : colors[i%colors.length]+'AA',
-      borderColor: colors[i%colors.length],
-      borderWidth: 2,
-      tension: .25,
-      type: opts.type==='pie'? undefined : opts.type,
-    }));
-    const data = { labels: agg.labels, datasets };
-    const config = {
-      type: opts.type==='pie'? 'pie' : 'bar',
-      data,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#e2e8f0' } } },
-        scales: (opts.type==='pie')? {} : {
-          x: { ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(255,255,255,.08)' } },
-          y: { ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(255,255,255,.08)' } },
-        },
-        onClick: async (_e, els)=>{
-          if(!els?.length) return;
-          const i = els[0].index; const j = els[0].datasetIndex;
-          const label = agg.labels[i]; const seriesName = agg.series[j]?.name;
-          const params = { group: opts.group, label, series_by: opts.series_by||'', series_val: (opts.series_by? seriesName: '') };
-          const raw = await underlying(params);
-          const rows = raw.data||[];
-          const header = Object.keys(rows[0]||{});
-          const head = '<thead><tr>'+header.map(h=>`<th class="th">${h}</th>`).join('')+'</tr></thead>';
-          const body = '<tbody>'+rows.map(r=>'<tr class="tr">'+header.map(h=>`<td class="td">${r[h]??''}</td>`).join('')+'</tr>').join('')+'</tbody>';
-          window.__lastRawRows = rows;
-          openDataModal(`<div class=\"overflow-x-auto glass-panel p-0\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`)
+        async function render() {
+            const params = { group: opts.group, metric: opts.metric };
+            if (opts.series_by) params.series_by = opts.series_by;
+            Object.assign(params, opts.filters || {});
+            const agg = await aggLoad(params);
+            lastAgg = agg;
+            const colors = [
+                "#818cf8",
+                "#22c55e",
+                "#f43f5e",
+                "#f59e0b",
+                "#06b6d4",
+                "#e879f9",
+                "#a3e635",
+            ];
+            const datasets = agg.series.map((s, i) => ({
+                label: s.name,
+                data: s.data,
+                backgroundColor:
+                    opts.type === "line"
+                        ? "transparent"
+                        : colors[i % colors.length] + "AA",
+                borderColor: colors[i % colors.length],
+                borderWidth: 2,
+                tension: 0.25,
+                type: opts.type === "pie" ? undefined : opts.type,
+            }));
+            const data = { labels: agg.labels, datasets };
+            const config = {
+                type: opts.type === "pie" ? "pie" : "bar",
+                data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: "#e2e8f0" } } },
+                    scales:
+                        opts.type === "pie"
+                            ? {}
+                            : {
+                                  x: {
+                                      ticks: { color: "#e2e8f0" },
+                                      grid: { color: "rgba(255,255,255,.08)" },
+                                  },
+                                  y: {
+                                      ticks: { color: "#e2e8f0" },
+                                      grid: { color: "rgba(255,255,255,.08)" },
+                                  },
+                              },
+                    onClick: async (_e, els) => {
+                        if (!els?.length) return;
+                        const i = els[0].index;
+                        const j = els[0].datasetIndex;
+                        const label = agg.labels[i];
+                        const seriesName = agg.series[j]?.name;
+                        const params = {
+                            group: opts.group,
+                            label,
+                            series_by: opts.series_by || "",
+                            series_val: opts.series_by ? seriesName : "",
+                        };
+                        const raw = await underlying(params);
+                        const rows = raw.data || [];
+                        const header = Object.keys(rows[0] || {});
+                        const head =
+                            "<thead><tr>" +
+                            header
+                                .map((h) => `<th class="th">${h}</th>`)
+                                .join("") +
+                            "</tr></thead>";
+                        const body =
+                            "<tbody>" +
+                            rows
+                                .map(
+                                    (r) =>
+                                        '<tr class="tr">' +
+                                        header
+                                            .map(
+                                                (h) =>
+                                                    `<td class="td">${
+                                                        r[h] ?? ""
+                                                    }</td>`
+                                            )
+                                            .join("") +
+                                        "</tr>"
+                                )
+                                .join("") +
+                            "</tbody>";
+                        window.__lastRawRows = rows;
+                        openDataModal(
+                            `<div class=\"overflow-x-auto glass-panel p-0\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
+                        );
+                    },
+                },
+            };
+            chart?.destroy();
+            chart = new Chart(ctx, config);
         }
-      }
-    };
-    chart?.destroy();
-    chart = new Chart(ctx, config);
-  }
 
-  function toggleEdit(){ card.querySelector('.opts').classList.toggle('hidden'); }
+        function toggleEdit() {
+            card.querySelector(".opts").classList.toggle("hidden");
+        }
 
-  // Actions
-  card.querySelector('.act-full').onclick = ()=>{
-    // Move canvas container into fullscreen host
-    document.querySelectorAll('.chart-card').forEach(c=>c.dataset.active='false');
-    card.dataset.active='true';
-    const node = card.querySelector('.chart-canvas-host');
-    openFullscreen(node);
-  }
-  card.querySelector('.act-edit').onclick = toggleEdit;
-  card.querySelector('.act-apply').onclick = ()=>{
-    opts.group = card.querySelector('.opt-group').value;
-    opts.metric = card.querySelector('.opt-metric').value;
-    opts.series_by = card.querySelector('.opt-series').value;
-    opts.type = card.querySelector('.opt-type').value;
-    render().catch(e=>toast('Failed to render: '+e.message,'error'))
-  }
-  card.querySelector('.act-data').onclick = ()=>{
-    if(!lastAgg){ toast('Load chart first','error'); return; }
-    const csv = csvFromAgg(lastAgg);
-    const html = `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll('<','&lt;')}</pre></div>`;
-    openDataModal(html)
-  }
-  card.querySelector('.act-share').onclick = ()=>{
-    const state = encodeURIComponent(btoa(JSON.stringify(opts)));
-    const url = location.origin + location.pathname + `?cfg_${id}=`+state;
-    const mail = `mailto:?subject=Portfolio%20Insights&body=${encodeURIComponent(url)}`;
-    copyToClipboard(url);
-    window.open(mail, '_blank');
-  }
-  card.querySelector('.act-dl-img').onclick = ()=>{
-    const a=document.createElement('a'); a.download = `${id}.png`; a.href = canvas.toDataURL('image/png'); a.click();
-  }
-  card.querySelector('.act-dl-csv').onclick = ()=>{
-    if(!lastAgg){ toast('No data','error'); return; }
-    downloadBlob(`${id}.csv`, csvFromAgg(lastAgg), 'text/csv');
-  }
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            // Move canvas container into fullscreen host
+            document
+                .querySelectorAll(".chart-card")
+                .forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+        };
+        card.querySelector(".act-edit").onclick = toggleEdit;
+        card.querySelector(".act-apply").onclick = () => {
+            opts.group = card.querySelector(".opt-group").value;
+            opts.metric = card.querySelector(".opt-metric").value;
+            opts.series_by = card.querySelector(".opt-series").value;
+            opts.type = card.querySelector(".opt-type").value;
+            render().catch((e) =>
+                toast("Failed to render: " + e.message, "error")
+            );
+        };
+        card.querySelector(".act-data").onclick = () => {
+            if (!lastAgg) {
+                toast("Load chart first", "error");
+                return;
+            }
+            const csv = csvFromAgg(lastAgg);
+            const html = `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll(
+                "<",
+                "&lt;"
+            )}</pre></div>`;
+            openDataModal(html);
+        };
+        card.querySelector(".act-share").onclick = () => {
+            const state = encodeURIComponent(btoa(JSON.stringify(opts)));
+            const url =
+                location.origin + location.pathname + `?cfg_${id}=` + state;
+            const mail = `mailto:?subject=Portfolio%20Insights&body=${encodeURIComponent(
+                url
+            )}`;
+            copyToClipboard(url);
+            window.open(mail, "_blank");
+        };
+        card.querySelector(".act-dl-img").onclick = () => {
+            const a = document.createElement("a");
+            a.download = `${id}.png`;
+            a.href = canvas.toDataURL("image/png");
+            a.click();
+        };
+        card.querySelector(".act-dl-csv").onclick = () => {
+            if (!lastAgg) {
+                toast("No data", "error");
+                return;
+            }
+            downloadBlob(`${id}.csv`, csvFromAgg(lastAgg), "text/csv");
+        };
 
-  // Initial render
-  render().catch(e=>toast('Failed to load chart: '+e.message,'error'))
-  return card;
-}
-
-function loadTabs(){
-  const host = document.getElementById('tab_content');
-  const cfg1 = paramCfg('cfg_overview') || { group:'primary_risk_state', metric:'sum:total_premium', series_by:'appetite_status', type:'bar' };
-  const cfg2 = paramCfg('cfg_premium_by_state') || { group:'primary_risk_state', metric:'count', series_by:'', type:'pie' };
-  const cfg3 = paramCfg('cfg_status_mix') || { group:'appetite_status', metric:'sum:tiv', series_by:'renewal_or_new_business', type:'bar' };
-
-  function section(tab){
-    host.innerHTML='';
-    if(tab==='overview'){
-      host.appendChild(createChartCard('overview', 'Premium by State (stacked by Appetite)', cfg1));
-    } else if(tab==='premium_by_state'){
-      host.appendChild(createChartCard('premium_by_state', 'Distribution by State', cfg2));
-    } else if(tab==='status_mix'){
-      host.appendChild(createChartCard('status_mix', 'Status Mix vs Submission Type', cfg3));
-    } else if(tab==='tiv_bands'){
-      // Using same component; bands simulated via group construction_type if TIV bands not present
-      host.appendChild(createChartCard('tiv_bands', 'TIV by State (editable)', { group:'primary_risk_state', metric:'sum:tiv', type:'line' }));
+        // Initial render
+        render().catch((e) =>
+            toast("Failed to load chart: " + e.message, "error")
+        );
+        return card;
     }
-  }
 
-  const firstBtn = document.querySelector('.tabbtn:not([disabled])');
-  (document.querySelectorAll('.tabbtn')||[]).forEach(btn=>{
-    btn.onclick=()=>{
-      if(btn.disabled) return;
-      document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('pill-indigo'));
-      btn.classList.add('pill-indigo');
-      section(btn.dataset.tab);
+    function loadTabs() {
+        const host = document.getElementById("tab_content");
+        const cfg1 = paramCfg("cfg_overview") || {
+            group: "primary_risk_state",
+            metric: "sum:total_premium",
+            series_by: "appetite_status",
+            type: "bar",
+        };
+        const cfg2 = paramCfg("cfg_premium_by_state") || {
+            group: "primary_risk_state",
+            metric: "count",
+            series_by: "",
+            type: "pie",
+        };
+        const cfg3 = paramCfg("cfg_status_mix") || {
+            group: "appetite_status",
+            metric: "sum:tiv",
+            series_by: "renewal_or_new_business",
+            type: "bar",
+        };
+
+        function section(tab) {
+            host.innerHTML = "";
+            if (tab === "overview") {
+                host.appendChild(
+                    createChartCard(
+                        "overview",
+                        "Premium by State (stacked by Appetite)",
+                        cfg1
+                    )
+                );
+            } else if (tab === "premium_by_state") {
+                host.appendChild(
+                    createChartCard(
+                        "premium_by_state",
+                        "Distribution by State",
+                        cfg2
+                    )
+                );
+            } else if (tab === "status_mix") {
+                host.appendChild(
+                    createChartCard(
+                        "status_mix",
+                        "Status Mix vs Submission Type",
+                        cfg3
+                    )
+                );
+            } else if (tab === "tiv_bands") {
+                // Using same component; bands simulated via group construction_type if TIV bands not present
+                host.appendChild(
+                    createChartCard("tiv_bands", "TIV by State (editable)", {
+                        group: "primary_risk_state",
+                        metric: "sum:tiv",
+                        type: "line",
+                    })
+                );
+            } else if (tab === "geo") {
+                host.appendChild(createGeoCard());
+            } else if (tab === "scatter3d") {
+                host.appendChild(createScatter3DCard());
+            } else if (tab === "flows") {
+                host.appendChild(createSankeyCard());
+            }
+        }
+
+        const firstBtn = document.querySelector(".tabbtn:not([disabled])");
+        (document.querySelectorAll(".tabbtn") || []).forEach((btn) => {
+            btn.onclick = () => {
+                if (btn.disabled) return;
+                document
+                    .querySelectorAll(".tabbtn")
+                    .forEach((b) => b.classList.remove("pill-indigo"));
+                btn.classList.add("pill-indigo");
+                section(btn.dataset.tab);
+            };
+        });
+        firstBtn?.click();
     }
-  })
-  firstBtn?.click();
-}
 
-function paramCfg(key){
-  const url = new URL(location.href); const v = url.searchParams.get(key);
-  if(!v) return null; try { return JSON.parse(atob(decodeURIComponent(v))); } catch { return null }
-}
+    function paramCfg(key) {
+        const url = new URL(location.href);
+        const v = url.searchParams.get(key);
+        if (!v) return null;
+        try {
+            return JSON.parse(atob(decodeURIComponent(v)));
+        } catch {
+            return null;
+        }
+    }
 
-window.addEventListener('DOMContentLoaded', loadTabs)
+    window.addEventListener("DOMContentLoaded", loadTabs);
 
-// Download underlying raw table as CSV when available
-document.addEventListener('click', (e)=>{
-  if(e.target && e.target.id==='dl_raw_csv'){
-    const rows = window.__lastRawRows||[]; if(!rows.length){ toast('No data','error'); return; }
-    const cols = Object.keys(rows[0]);
-    const csv = [cols.join(',')].concat(rows.map(r=>cols.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');
-    downloadBlob('underlying.csv', csv, 'text/csv');
-  }
-});
+    // Download underlying raw table as CSV when available
+    document.addEventListener("click", (e) => {
+        if (e.target && e.target.id === "dl_raw_csv") {
+            const rows = window.__lastRawRows || [];
+            if (!rows.length) {
+                toast("No data", "error");
+                return;
+            }
+            const cols = Object.keys(rows[0]);
+            const csv = [cols.join(",")]
+                .concat(
+                    rows.map((r) =>
+                        cols.map((c) => JSON.stringify(r[c] ?? "")).join(",")
+                    )
+                )
+                .join("\n");
+            downloadBlob("underlying.csv", csv, "text/csv");
+        }
+    });
+</script>
+
+<script>
+    // ---------- Advanced Visuals (Plotly + ECharts) ----------
+
+    // Cache policies to avoid repeated fetches across charts
+    let __POLICY_CACHE = null;
+    async function loadAllPolicies() {
+        if (__POLICY_CACHE) return __POLICY_CACHE;
+        const j = await fetchJSON("/api/policies");
+        __POLICY_CACHE = j.data || [];
+        return __POLICY_CACHE;
+    }
+
+    function createCardShell(title) {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+    <div class="flex items-center justify-between">
+      <div class="text-lg font-semibold">${title}</div>
+      <div class="flex items-center gap-2 text-xs">
+        <button class="pill pill-sub act-full">Fullscreen</button>
+        <button class="pill pill-sub act-data">Data</button>
+        <button class="pill pill-sub act-share">Share</button>
+        <button class="pill pill-sub act-dl-img">PNG</button>
+      </div>
+    </div>
+  `;
+        return card;
+    }
+
+    // ----- US Choropleth (Plotly) -----
+    function createGeoCard() {
+        const card = createCardShell("US Choropleth — Premium/Count by State");
+        const ctrl = document.createElement("div");
+        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm";
+        ctrl.innerHTML = `
+    <div>
+      <label class="lbl">Metric</label>
+      <select class="inp" id="geo_metric">
+        <option value="count">Count</option>
+        <option value="sum:total_premium">Sum Premium</option>
+      </select>
+    </div>
+    <div>
+      <label class="lbl">Appetite Filter</label>
+      <select class="inp" id="geo_status">
+        <option value="">All</option>
+        <option value="TARGET">Target</option>
+        <option value="IN">In</option>
+        <option value="OUT">Out</option>
+      </select>
+    </div>
+    <div class="flex items-end"><button class="btn btn-subtle" id="geo_apply">Apply</button></div>
+  `;
+        const host = document.createElement("div");
+        host.className = "mt-3";
+        const plot = document.createElement("div");
+        plot.style.height = "420px";
+        plot.id = "geo_plot";
+        host.appendChild(plot);
+        card.appendChild(ctrl);
+        card.appendChild(host);
+
+        async function render() {
+            const metric = document.getElementById("geo_metric").value;
+            const status = document.getElementById("geo_status").value;
+            // Use aggregate endpoint to avoid overfetch
+            const params = new URLSearchParams({
+                group: "primary_risk_state",
+                metric,
+            });
+            if (status) params.set("series_by", "appetite_status");
+            const agg = await fetchJSON("/api/aggregate?" + params.toString());
+            let valuesByState = {};
+            // Build unified values (All or specific series)
+            if (status) {
+                const idx = (agg.series || []).findIndex(
+                    (s) => (s.name || "").toUpperCase() === status.toUpperCase()
+                );
+                (agg.labels || []).forEach((lab, i) => {
+                    valuesByState[lab] =
+                        idx >= 0 ? agg.series[idx].data[i] || 0 : 0;
+                });
+            } else {
+                (agg.labels || []).forEach((lab, i) => {
+                    let sum = 0;
+                    for (const s of agg.series || []) {
+                        sum += s.data[i] || 0;
+                    }
+                    valuesByState[lab] = sum;
+                });
+            }
+            // Filter to valid USA 2-letter codes
+            const STATES = Object.keys(valuesByState).filter((k) =>
+                /^[A-Z]{2}$/.test(String(k))
+            );
+            const vals = STATES.map((s) => valuesByState[s] || 0);
+            const text = STATES.map(
+                (s) =>
+                    `${s}: ${
+                        metric.startsWith("sum:")
+                            ? "$" +
+                              Math.round(valuesByState[s] || 0).toLocaleString()
+                            : valuesByState[s] || 0
+                    }`
+            );
+            const data = [
+                {
+                    type: "choropleth",
+                    locationmode: "USA-states",
+                    locations: STATES,
+                    z: vals,
+                    text,
+                    colorscale: "Blues",
+                    colorbar: {
+                        title: metric.startsWith("sum:") ? "Premium" : "Count",
+                    },
+                },
+            ];
+            const layout = {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                geo: {
+                    scope: "usa",
+                    bgcolor: "rgba(0,0,0,0)",
+                    lakecolor: "#0b1020",
+                    landcolor: "#0b1020",
+                },
+                margin: { t: 10, r: 10, b: 10, l: 10 },
+            };
+            await Plotly.react(plot, data, layout, { displayModeBar: false });
+        }
+        document.getElementById("geo_apply").onclick = () =>
+            render().catch((e) => toast("Map failed: " + e.message, "error"));
+        render().catch((e) => toast("Map failed: " + e.message, "error"));
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document
+                .querySelectorAll(".chart-card")
+                .forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = host;
+            openFullscreen(node);
+        };
+        card.querySelector(".act-data").onclick = async () => {
+            const metric = document.getElementById("geo_metric").value;
+            const status = document.getElementById("geo_status").value;
+            const agg = await fetchJSON(
+                "/api/aggregate?" +
+                    new URLSearchParams({
+                        group: "primary_risk_state",
+                        metric,
+                        ...(status ? { series_by: "appetite_status" } : {}),
+                    }).toString()
+            );
+            const csv = csvFromAgg(agg);
+            openDataModal(
+                `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll(
+                    "<",
+                    "&lt;"
+                )}</pre></div>`
+            );
+        };
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage("geo_plot", {
+                    format: "png",
+                    height: 600,
+                    width: 900,
+                });
+                downloadBlob(
+                    "us_map.png",
+                    await (await fetch(url)).blob(),
+                    "image/png"
+                );
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+        return card;
+    }
+
+    // ----- 3D Scatter (ECharts GL) -----
+    function createScatter3DCard() {
+        const card = createCardShell(
+            "3D Scatter — TIV vs Premium vs Winnability"
+        );
+        const ctrl = document.createElement("div");
+        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm";
+        ctrl.innerHTML = `
+    <div>
+      <label class=\"lbl\">Color By</label>
+      <select class=\"inp\" id=\"sc_color\">
+        <option value=\"appetite_status\">Appetite</option>
+        <option value=\"renewal_or_new_business\">Submission Type</option>
+      </select>
+    </div>
+    <div>
+      <label class=\"lbl\">Point Limit</label>
+      <select class=\"inp\" id=\"sc_limit\">
+        <option>500</option><option>1000</option><option>2000</option>
+      </select>
+    </div>
+    <div>
+      <label class=\"lbl\">Log Scale</label>
+      <select class=\"inp\" id=\"sc_log\"><option value=\"both\">TIV & Premium</option><option value=\"tiv\">TIV only</option><option value=\"prem\">Premium only</option><option value=\"none\">None</option></select>
+    </div>
+    <div class=\"flex items-end\"><button class=\"btn btn-subtle\" id=\"sc_apply\">Apply</button></div>
+  `;
+        const host = document.createElement("div");
+        host.className = "mt-3";
+        const div = document.createElement("div");
+        div.style.height = "460px";
+        host.appendChild(div);
+        card.appendChild(ctrl);
+        card.appendChild(host);
+
+        let chart;
+        async function render() {
+            const colorBy = document.getElementById("sc_color").value;
+            const limit = parseInt(
+                document.getElementById("sc_limit").value || "1000",
+                10
+            );
+            const logMode = document.getElementById("sc_log").value;
+            const rows = await loadAllPolicies();
+            // Sample for performance
+            const sample = rows.slice(0, Math.min(limit, rows.length));
+            const colors = {
+                TARGET: "#818cf8",
+                IN: "#22c55e",
+                OUT: "#f43f5e",
+                NEW_BUSINESS: "#22c55e",
+                RENEWAL: "#f59e0b",
+            };
+            const data = [];
+            for (const r of sample) {
+                const tiv = +r.tiv || 0;
+                let prem = +r.total_premium || 0;
+                let win = +r.winnability;
+                if (win > 1) win /= 100;
+                if (!(win >= 0)) win = 0.5;
+                const xi =
+                    logMode === "both" || logMode === "tiv"
+                        ? tiv > 0
+                            ? Math.log10(tiv)
+                            : 0
+                        : tiv;
+                const yi =
+                    logMode === "both" || logMode === "prem"
+                        ? prem > 0
+                            ? Math.log10(prem)
+                            : 0
+                        : prem;
+                const cat = String(r[colorBy] || "").toUpperCase();
+                data.push({ value: [xi, yi, win], cat, raw: r });
+            }
+            const series = [
+                {
+                    type: "scatter3D",
+                    symbolSize: 8,
+                    data: data.map((d) => ({
+                        value: d.value,
+                        itemStyle: { color: colors[d.cat] || "#06b6d4" },
+                        raw: d.raw,
+                    })),
+                },
+            ];
+            const axisName = (name) => ({
+                nameTextStyle: { color: "#cbd5e1", fontSize: 12 },
+                axisLine: { lineStyle: { color: "rgba(255,255,255,.25)" } },
+                axisLabel: { color: "#e2e8f0" },
+                splitLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
+                name,
+            });
+            const option = {
+                backgroundColor: "transparent",
+                tooltip: {
+                    formatter: (p) => {
+                        const r = p.data?.raw || {};
+                        const win =
+                            r.winnability > 1
+                                ? r.winnability
+                                : (r.winnability || 0) * 100;
+                        return `${r.account_name || "-"}<br/>State ${
+                            r.primary_risk_state || "-"
+                        } · ${
+                            r.line_of_business || "-"
+                        }<br/>Premium $${Math.round(
+                            r.total_premium || 0
+                        ).toLocaleString()} · TIV $${Math.round(
+                            r.tiv || 0
+                        ).toLocaleString()} · Win ${(win || 0).toFixed(0)}%`;
+                    },
+                },
+                xAxis3D: axisName(
+                    logMode === "both" || logMode === "tiv"
+                        ? "log10(TIV)"
+                        : "TIV"
+                ),
+                yAxis3D: axisName(
+                    logMode === "both" || logMode === "prem"
+                        ? "log10(Premium)"
+                        : "Premium"
+                ),
+                zAxis3D: axisName("Winnability"),
+                grid3D: {
+                    viewControl: { beta: 20 },
+                    axisPointer: { lineStyle: { color: "#94a3b8" } },
+                },
+                series,
+            };
+            chart?.dispose();
+            chart = echarts.init(div);
+            chart.setOption(option);
+        }
+        document.getElementById("sc_apply").onclick = () =>
+            render().catch((e) =>
+                toast("3D render failed: " + e.message, "error")
+            );
+        render().catch((e) => toast("3D render failed: " + e.message, "error"));
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document
+                .querySelectorAll(".chart-card")
+                .forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = host;
+            openFullscreen(node);
+        };
+        card.querySelector(".act-data").onclick = async () => {
+            const rows = await loadAllPolicies();
+            const cols = [
+                "account_name",
+                "primary_risk_state",
+                "line_of_business",
+                "total_premium",
+                "tiv",
+                "winnability",
+                "appetite_status",
+            ];
+            const head =
+                "<thead><tr>" +
+                cols.map((h) => `<th class="th">${h}</th>`).join("") +
+                "</tr></thead>";
+            const body =
+                "<tbody>" +
+                rows
+                    .slice(0, 500)
+                    .map(
+                        (r) =>
+                            '<tr class="tr">' +
+                            cols
+                                .map((h) => `<td class="td">${r[h] ?? ""}</td>`)
+                                .join("") +
+                            "</tr>"
+                    )
+                    .join("") +
+                "</tbody>";
+            openDataModal(
+                `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
+            );
+        };
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        card.querySelector(".act-dl-img").onclick = () => {
+            try {
+                const url = chart?.getDataURL({ type: "png", pixelRatio: 2 });
+                if (url) {
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "scatter3d.png";
+                    a.click();
+                }
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+        return card;
+    }
+
+    // ----- Sankey Flows (ECharts) -----
+    function createSankeyCard() {
+        const card = createCardShell("Flows — Segment to Appetite to Type");
+        const ctrl = document.createElement("div");
+        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm";
+        ctrl.innerHTML = `
+    <div>
+      <label class=\"lbl\">From</label>
+      <select class=\"inp\" id=\"sk_from\">
+        <option value=\"construction_type\">Construction Type</option>
+        <option value=\"line_of_business\">Line of Business</option>
+        <option value=\"primary_risk_state\">State</option>
+      </select>
+    </div>
+    <div>
+      <label class=\"lbl\">To</label>
+      <select class=\"inp\" id=\"sk_mid\">
+        <option value=\"appetite_status\">Appetite</option>
+        <option value=\"renewal_or_new_business\">Submission Type</option>
+      </select>
+    </div>
+    <div>
+      <label class=\"lbl\">Then</label>
+      <select class=\"inp\" id=\"sk_to\">
+        <option value=\"renewal_or_new_business\">Submission Type</option>
+        <option value=\"appetite_status\">Appetite</option>
+      </select>
+    </div>
+    <div class=\"flex items-end\"><button class=\"btn btn-subtle\" id=\"sk_apply\">Apply</button></div>
+  `;
+        const host = document.createElement("div");
+        host.className = "mt-3";
+        const div = document.createElement("div");
+        div.style.height = "460px";
+        host.appendChild(div);
+        card.appendChild(ctrl);
+        card.appendChild(host);
+
+        let chart;
+        async function render() {
+            const from = document.getElementById("sk_from").value;
+            const mid = document.getElementById("sk_mid").value;
+            const to = document.getElementById("sk_to").value;
+            const rows = await loadAllPolicies();
+            // Build node names with prefixes to avoid collisions
+            const norm = (s) => String(s || "UNK");
+            const nodes = new Map();
+            const addNode = (name) => {
+                if (!nodes.has(name)) nodes.set(name, { name });
+            };
+            const linkMap = new Map();
+            function addLink(s, t) {
+                const key = s + "||" + t;
+                linkMap.set(key, (linkMap.get(key) || 0) + 1);
+                addNode(s);
+                addNode(t);
+            }
+            for (const r of rows) {
+                const a = `${from}:${norm(r[from])}`;
+                const b = `${mid}:${norm(r[mid])}`;
+                const c = `${to}:${norm(r[to])}`;
+                addLink(a, b);
+                addLink(b, c);
+            }
+            const links = Array.from(linkMap.entries()).map(([k, v]) => {
+                const [s, t] = k.split("||");
+                return { source: s, target: t, value: v };
+            });
+            const option = {
+                backgroundColor: "transparent",
+                tooltip: {
+                    formatter: (p) =>
+                        `${p.data.source?.split(":")[1] || ""} → ${
+                            p.data.target?.split(":")[1] || ""
+                        }: ${p.data.value}`,
+                },
+                series: [
+                    {
+                        type: "sankey",
+                        top: 20,
+                        bottom: 20,
+                        left: 10,
+                        right: 10,
+                        nodeAlign: "justify",
+                        emphasis: { focus: "adjacency" },
+                        data: Array.from(nodes.values()),
+                        links,
+                        lineStyle: { color: "gradient", curveness: 0.5 },
+                        label: { color: "#e2e8f0" },
+                    },
+                ],
+            };
+            chart?.dispose();
+            chart = echarts.init(div);
+            chart.setOption(option);
+        }
+        document.getElementById("sk_apply").onclick = () =>
+            render().catch((e) =>
+                toast("Sankey failed: " + e.message, "error")
+            );
+        render().catch((e) => toast("Sankey failed: " + e.message, "error"));
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document
+                .querySelectorAll(".chart-card")
+                .forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = host;
+            openFullscreen(node);
+        };
+        card.querySelector(".act-data").onclick = async () => {
+            const rows = await loadAllPolicies();
+            const cols = [
+                "primary_risk_state",
+                "line_of_business",
+                "renewal_or_new_business",
+                "construction_type",
+                "appetite_status",
+            ];
+            const head =
+                "<thead><tr>" +
+                cols.map((h) => `<th class="th">${h}</th>`).join("") +
+                "</tr></thead>";
+            const body =
+                "<tbody>" +
+                rows
+                    .slice(0, 500)
+                    .map(
+                        (r) =>
+                            '<tr class="tr">' +
+                            cols
+                                .map((h) => `<td class="td">${r[h] ?? ""}</td>`)
+                                .join("") +
+                            "</tr>"
+                    )
+                    .join("") +
+                "</tbody>";
+            openDataModal(
+                `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
+            );
+        };
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        card.querySelector(".act-dl-img").onclick = () => {
+            try {
+                const url = chart?.getDataURL({ type: "png", pixelRatio: 2 });
+                if (url) {
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "flows.png";
+                    a.click();
+                }
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+        return card;
+    }
 </script>
 {% endblock %}
