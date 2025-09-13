@@ -736,9 +736,60 @@ def api_classified_mode():
     if status_filter:
         out_rows = [r for r in out_rows if r.get("appetite_status") == status_filter]
 
-    order = {"TARGET": 0, "IN": 1, "OUT": 2}
-    out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
-    out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
+    # Sorting
+    sort_by = request.args.get("sort_by")
+    sort_dir = (request.args.get("sort_dir") or "desc").lower()
+    reverse = sort_dir != "asc"
+
+    def sort_key(row, key):
+        if key == "appetite_status":
+            # Map for ordering appetite buckets depending on direction
+            if reverse:
+                order_map = {"TARGET": 0, "IN": 1, "OUT": 2}
+            else:
+                order_map = {"OUT": 0, "IN": 1, "TARGET": 2}
+            return order_map.get(str(row.get("appetite_status") or ""), 99)
+        v = row.get(key)
+        # Normalize values for comparison
+        if isinstance(v, str):
+            return v.lower()
+        try:
+            # Handle None and NaN uniformly
+            if v is None:
+                return float("-inf") if reverse else float("inf")
+            import math
+            if isinstance(v, float) and math.isnan(v):
+                return float("-inf") if reverse else float("inf")
+        except Exception:
+            pass
+        return v
+
+    if sort_by:
+        # Allow sorting by known columns coming from UI
+        valid_keys = {
+            "id",
+            "account_name",
+            "primary_risk_state",
+            "line_of_business",
+            "total_premium",
+            "tiv",
+            "winnability",
+            "appetite_status",
+            "priority_score",
+        }
+        if sort_by in valid_keys:
+            out_rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
+        else:
+            # Fallback to default sort if invalid key requested
+            order = {"TARGET": 0, "IN": 1, "OUT": 2}
+            out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
+            out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
+    else:
+        # Default: appetite bucket then priority desc
+        order = {"TARGET": 0, "IN": 1, "OUT": 2}
+        out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
+        out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
+
     return jsonify({"count": len(out_rows), "data": out_rows})
 
 

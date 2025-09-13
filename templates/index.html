@@ -22,7 +22,13 @@
 <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 glass-panel">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold">Today’s Prioritized Worklist</h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-semibold">Today’s Prioritized Worklist</h2>
+        <div>
+          <label class="lbl">Mode</label>
+          <select id="home_mode" class="inp text-xs"></select>
+        </div>
+      </div>
       <div class="flex items-center gap-3">
         <button id="btn_refresh_home" class="text-sm pill pill-sub hover-glow">Refresh</button>
         <a href="{{ url_for('submissions') }}" class="text-indigo-300 text-sm hover:underline">Open full table →</a>
@@ -43,10 +49,11 @@
 async function loadHome(){
   const el = document.getElementById("worklist")
   await withLoading(el, async ()=>{
-    const j = await fetchJSON("/api/classified_mode?mode=balanced_growth")
+    const mode = document.getElementById('home_mode')?.value || 'balanced_growth'
+    const j = await fetchJSON("/api/classified_mode?mode="+encodeURIComponent(mode))
     const rows = (j.data||[]).slice(0,8)
     el.innerHTML = rows.map(r=>`
-    <a href="/detail/${r.id}?mode=balanced_growth" class="row">
+    <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
       <div class="row-main">
         <div class="row-title">${r.account_name||"-"}</div>
         <div class="row-sub">${r.primary_risk_state||"-"} · ${r.line_of_business||"-"} · $${Math.round(r.total_premium||0).toLocaleString()}</div>
@@ -69,6 +76,23 @@ document.getElementById("btn_refresh_home").onclick=()=>{
     .then(()=>{ toast("Data refreshed","success"); loadHome() })
     .catch(err=>toast("Refresh failed: "+err.message, "error"))
 }
-loadHome().catch(err=>toast("Failed to load worklist: "+err.message, "error"))
+
+async function populateHomeModes(){
+  try{
+    const j = await fetchJSON('/api/modes')
+    const modes = j.modes||[]
+    const sel = document.getElementById('home_mode')
+    if(!sel) return
+    sel.innerHTML = modes.map(m=>`<option value="${m}">${m}</option>`).join('')
+    sel.value = modes.includes('balanced_growth')? 'balanced_growth' : (modes[0]||'')
+    sel.addEventListener('change', ()=> loadHome().catch(err=>toast('Load failed: '+err.message,'error')))
+  }catch(e){ console.warn('Failed to load modes', e) }
+}
+
+populateHomeModes().then(()=>{
+  loadHome().catch(err=>toast("Failed to load worklist: "+err.message, "error"))
+}).catch(()=>{
+  loadHome().catch(err=>toast("Failed to load worklist: "+err.message, "error"))
+})
 </script>
 {% endblock %}

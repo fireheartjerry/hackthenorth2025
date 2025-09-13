@@ -43,15 +43,15 @@
   <table class="w-full text-sm table-glass">
     <thead>
       <tr>
-        <th class="th">ID</th>
-        <th class="th">Account</th>
-        <th class="th">State</th>
-        <th class="th">LOB</th>
-        <th class="th">Premium</th>
-        <th class="th">TIV</th>
-        <th class="th">Win</th>
-        <th class="th">Appetite</th>
-        <th class="th">Priority</th>
+        <th class="th th-sort" data-key="id">ID <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="account_name">Account <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="primary_risk_state">State <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="line_of_business">LOB <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="total_premium">Premium <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="tiv">TIV <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="winnability">Win <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="appetite_status">Appetite <span class="arrow"></span></th>
+        <th class="th th-sort" data-key="priority_score">Priority <span class="arrow"></span></th>
         <th class="th"></th>
       </tr>
     </thead>
@@ -60,6 +60,9 @@
 </div>
 
 <script>
+let SORT_BY = 'priority_score';
+let SORT_DIR = 'desc';
+
 async function load(params={}){
   const qs = new URLSearchParams(params).toString()
   const tb = document.getElementById("tbody")
@@ -100,7 +103,9 @@ document.getElementById("btn_apply").onclick=()=>{
     min_premium:document.getElementById("f_min").value||"",
     max_premium:document.getElementById("f_max").value||"",
     q:document.getElementById("f_q").value||"",
-    mode:document.getElementById("f_mode").value||""
+    mode:document.getElementById("f_mode").value||"",
+    sort_by:SORT_BY,
+    sort_dir:SORT_DIR
   }
   load(params).catch(err=>toast("Failed to load: "+err.message, "error"))
 }
@@ -136,9 +141,53 @@ async function populateModes(){
   }
 }
 
+// Sorting handlers
+function updateSortHeaders(){
+  document.querySelectorAll('th.th-sort').forEach(th=>{
+    const key = th.dataset.key;
+    const arrow = th.querySelector('.arrow');
+    th.classList.toggle('active', key===SORT_BY);
+    if(arrow){
+      if(key===SORT_BY){ arrow.textContent = SORT_DIR==='asc' ? '▲' : '▼'; }
+      else { arrow.textContent = ''; }
+    }
+  })
+}
+document.querySelectorAll('th.th-sort').forEach(th=>{
+  th.style.cursor='pointer';
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(SORT_BY===key){
+      SORT_DIR = SORT_DIR==='asc' ? 'desc' : 'asc';
+    }else{
+      SORT_BY = key;
+      // Default direction: numeric desc, text asc
+      const numeric = ['id','total_premium','tiv','winnability','priority_score'];
+      SORT_DIR = numeric.includes(key) ? 'desc' : 'asc';
+    }
+    updateSortHeaders();
+    document.getElementById('btn_apply').click();
+  })
+})
+
+// Auto-apply on filter changes (debounced for inputs)
+function apply(){ document.getElementById('btn_apply').click(); }
+let t;
+function debouncedApply(){ clearTimeout(t); t=setTimeout(apply, 300); }
+['f_state','f_status','f_mode'].forEach(id=>{
+  const el=document.getElementById(id); if(!el) return;
+  el.addEventListener('change', apply);
+});
+['f_min','f_max','f_q'].forEach(id=>{
+  const el=document.getElementById(id); if(!el) return;
+  el.addEventListener('input', debouncedApply);
+});
+
 populateModes().then(()=>{
-  document.getElementById("btn_apply").click()
+  updateSortHeaders();
+  apply();
 }).catch(()=>{
+  updateSortHeaders();
   load().catch(err=>toast("Initial load failed: "+err.message, "error"))
 })
 </script>

@@ -84,6 +84,9 @@
 .table-glass thead{background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));backdrop-filter: blur(10px)}
 .th,.td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.07)}
 .tr:hover{background:rgba(255,255,255,.035)}
+.th.th-sort{user-select:none}
+.th.th-sort.active{color:#c7d2fe}
+.th.th-sort .arrow{opacity:.8;margin-left:.25rem}
 
 /* Key/Value */
 .kv{display:flex;flex-direction:column;gap:.22rem}
