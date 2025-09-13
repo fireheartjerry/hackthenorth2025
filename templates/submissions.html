@@ -598,9 +598,7 @@
         } catch (error) {
             console.error('Failed to load modes:', error);
         }
-    })
-        );
-    };
+    }
     document.getElementById("btn_nlq").onclick = () => {
         const q = document.getElementById("nlq").value || "";
         fetchJSON("/api/nlq", {
