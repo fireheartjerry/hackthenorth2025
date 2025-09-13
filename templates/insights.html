@@ -17,13 +17,23 @@
 
 <div class="glass-panel p-2">
     <div class="flex gap-2 text-sm">
-        <button class="pill pill-indigo tabbtn" data-tab="pipeline">Pipeline & Triage</button>
-        <button class="pill pill-sub tabbtn" data-tab="pricing">Price Adequacy & Profitability</button>
-        <button class="pill pill-sub tabbtn" data-tab="exposure">Exposure & Concentration</button>
-        <button class="pill pill-sub tabbtn" data-tab="loss">Loss & Risk Signals</button>
-        <button class="pill pill-sub tabbtn" data-tab="timing">Timing & Workload</button>
-        <button class="pill pill-sub tabbtn" data-tab="mix">Mix & Portfolio Shape</button>
-        <button class="pill pill-sub tabbtn" data-tab="quality">Quality & Outliers</button>
+        {% for t in tabs[:1] %} {% set is_disabled = (t.protected and role not in
+        ['leader','admin']) %}
+        <button
+            class="pill pill-indigo tabbtn"
+            data-tab="{{ t.id }}"
+            {%
+            if
+            is_disabled
+            %}disabled
+            title="Restricted to leaders/admins"
+            {%
+            endif
+            %}
+        >
+            {{ t.title }}
+        </button>
+        {% endfor %}
     </div>
 </div>
 
@@ -31,21 +41,21 @@
 
 <!-- Fullscreen overlay -->
 <div id="fs_overlay" class="overlay hidden">
-    <div class="overlay-inner flex flex-col max-h-[calc(100vh-2rem)]">
-        <div class="flex items-center justify-between mb-2 flex-shrink-0">
+    <div class="overlay-inner">
+        <div class="flex items-center justify-between mb-2">
             <div class="text-sm opacity-80">Fullscreen</div>
             <button class="pill pill-sub" onclick="closeFullscreen()">
                 Close
             </button>
         </div>
-        <div id="fs_host" class="flex-grow min-h-0 overflow-hidden"></div>
+        <div id="fs_host" class="h-[70vh]"></div>
     </div>
 </div>
 
 <!-- Data modal -->
 <div id="data_modal" class="overlay hidden">
-    <div class="overlay-inner max-w-5xl flex flex-col max-h-[calc(100vh-2rem)]">
-        <div class="flex items-center justify-between mb-2 flex-shrink-0">
+    <div class="overlay-inner max-w-5xl">
+        <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
                 <div class="text-sm opacity-80">Underlying Data</div>
                 <button id="dl_raw_csv" class="pill pill-sub">
@@ -56,14 +66,12 @@
                 Close
             </button>
         </div>
-        <div id="data_table" class="overflow-auto flex-grow min-h-0"></div>
+        <div id="data_table" class="overflow-auto max-h-[70vh]"></div>
     </div>
 </div>
 
-<!-- Advanced visualization libs -->
+<!-- Visualization libs -->
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
 <script>
     // --- Utilities ---
     function copyToClipboard(txt) {
@@ -340,28 +348,336 @@
         return card;
     }
 
+    // Triage Chart with hardcoded data
+    function createTriageChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Triage Dashboard</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data
+        const sampleData = [
+            {account_name: "Acme Corp", winnability: 85, tiv: 45000000, total_premium: 125000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "CA", construction_type: "Fire Resistive", loss_value: 25000},
+            {account_name: "Beta Industries", winnability: 72, tiv: 32000000, total_premium: 98000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "TX", construction_type: "Masonry Non-Combustible", loss_value: 15000},
+            {account_name: "Gamma Manufacturing", winnability: 45, tiv: 78000000, total_premium: 185000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "FL", construction_type: "Non-Combustible/Steel", loss_value: 55000},
+            {account_name: "Delta Logistics", winnability: 91, tiv: 28000000, total_premium: 87000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "OH", construction_type: "Fire Resistive", loss_value: 8000},
+            {account_name: "Epsilon Tech", winnability: 38, tiv: 125000000, total_premium: 275000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "NY", construction_type: "Joisted Masonry", loss_value: 95000},
+            {account_name: "Zeta Retail", winnability: 67, tiv: 15000000, total_premium: 65000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "GA", construction_type: "Masonry Non-Combustible", loss_value: 12000},
+            {account_name: "Eta Energy", winnability: 55, tiv: 89000000, total_premium: 210000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "PA", construction_type: "Fire Resistive", loss_value: 42000},
+            {account_name: "Theta Holdings", winnability: 78, tiv: 67000000, total_premium: 155000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "CO", construction_type: "Non-Combustible/Steel", loss_value: 18000},
+            {account_name: "Iota Systems", winnability: 42, tiv: 95000000, total_premium: 225000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "MD", construction_type: "Joisted Masonry", loss_value: 78000},
+            {account_name: "Kappa Services", winnability: 88, tiv: 22000000, total_premium: 75000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "VA", construction_type: "Fire Resistive", loss_value: 5000},
+            {account_name: "Lambda Corp", winnability: 31, tiv: 156000000, total_premium: 320000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "IL", construction_type: "Wood Frame", loss_value: 125000},
+            {account_name: "Mu Enterprises", winnability: 73, tiv: 38000000, total_premium: 112000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "SC", construction_type: "Masonry Non-Combustible", loss_value: 22000},
+            {account_name: "Nu Industries", winnability: 59, tiv: 71000000, total_premium: 168000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "NC", construction_type: "Fire Resistive", loss_value: 35000},
+            {account_name: "Xi Manufacturing", winnability: 82, tiv: 43000000, total_premium: 118000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "UT", construction_type: "Non-Combustible/Steel", loss_value: 14000},
+            {account_name: "Omicron Group", winnability: 48, tiv: 102000000, total_premium: 245000, line_of_business: "COMMERCIAL PROPERTY", primary_risk_state: "WA", construction_type: "Joisted Masonry", loss_value: 88000}
+        ];
+
+        // Calculate median TIV for horizontal guide
+        const sortedTiv = sampleData.map(d => d.tiv).sort((a, b) => a - b);
+        const medianTiv = sortedTiv[Math.floor(sortedTiv.length / 2)];
+
+        // Color mapping for line of business
+        const colorMap = {
+            "COMMERCIAL PROPERTY": "#818cf8"
+        };
+
+        // Create scatter trace
+        const trace = {
+            x: sampleData.map(d => d.winnability),
+            y: sampleData.map(d => d.tiv),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: sampleData.map(d => Math.sqrt(d.total_premium) / 15), // Scale bubble size
+                color: sampleData.map(d => colorMap[d.line_of_business] || "#06b6d4"),
+                opacity: 0.7,
+                line: {
+                    color: 'rgba(255,255,255,0.2)',
+                    width: 1
+                }
+            },
+            text: sampleData.map(d => {
+                const lossRatio = ((d.loss_value / d.total_premium) * 100).toFixed(1);
+                return `<b>${d.account_name}</b><br>` +
+                       `State: ${d.primary_risk_state}<br>` +
+                       `Construction: ${d.construction_type}<br>` +
+                       `Premium: $${d.total_premium.toLocaleString()}<br>` +
+                       `Loss Value: $${d.loss_value.toLocaleString()}<br>` +
+                       `Loss Ratio: ${lossRatio}%`;
+            }),
+            hovertemplate: '%{text}<extra></extra>',
+            name: 'Submissions'
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 40, r: 40, b: 170, l: 80 },
+            xaxis: {
+                title: 'Winnability (%)',
+                gridcolor: "rgba(255,255,255,.08)",
+                range: [0, 100]
+            },
+            yaxis: {
+                title: 'Total Insured Value ($)',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'linear'
+            },
+            shapes: [
+                // Vertical guide at winnability = 60
+                {
+                    type: 'line',
+                    x0: 60,
+                    x1: 60,
+                    y0: 0,
+                    y1: 1,
+                    yref: 'paper',
+                    line: {
+                        color: '#f59e0b',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                },
+                // Horizontal guide at median TIV
+                {
+                    type: 'line',
+                    x0: 0,
+                    x1: 1,
+                    xref: 'paper',
+                    y0: medianTiv,
+                    y1: medianTiv,
+                    line: {
+                        color: '#f59e0b',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }
+            ],
+            annotations: [
+                {
+                    x: 62,
+                    y: 0.95,
+                    yref: 'paper',
+                    text: 'Winnability = 60%',
+                    showarrow: false,
+                    font: { color: '#f59e0b', size: 10 }
+                },
+                {
+                    x: 0.02,
+                    xref: 'paper',
+                    y: medianTiv,
+                    text: `Median TIV: $${(medianTiv/1000000).toFixed(1)}M`,
+                    showarrow: false,
+                    font: { color: '#f59e0b', size: 10 }
+                }
+            ]
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [trace], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("triage_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load triage chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Intake & Aging Chart with hardcoded data
+    function createIntakeAgingChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card mt-6";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Intake & Aging</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 400px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded weekly data with different winnability buckets
+        const weeklyData = [
+            // Week of Jan 1, 2024
+            {week: "2024-01-01", winnability_0_40: 3, winnability_40_60: 8, winnability_60_80: 12, winnability_80_100: 5},
+            // Week of Jan 8, 2024
+            {week: "2024-01-08", winnability_0_40: 5, winnability_40_60: 6, winnability_60_80: 15, winnability_80_100: 8},
+            // Week of Jan 15, 2024
+            {week: "2024-01-15", winnability_0_40: 2, winnability_40_60: 9, winnability_60_80: 11, winnability_80_100: 6},
+            // Week of Jan 22, 2024
+            {week: "2024-01-22", winnability_0_40: 7, winnability_40_60: 12, winnability_60_80: 18, winnability_80_100: 9},
+            // Week of Jan 29, 2024
+            {week: "2024-01-29", winnability_0_40: 4, winnability_40_60: 10, winnability_60_80: 14, winnability_80_100: 11},
+            // Week of Feb 5, 2024
+            {week: "2024-02-05", winnability_0_40: 6, winnability_40_60: 7, winnability_60_80: 16, winnability_80_100: 7},
+            // Week of Feb 12, 2024
+            {week: "2024-02-12", winnability_0_40: 3, winnability_40_60: 11, winnability_60_80: 13, winnability_80_100: 10},
+            // Week of Feb 19, 2024
+            {week: "2024-02-19", winnability_0_40: 8, winnability_40_60: 9, winnability_60_80: 17, winnability_80_100: 12},
+            // Week of Feb 26, 2024
+            {week: "2024-02-26", winnability_0_40: 5, winnability_40_60: 13, winnability_60_80: 15, winnability_80_100: 8},
+            // Week of Mar 4, 2024
+            {week: "2024-03-04", winnability_0_40: 4, winnability_40_60: 8, winnability_60_80: 19, winnability_80_100: 14},
+        ];
+
+        // Create traces for each winnability bucket
+        const traces = [
+            {
+                name: '0-40%',
+                x: weeklyData.map(d => d.week),
+                y: weeklyData.map(d => d.winnability_0_40),
+                type: 'bar',
+                marker: { color: '#ef4444' }, // Red for low winnability
+                hovertemplate: 'Week: %{x}<br>Count: %{y}<br>Winnability: 0-40%<extra></extra>'
+            },
+            {
+                name: '40-60%',
+                x: weeklyData.map(d => d.week),
+                y: weeklyData.map(d => d.winnability_40_60),
+                type: 'bar',
+                marker: { color: '#f59e0b' }, // Orange for medium-low winnability
+                hovertemplate: 'Week: %{x}<br>Count: %{y}<br>Winnability: 40-60%<extra></extra>'
+            },
+            {
+                name: '60-80%',
+                x: weeklyData.map(d => d.week),
+                y: weeklyData.map(d => d.winnability_60_80),
+                type: 'bar',
+                marker: { color: '#22c55e' }, // Green for medium-high winnability
+                hovertemplate: 'Week: %{x}<br>Count: %{y}<br>Winnability: 60-80%<extra></extra>'
+            },
+            {
+                name: '80-100%',
+                x: weeklyData.map(d => d.week),
+                y: weeklyData.map(d => d.winnability_80_100),
+                type: 'bar',
+                marker: { color: '#3b82f6' }, // Blue for high winnability
+                hovertemplate: 'Week: %{x}<br>Count: %{y}<br>Winnability: 80-100%<extra></extra>'
+            }
+        ];
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 40, r: 40, b: 180, l: 60 },
+            xaxis: {
+                title: 'Week',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'date'
+            },
+            yaxis: {
+                title: 'Count of Accounts',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            barmode: 'stack',
+            legend: {
+                orientation: 'h',
+                y: -0.2,
+                x: 0.5,
+                xanchor: 'center',
+                font: { color: "#e2e8f0" }
+            }
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, traces, layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("intake_aging_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load intake & aging chart: " + e.message, "error"));
+        return card;
+    }
+
     function loadTabs() {
         const host = document.getElementById("tab_content");
-        
+
         function section(tab) {
             host.innerHTML = "";
-            if (tab === "pipeline") {
-                loadPipelineTab(host);
-            } else if (tab === "pricing") {
-                loadPricingTab(host);
-            } else if (tab === "exposure") {
-                loadExposureTab(host);
-            } else if (tab === "loss") {
-                loadLossTab(host);
-            } else if (tab === "timing") {
-                loadTimingTab(host);
-            } else if (tab === "mix") {
-                loadMixTab(host);
-            } else if (tab === "quality") {
-                loadQualityTab(host);
+            if (tab === "overview") {
+                host.appendChild(
+                    createTriageChart()
+                );
+                host.appendChild(
+                    createIntakeAgingChart()
+                );
             }
         }
-        
+
         const firstBtn = document.querySelector(".tabbtn:not([disabled])");
         (document.querySelectorAll(".tabbtn") || []).forEach((btn) => {
             btn.onclick = () => {
@@ -387,979 +703,6 @@
         }
     }
 
-    // =========================== SPECIALIZED CHART FUNCTIONS ===========================
-    
-    function createFunnelChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const stages = config.stages || ["Intake", "Underwriting", "Proposal", "Negotiation", "Bind"];
-            
-            // Create realistic funnel data based on industry conversion rates
-            const baseCount = Math.max(rows.length, 500); // Ensure minimum viable dataset
-            const conversionRates = [1.0, 0.75, 0.45, 0.25, 0.15]; // Realistic pipeline conversion rates
-            const counts = stages.map((stage, i) => Math.round(baseCount * conversionRates[i]));
-            
-            const data = [{
-                type: "funnel",
-                y: stages,
-                x: counts,
-                textinfo: "value+percent initial",
-                marker: { color: ["#818cf8", "#22c55e", "#f59e0b", "#f43f5e", "#06b6d4"] },
-                hovertemplate: "<b>%{y}</b><br>Count: %{x}<br>% of Initial: %{percentInitial}<extra></extra>"
-            }];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 40, l: 120 },
-                showlegend: false
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Funnel chart failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createHistogramChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const values = rows.map(r => {
-                let val = +r[config.field] || 0;
-                if (config.field === "winnability" && val > 1) val /= 100;
-                return val;
-            }).filter(v => v > 0);
-            
-            const data = [{
-                type: "histogram",
-                x: values,
-                nbinsx: config.bins || 20,
-                marker: { color: "#818cf8" }
-            }];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent", 
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 40, l: 40 },
-                xaxis: { title: config.xLabel || config.field, gridcolor: "rgba(255,255,255,.08)" },
-                yaxis: { title: config.yLabel || "Count", gridcolor: "rgba(255,255,255,.08)" }
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Histogram failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createScatterChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            
-            // Process data with proper handling for different field types
-            const processedData = rows.map(r => {
-                let xVal = +r[config.x] || 0;
-                let yVal = +r[config.y] || 0;
-                
-                // Special handling for winnability normalization
-                if (config.x === "winnability" && xVal > 1) {
-                    xVal = xVal / 100; // Convert percentage to decimal
-                }
-                if (config.y === "winnability" && yVal > 1) {
-                    yVal = yVal / 100; // Convert percentage to decimal
-                }
-                
-                // Handle formula calculations
-                if (config.yFormula === "loss_value / total_premium") {
-                    const loss = +r.loss_value || 0;
-                    const prem = +r.total_premium || 1;
-                    yVal = loss / prem;
-                }
-                
-                return {
-                    x: xVal,
-                    y: yVal,
-                    account: r.account_name || "",
-                    raw: r
-                };
-            }).filter(d => d.x > 0 || d.y > 0); // Filter out zero/null values
-            
-            const data = [];
-            
-            if (config.color || config.colorFormula) {
-                const colorVals = processedData.map(d => {
-                    if (config.colorFormula) {
-                        const loss = +d.raw.loss_value || 0;
-                        const prem = +d.raw.total_premium || 1;
-                        return loss / prem;
-                    }
-                    return +d.raw[config.color] || 0;
-                });
-                
-                data.push({
-                    type: "scatter",
-                    mode: "markers",
-                    x: processedData.map(d => d.x),
-                    y: processedData.map(d => d.y),
-                    marker: {
-                        size: config.size ? processedData.map(d => Math.sqrt(+d.raw[config.size] || 0) / 50) : 8,
-                        color: colorVals,
-                        colorscale: "RdYlBu_r",
-                        showscale: true
-                    },
-                    text: processedData.map(d => d.account)
-                });
-            } else {
-                data.push({
-                    type: "scatter",
-                    mode: "markers", 
-                    x: processedData.map(d => d.x),
-                    y: processedData.map(d => d.y),
-                    marker: {
-                        size: config.size ? processedData.map(d => Math.sqrt(+d.raw[config.size] || 0) / 50) : 8,
-                        color: "#818cf8"
-                    },
-                    text: processedData.map(d => d.account)
-                });
-            }
-            
-            // Set appropriate axis ranges
-            const xMax = Math.max(...processedData.map(d => d.x));
-            const yMax = Math.max(...processedData.map(d => d.y));
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 40, l: 40 },
-                xaxis: { 
-                    title: config.xLabel || config.x, 
-                    gridcolor: "rgba(255,255,255,.08)",
-                    range: config.x === "winnability" ? [0, 1] : undefined
-                },
-                yaxis: { 
-                    title: config.yLabel || config.y, 
-                    gridcolor: "rgba(255,255,255,.08)",
-                    range: config.y === "winnability" ? [0, 1] : undefined
-                }
-            };
-            
-            if (config.showDiagonal) {
-                const maxVal = Math.max(xMax, yMax);
-                layout.shapes = [{
-                    type: "line",
-                    x0: 0, x1: maxVal, y0: 0, y1: maxVal,
-                    line: { color: "#f59e0b", dash: "dash" }
-                }];
-            }
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Scatter chart failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createTimeSeriesChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const timeData = {};
-            
-            rows.forEach(r => {
-                const dateValue = r[config.timeField];
-                // Skip invalid, null, or empty dates
-                if (!dateValue || dateValue === "" || dateValue === "null") {
-                    return;
-                }
-                
-                const date = new Date(dateValue);
-                // Skip invalid dates (NaN) or dates before 1990 (likely invalid data)
-                if (isNaN(date.getTime()) || date.getFullYear() < 1990) {
-                    return;
-                }
-                
-                let key;
-                if (config.groupBy === "week") {
-                    const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
-                    key = weekStart.toISOString().split('T')[0];
-                } else if (config.groupBy === "month") {
-                    key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                } else {
-                    key = date.toISOString().split('T')[0];
-                }
-                
-                if (!timeData[key]) timeData[key] = {};
-                
-                if (config.colorBy === "winnability_bucket") {
-                    const win = +r.winnability || 0;
-                    const bucket = win < 25 ? "Low" : win < 75 ? "Medium" : "High";
-                    timeData[key][bucket] = (timeData[key][bucket] || 0) + 1;
-                } else {
-                    timeData[key].count = (timeData[key].count || 0) + 1;
-                }
-            });
-            
-            const dates = Object.keys(timeData).sort();
-            const data = [];
-            
-            if (config.colorBy === "winnability_bucket") {
-                ["Low", "Medium", "High"].forEach((bucket, i) => {
-                    data.push({
-                        type: "bar",
-                        name: bucket,
-                        x: dates,
-                        y: dates.map(d => timeData[d][bucket] || 0),
-                        marker: { color: ["#f43f5e", "#f59e0b", "#22c55e"][i] }
-                    });
-                });
-            } else {
-                data.push({
-                    type: "bar",
-                    x: dates,
-                    y: dates.map(d => timeData[d].count || 0),
-                    marker: { color: "#818cf8" }
-                });
-            }
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 40, l: 40 },
-                xaxis: { gridcolor: "rgba(255,255,255,.08)" },
-                yaxis: { gridcolor: "rgba(255,255,255,.08)" },
-                barmode: config.colorBy ? "stack" : "group"
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Time series failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createTopListChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            // Create realistic synthetic data for Quick-Pick List demonstration
-            if (title === "Quick-Pick List") {
-                const syntheticData = [
-                    { account: "Metroplex Industrial Complex", tiv: 185000000, winnability: 88 },
-                    { account: "Harbor View Manufacturing", tiv: 142000000, winnability: 72 },
-                    { account: "Golden Gate Tech Campus", tiv: 135000000, winnability: 91 },
-                    { account: "Riverside Distribution Center", tiv: 128000000, winnability: 67 },
-                    { account: "Pacific Commerce Plaza", tiv: 115000000, winnability: 83 },
-                    { account: "Northern Logistics Hub", tiv: 108000000, winnability: 76 },
-                    { account: "Skyline Corporate Tower", tiv: 98000000, winnability: 84 },
-                    { account: "Central Valley Warehouse", tiv: 92000000, winnability: 69 },
-                    { account: "Mountain View Data Center", tiv: 87000000, winnability: 79 },
-                    { account: "Coastal Manufacturing Plant", tiv: 81000000, winnability: 73 }
-                ];
-                
-                // Color bars by winnability - green for high, yellow for medium, red for low
-                const colors = syntheticData.map(d => {
-                    if (d.winnability >= 80) return "#22c55e"; // Green for high winnability
-                    if (d.winnability >= 70) return "#f59e0b"; // Yellow for medium winnability
-                    return "#f43f5e"; // Red for low winnability
-                });
-                
-                const data = [{
-                    type: "bar",
-                    orientation: "h",
-                    y: syntheticData.map(d => d.account),
-                    x: syntheticData.map(d => d.tiv),
-                    marker: { color: colors },
-                    text: syntheticData.map(d => `${d.winnability}%`),
-                    textposition: "outside",
-                    hovertemplate: "<b>%{y}</b><br>" +
-                                  "TIV: $%{x:,.0f}<br>" +
-                                  "Winnability: %{text}<br>" +
-                                  "<extra></extra>"
-                }];
-                
-                const layout = {
-                    paper_bgcolor: "transparent", 
-                    plot_bgcolor: "transparent",
-                    font: { color: "#e2e8f0" },
-                    margin: { t: 30, r: 80, b: 40, l: 180 },
-                    xaxis: { 
-                        title: "Total Insured Value ($)",
-                        gridcolor: "rgba(255,255,255,.08)",
-                        tickformat: ",.0s"
-                    },
-                    yaxis: { 
-                        gridcolor: "rgba(255,255,255,.08)",
-                        categoryorder: "array",
-                        categoryarray: syntheticData.map(d => d.account)
-                    }
-                };
-                
-                await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-                return;
-            }
-            
-            // Original implementation for other charts
-            const rows = await loadAllPolicies();
-            const sorted = rows.sort((a, b) => (+b[config.sortBy] || 0) - (+a[config.sortBy] || 0));
-            const top = sorted.slice(0, config.limit || 10);
-            
-            const data = [{
-                type: "bar",
-                orientation: "h",
-                y: top.map(r => r.account_name || "Unknown"),
-                x: top.map(r => +r[config.sortBy] || 0),
-                marker: { color: "#818cf8" },
-                text: config.showBadge ? top.map(r => {
-                    let val = +r[config.showBadge] || 0;
-                    if (config.showBadge === "winnability" && val > 1) val /= 100;
-                    return `${(val * 100).toFixed(0)}%`;
-                }) : config.showTag ? top.map(r => r[config.showTag] || "") : undefined,
-                textposition: "outside"
-            }];
-            
-            const layout = {
-                paper_bgcolor: "transparent", 
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 80, b: 40, l: 150 },
-                xaxis: { gridcolor: "rgba(255,255,255,.08)" },
-                yaxis: { gridcolor: "rgba(255,255,255,.08)" }
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Top list failed: " + e.message, "error"));
-        return card;
-    }
-    
-    // Additional chart functions would continue here...
-    // For brevity, I'll add the remaining specialized chart functions
-    
-    function createBarChart(title, config) {
-        return createChartCard(title.toLowerCase().replace(/\s+/g, '_'), title, {
-            group: config.x,
-            metric: config.formula ? `calc:${config.formula}` : config.y,
-            type: "bar"
-        });
-    }
-    
-    function createBoxPlotChart(title, config) {
-        const card = createCardShell(title);
-        // Box plot implementation would go here - using simplified bar for now
-        return createBarChart(title, config);
-    }
-    
-    function createChoroplethChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const stateData = {};
-            
-            rows.forEach(r => {
-                const state = r[config.location];
-                if (state && /^[A-Z]{2}$/.test(state)) {
-                    if (!stateData[state]) stateData[state] = 0;
-                    if (config.metric === "sum:tiv") {
-                        stateData[state] += (+r.tiv || 0);
-                    } else {
-                        stateData[state] += 1;
-                    }
-                }
-            });
-            
-            const states = Object.keys(stateData);
-            const values = Object.values(stateData);
-            
-            const data = [{
-                type: "choropleth",
-                locationmode: "USA-states",
-                locations: states,
-                z: values,
-                colorscale: "Blues",
-                colorbar: { title: config.metric === "sum:tiv" ? "TIV ($)" : "Count" }
-            }];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                geo: {
-                    scope: "usa",
-                    bgcolor: "rgba(0,0,0,0)",
-                    lakecolor: "#0b1020",
-                    landcolor: "#0b1020"
-                },
-                margin: { t: 10, r: 10, b: 10, l: 10 }
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Choropleth failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createHeatmapChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const matrix = {};
-            const xValues = new Set();
-            const yValues = new Set();
-            
-            rows.forEach(r => {
-                const x = r[config.x];
-                const y = r[config.y];
-                if (x && y) {
-                    xValues.add(x);
-                    yValues.add(y);
-                    const key = `${x}|${y}`;
-                    if (!matrix[key]) matrix[key] = 0;
-                    if (config.metric === "sum:tiv") {
-                        matrix[key] += (+r.tiv || 0);
-                    } else {
-                        matrix[key] += 1;
-                    }
-                }
-            });
-            
-            const xArray = Array.from(xValues).sort();
-            const yArray = Array.from(yValues).sort();
-            const zMatrix = yArray.map(y => 
-                xArray.map(x => matrix[`${x}|${y}`] || 0)
-            );
-            
-            const data = [{
-                type: "heatmap",
-                x: xArray,
-                y: yArray,
-                z: zMatrix,
-                colorscale: "Blues",
-                showscale: true
-            }];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 80, l: 100 },
-                xaxis: { title: config.x, tickangle: -45 },
-                yaxis: { title: config.y }
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Heatmap failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createStackedBarChart(title, config) {
-        return createChartCard(title.toLowerCase().replace(/\s+/g, '_'), title, {
-            group: config.x,
-            series_by: config.stackBy,
-            metric: config.metric || "count", 
-            type: "bar"
-        });
-    }
-    
-    function createDonutChart(title, config) {
-        return createChartCard(title.toLowerCase().replace(/\s+/g, '_'), title, {
-            group: config.groupBy,
-            metric: config.metric || "count",
-            type: "pie"
-        });
-    }
-    
-    function createQuadrantChart(title, config) {
-        return createScatterChart(title, config);
-    }
-    
-    function createGanttChart(title, config) {
-        // Simplified timeline chart 
-        return createTimeSeriesChart(title, {
-            timeField: config.startDate,
-            groupBy: "week",
-            colorBy: config.colorBy
-        });
-    }
-    
-    function createAreaChart(title, config) {
-        return createTimeSeriesChart(title, config);
-    }
-    
-    function createLineChart(title, config) {
-        return createTimeSeriesChart(title, config);
-    }
-    
-    function createSideBySideChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            const lobData = {};
-            
-            // Calculate totals
-            let totalPremium = 0;
-            let totalLoss = 0;
-            
-            rows.forEach(r => {
-                const lob = r[config.x] || "Unknown";
-                const premium = +r.total_premium || 0;
-                const loss = +r.loss_value || 0;
-                
-                if (!lobData[lob]) {
-                    lobData[lob] = { premium: 0, loss: 0 };
-                }
-                lobData[lob].premium += premium;
-                lobData[lob].loss += loss;
-                
-                totalPremium += premium;
-                totalLoss += loss;
-            });
-            
-            // Calculate shares
-            const lobs = Object.keys(lobData);
-            const premiumShares = lobs.map(lob => (lobData[lob].premium / totalPremium) * 100);
-            const lossShares = lobs.map(lob => (lobData[lob].loss / totalLoss) * 100);
-            
-            const data = [
-                {
-                    type: "bar",
-                    name: "Premium Share %",
-                    x: lobs,
-                    y: premiumShares,
-                    marker: { color: "#22c55e" },
-                    yaxis: "y"
-                },
-                {
-                    type: "bar", 
-                    name: "Loss Share %",
-                    x: lobs,
-                    y: lossShares,
-                    marker: { color: "#f43f5e" },
-                    yaxis: "y"
-                }
-            ];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 80, l: 40 },
-                xaxis: { 
-                    title: config.x,
-                    tickangle: -45,
-                    gridcolor: "rgba(255,255,255,.08)"
-                },
-                yaxis: { 
-                    title: "Share (%)",
-                    gridcolor: "rgba(255,255,255,.08)"
-                },
-                barmode: "group"
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Side-by-side chart failed: " + e.message, "error"));
-        return card;
-    }
-    
-    function createTreemapChart(title, config) {
-        return createChartCard(title.toLowerCase().replace(/\s+/g, '_'), title, {
-            group: config.hierarchy[0],
-            series_by: config.hierarchy[1], 
-            metric: `sum:${config.size}`,
-            type: "bar"
-        });
-    }
-    
-    function createSankeyChart(title, config) {
-        return createSankeyCard(); // Reuse existing Sankey
-    }
-    
-    function createOutlierChart(title, config) {
-        return createScatterChart(title, config);
-    }
-    
-    function createSanityChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3 grid grid-cols-2 lg:grid-cols-3 gap-4";
-        
-        config.fields.forEach(field => {
-            const miniPlot = document.createElement("div");
-            miniPlot.style.height = "120px";
-            miniPlot.className = "glass-panel p-2";
-            miniPlot.innerHTML = `<div class="text-xs mb-2">${field}</div>`;
-            host.appendChild(miniPlot);
-        });
-        
-        card.appendChild(host);
-        return card;
-    }
-    
-    function createTrendChart(title, config) {
-        return createLineChart(title, {
-            timeField: config.x,
-            groupBy: "bin",
-            metric: config.yFormula
-        });
-    }
-    
-    function createParetoChart(title, config) {
-        const card = createCardShell(title);
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "400px";
-        host.appendChild(plot);
-        card.appendChild(host);
-        
-        async function render() {
-            const rows = await loadAllPolicies();
-            // Sort by loss value descending
-            const sorted = rows.filter(r => (+r.loss_value || 0) > 0)
-                              .sort((a, b) => (+b.loss_value || 0) - (+a.loss_value || 0));
-            
-            const totalLoss = sorted.reduce((sum, r) => sum + (+r.loss_value || 0), 0);
-            let cumulative = 0;
-            
-            const paretoData = sorted.map((r, i) => {
-                cumulative += (+r.loss_value || 0);
-                return {
-                    rank: i + 1,
-                    account: r.account_name || `Account ${i + 1}`,
-                    loss: +r.loss_value || 0,
-                    cumPct: (cumulative / totalLoss) * 100
-                };
-            });
-            
-            const data = [
-                {
-                    type: "bar",
-                    name: "Loss Value",
-                    x: paretoData.map(d => d.rank),
-                    y: paretoData.map(d => d.loss),
-                    yaxis: "y2",
-                    marker: { color: "#818cf8" }
-                },
-                {
-                    type: "scatter",
-                    mode: "lines",
-                    name: "Cumulative %",
-                    x: paretoData.map(d => d.rank),
-                    y: paretoData.map(d => d.cumPct),
-                    yaxis: "y",
-                    line: { color: "#f59e0b", width: 3 }
-                }
-            ];
-            
-            const layout = {
-                paper_bgcolor: "transparent",
-                plot_bgcolor: "transparent",
-                font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 60, b: 40, l: 60 },
-                xaxis: { title: "Account Rank", gridcolor: "rgba(255,255,255,.08)" },
-                yaxis: { title: "Cumulative %", side: "left", gridcolor: "rgba(255,255,255,.08)" },
-                yaxis2: { title: "Loss Value", side: "right", overlaying: "y" }
-            };
-            
-            await Plotly.react(plot, data, layout, { displayModeBar: false, responsive: true });
-        }
-        
-        render().catch(e => toast("Pareto chart failed: " + e.message, "error"));
-        return card;
-    }
-
-    // =========================== TAB LOADING FUNCTIONS ===========================
-    
-    function loadPipelineTab(host) {
-        // Pipeline funnel chart
-        host.appendChild(createFunnelChart("Pipeline Funnel", {
-            stages: ["Intake", "Underwriting", "Proposal", "Negotiation", "Bind"],
-            metric: "count"
-        }));
-        
-        // Winnability distribution histogram
-        host.appendChild(createHistogramChart("Winnability Distribution", {
-            field: "winnability", 
-            bins: 20,
-            xLabel: "Winnability (%)",
-            yLabel: "Number of Accounts"
-        }));
-        
-        // Triage quadrant scatter
-        host.appendChild(createScatterChart("Triage Quadrant", {
-            x: "winnability",
-            y: "tiv", 
-            size: "total_premium",
-            xLabel: "Winnability (%)",
-            yLabel: "TIV ($)"
-        }));
-        
-        // Aging queue bar chart
-        host.appendChild(createTimeSeriesChart("Aging Queue", {
-            timeField: "created_at",
-            groupBy: "week",
-            colorBy: "winnability_bucket",
-            metric: "count"
-        }));
-        
-        // Quick-pick list
-        host.appendChild(createTopListChart("Quick-Pick List", {
-            sortBy: "tiv",
-            limit: 10,
-            showBadge: "winnability"
-        }));
-    }
-    
-    function loadPricingTab(host) {
-        // Loss ratio proxy by account
-        host.appendChild(createBarChart("Loss Ratio Proxy by Account", {
-            x: "account_name",
-            y: "loss_ratio",
-            formula: "loss_value / total_premium",
-            sortDesc: true,
-            limit: 20
-        }));
-        
-        // Adequacy scatter
-        host.appendChild(createScatterChart("Adequacy Scatter", {
-            x: "tiv",
-            y: "total_premium", 
-            color: "loss_ratio",
-            colorFormula: "loss_value / total_premium"
-        }));
-        
-        // Premium per TIV box plot
-        host.appendChild(createBoxPlotChart("Premium per TIV", {
-            x: "line_of_business",
-            y: "premium_per_tiv",
-            formula: "total_premium / tiv"
-        }));
-        
-        // Premium vs losses scatter
-        host.appendChild(createScatterChart("Premium vs Losses", {
-            x: "total_premium",
-            y: "loss_value",
-            showDiagonal: true
-        }));
-        
-        // Portfolio Pareto
-        host.appendChild(createParetoChart("Portfolio Pareto", {
-            sortBy: "loss_value",
-            cumulative: true
-        }));
-    }
-    
-    function loadExposureTab(host) {
-        // State heatmap
-        host.appendChild(createChoroplethChart("State Heatmap", {
-            location: "primary_risk_state",
-            metric: "sum:tiv"
-        }));
-        
-        // State-LOB matrix heatmap
-        host.appendChild(createHeatmapChart("State-LOB Matrix", {
-            x: "primary_risk_state",
-            y: "line_of_business", 
-            metric: "sum:tiv"
-        }));
-        
-        // Construction mix by LOB
-        host.appendChild(createStackedBarChart("Construction Mix by LOB", {
-            x: "line_of_business",
-            stackBy: "construction_type",
-            metric: "count"
-        }));
-        
-        // Vintage vs exposure scatter
-        host.appendChild(createScatterChart("Vintage vs Exposure", {
-            x: "oldest_building",
-            y: "tiv",
-            color: "construction_type"
-        }));
-        
-        // Renewal vs new business mix
-        host.appendChild(createDonutChart("Renewal vs New Business Mix", {
-            groupBy: "renewal_or_new_business",
-            metric: "sum:total_premium"
-        }));
-    }
-    
-    function loadLossTab(host) {
-        // Loss severity by LOB
-        host.appendChild(createBoxPlotChart("Loss Severity by LOB", {
-            x: "line_of_business",
-            y: "loss_value"
-        }));
-        
-        // Loss rate by construction
-        host.appendChild(createBarChart("Loss Rate by Construction", {
-            x: "construction_type", 
-            y: "loss_rate",
-            formula: "loss_value / tiv"
-        }));
-        
-        // Win-risk overlay
-        host.appendChild(createQuadrantChart("Win-Risk Overlay", {
-            x: "winnability",
-            y: "loss_ratio",
-            yFormula: "loss_value / total_premium"
-        }));
-        
-        // High-severity watchlist
-        host.appendChild(createTopListChart("High-Severity Watchlist", {
-            sortBy: "loss_value",
-            limit: 15,
-            showTag: "line_of_business"
-        }));
-    }
-    
-    function loadTimingTab(host) {
-        // Expiration runway
-        host.appendChild(createGanttChart("Expiration Runway", {
-            y: "account_name",
-            startDate: "effective_date",
-            endDate: "expiration_date",
-            colorBy: "renewal_or_new_business",
-            limit: 20
-        }));
-        
-        // Expiring volume
-        host.appendChild(createAreaChart("Expiring Volume", {
-            timeField: "expiration_date",
-            groupBy: "month",
-            metric: "sum:total_premium"
-        }));
-        
-        // Seasonality of intake
-        host.appendChild(createLineChart("Seasonality of Intake", {
-            timeField: "created_at",
-            groupBy: "week",
-            metric: "count"
-        }));
-    }
-    
-    function loadMixTab(host) {
-        // LOB premium vs loss share
-        host.appendChild(createSideBySideChart("LOB Premium vs Loss Share", {
-            x: "line_of_business",
-            leftMetric: "share:total_premium",
-            rightMetric: "share:loss_value"
-        }));
-        
-        // Average winnability by LOB
-        host.appendChild(createBarChart("Average Winnability by LOB", {
-            x: "line_of_business",
-            y: "avg_winnability",
-            formula: "avg:winnability"
-        }));
-        
-        // Segment tree
-        host.appendChild(createTreemapChart("Segment Tree", {
-            hierarchy: ["line_of_business", "construction_type"],
-            size: "tiv",
-            color: "loss_ratio",
-            colorFormula: "loss_value / total_premium"
-        }));
-        
-        // Sankey flow
-        host.appendChild(createSankeyChart("Sankey Flow", {
-            flow: ["line_of_business", "primary_risk_state", "renewal_or_new_business"],
-            metric: "sum:total_premium"
-        }));
-    }
-    
-    function loadQualityTab(host) {
-        // Outlier detector
-        host.appendChild(createOutlierChart("Outlier Detector", {
-            x: "tiv",
-            y: "total_premium",
-            showTrend: true,
-            highlightOutliers: true
-        }));
-        
-        // Data sanity panel
-        host.appendChild(createSanityChart("Data Sanity Panel", {
-            fields: ["tiv", "total_premium", "loss_value"],
-            showMissing: true
-        }));
-        
-        // Building age impact
-        host.appendChild(createTrendChart("Building Age Impact", {
-            x: "oldest_building",
-            y: "loss_rate_mean",
-            yFormula: "mean(loss_value / tiv)",
-            showBands: true,
-            binSize: 5
-        }));
-    }
-
     window.addEventListener("DOMContentLoaded", loadTabs);
 
     // Download underlying raw table as CSV when available
@@ -1383,563 +726,5 @@
     });
 </script>
 
-<script>
-    // ---------- Advanced Visuals (Plotly + ECharts) ----------
 
-    // Cache policies to avoid repeated fetches across charts
-    let __POLICY_CACHE = null;
-    async function loadAllPolicies() {
-        if (__POLICY_CACHE) return __POLICY_CACHE;
-        const j = await fetchJSON("/api/policies");
-        __POLICY_CACHE = j.data || [];
-        return __POLICY_CACHE;
-    }
-
-    function createCardShell(title) {
-        const card = document.createElement("div");
-        card.className = "glass-panel chart-card";
-        card.innerHTML = `
-    <div class="flex items-center justify-between">
-      <div class="text-lg font-semibold">${title}</div>
-      <div class="flex items-center gap-2 text-xs">
-        <button class="pill pill-sub act-full">Fullscreen</button>
-        <button class="pill pill-sub act-data">Data</button>
-        <button class="pill pill-sub act-share">Share</button>
-        <button class="pill pill-sub act-dl-img">PNG</button>
-      </div>
-    </div>
-  `;
-        return card;
-    }
-
-    // ----- US Choropleth (Plotly) -----
-    function createGeoCard() {
-        const card = createCardShell("US Choropleth — Premium/Count by State");
-        const ctrl = document.createElement("div");
-        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm";
-        ctrl.innerHTML = `
-    <div>
-      <label class="lbl">Metric</label>
-      <select class="inp" id="geo_metric">
-        <option value="count">Count</option>
-        <option value="sum:total_premium">Sum Premium</option>
-      </select>
-    </div>
-    <div>
-      <label class="lbl">Appetite Filter</label>
-      <select class="inp" id="geo_status">
-        <option value="">All</option>
-        <option value="TARGET">Target</option>
-        <option value="IN">In</option>
-        <option value="OUT">Out</option>
-      </select>
-    </div>
-    <div class="flex items-end"><button class="btn btn-subtle" id="geo_apply">Apply</button></div>
-  `;
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const plot = document.createElement("div");
-        plot.style.height = "420px";
-        plot.id = "geo_plot";
-        host.appendChild(plot);
-        card.appendChild(ctrl);
-        card.appendChild(host);
-
-        async function render() {
-            const metric = document.getElementById("geo_metric").value;
-            const status = document.getElementById("geo_status").value;
-            // Use aggregate endpoint to avoid overfetch
-            const params = new URLSearchParams({
-                group: "primary_risk_state",
-                metric,
-            });
-            if (status) params.set("series_by", "appetite_status");
-            const agg = await fetchJSON("/api/aggregate?" + params.toString());
-            let valuesByState = {};
-            // Build unified values (All or specific series)
-            if (status) {
-                const idx = (agg.series || []).findIndex(
-                    (s) => (s.name || "").toUpperCase() === status.toUpperCase()
-                );
-                (agg.labels || []).forEach((lab, i) => {
-                    valuesByState[lab] =
-                        idx >= 0 ? agg.series[idx].data[i] || 0 : 0;
-                });
-            } else {
-                (agg.labels || []).forEach((lab, i) => {
-                    let sum = 0;
-                    for (const s of agg.series || []) {
-                        sum += s.data[i] || 0;
-                    }
-                    valuesByState[lab] = sum;
-                });
-            }
-            // Filter to valid USA 2-letter codes
-            const STATES = Object.keys(valuesByState).filter((k) =>
-                /^[A-Z]{2}$/.test(String(k))
-            );
-            const vals = STATES.map((s) => valuesByState[s] || 0);
-            const text = STATES.map(
-                (s) =>
-                    `${s}: ${
-                        metric.startsWith("sum:")
-                            ? "$" +
-                              Math.round(valuesByState[s] || 0).toLocaleString()
-                            : valuesByState[s] || 0
-                    }`
-            );
-            const data = [
-                {
-                    type: "choropleth",
-                    locationmode: "USA-states",
-                    locations: STATES,
-                    z: vals,
-                    text,
-                    colorscale: "Blues",
-                    colorbar: {
-                        title: metric.startsWith("sum:") ? "Premium" : "Count",
-                    },
-                },
-            ];
-            const layout = {
-                paper_bgcolor: "rgba(0,0,0,0)",
-                plot_bgcolor: "rgba(0,0,0,0)",
-                geo: {
-                    scope: "usa",
-                    bgcolor: "rgba(0,0,0,0)",
-                    lakecolor: "#0b1020",
-                    landcolor: "#0b1020",
-                },
-                margin: { t: 10, r: 10, b: 10, l: 10 },
-            };
-            await Plotly.react(plot, data, layout, { displayModeBar: false });
-        }
-        document.getElementById("geo_apply").onclick = () =>
-            render().catch((e) => toast("Map failed: " + e.message, "error"));
-        render().catch((e) => toast("Map failed: " + e.message, "error"));
-
-        // Actions
-        card.querySelector(".act-full").onclick = () => {
-            document
-                .querySelectorAll(".chart-card")
-                .forEach((c) => (c.dataset.active = "false"));
-            card.dataset.active = "true";
-            const node = host;
-            openFullscreen(node);
-        };
-        card.querySelector(".act-data").onclick = async () => {
-            const metric = document.getElementById("geo_metric").value;
-            const status = document.getElementById("geo_status").value;
-            const agg = await fetchJSON(
-                "/api/aggregate?" +
-                    new URLSearchParams({
-                        group: "primary_risk_state",
-                        metric,
-                        ...(status ? { series_by: "appetite_status" } : {}),
-                    }).toString()
-            );
-            const csv = csvFromAgg(agg);
-            window.__lastRawRows = (agg.labels || []).map((lab, i) => {
-                const row = { label: lab };
-                for (const s of agg.series || []) {
-                    row[s.name] = s.data[i];
-                }
-                return row;
-            });
-            openDataModal(
-                `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll(
-                    "<",
-                    "&lt;"
-                )}</pre></div>`
-            );
-        };
-        card.querySelector(".act-share").onclick = () => {
-            copyToClipboard(location.href);
-            toast("Link copied", "success");
-        };
-        card.querySelector(".act-dl-img").onclick = async () => {
-            try {
-                const url = await Plotly.toImage("geo_plot", {
-                    format: "png",
-                    height: 600,
-                    width: 900,
-                });
-                downloadBlob(
-                    "us_map.png",
-                    await (await fetch(url)).blob(),
-                    "image/png"
-                );
-            } catch (e) {
-                toast("Download failed", "error");
-            }
-        };
-        return card;
-    }
-
-    // ----- 3D Scatter (ECharts GL) -----
-    function createScatter3DCard() {
-        const card = createCardShell(
-            "3D Scatter — TIV vs Premium vs Winnability"
-        );
-        const ctrl = document.createElement("div");
-        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm";
-        ctrl.innerHTML = `
-    <div>
-      <label class=\"lbl\">Color By</label>
-      <select class=\"inp\" id=\"sc_color\">
-        <option value=\"appetite_status\">Appetite</option>
-        <option value=\"renewal_or_new_business\">Submission Type</option>
-      </select>
-    </div>
-    <div>
-      <label class=\"lbl\">Point Limit</label>
-      <select class=\"inp\" id=\"sc_limit\">
-        <option>500</option><option>1000</option><option>2000</option>
-      </select>
-    </div>
-    <div>
-      <label class=\"lbl\">Log Scale</label>
-      <select class=\"inp\" id=\"sc_log\"><option value=\"both\">TIV & Premium</option><option value=\"tiv\">TIV only</option><option value=\"prem\">Premium only</option><option value=\"none\">None</option></select>
-    </div>
-    <div class=\"flex items-end\"><button class=\"btn btn-subtle\" id=\"sc_apply\">Apply</button></div>
-  `;
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const div = document.createElement("div");
-        div.style.height = "460px";
-        host.appendChild(div);
-        card.appendChild(ctrl);
-        card.appendChild(host);
-
-        let chart;
-        async function render() {
-            const colorBy = document.getElementById("sc_color").value;
-            const limit = parseInt(
-                document.getElementById("sc_limit").value || "1000",
-                10
-            );
-            const logMode = document.getElementById("sc_log").value;
-            const rows = await loadAllPolicies();
-            // Sample for performance
-            const sample = rows.slice(0, Math.min(limit, rows.length));
-            const colors = {
-                TARGET: "#818cf8",
-                IN: "#22c55e",
-                OUT: "#f43f5e",
-                NEW_BUSINESS: "#22c55e",
-                RENEWAL: "#f59e0b",
-            };
-            const data = [];
-            for (const r of sample) {
-                const tiv = +r.tiv || 0;
-                let prem = +r.total_premium || 0;
-                let win = +r.winnability;
-                if (win > 1) win /= 100;
-                if (!(win >= 0)) win = 0.5;
-                const xi =
-                    logMode === "both" || logMode === "tiv"
-                        ? tiv > 0
-                            ? Math.log10(tiv)
-                            : 0
-                        : tiv;
-                const yi =
-                    logMode === "both" || logMode === "prem"
-                        ? prem > 0
-                            ? Math.log10(prem)
-                            : 0
-                        : prem;
-                const cat = String(r[colorBy] || "").toUpperCase();
-                data.push({ value: [xi, yi, win], cat, raw: r });
-            }
-            const series = [
-                {
-                    type: "scatter3D",
-                    symbolSize: 8,
-                    data: data.map((d) => ({
-                        value: d.value,
-                        itemStyle: { color: colors[d.cat] || "#06b6d4" },
-                        raw: d.raw,
-                    })),
-                },
-            ];
-            const axisName = (name) => ({
-                nameTextStyle: { color: "#cbd5e1", fontSize: 12 },
-                axisLine: { lineStyle: { color: "rgba(255,255,255,.25)" } },
-                axisLabel: { color: "#e2e8f0" },
-                splitLine: { lineStyle: { color: "rgba(255,255,255,.08)" } },
-                name,
-            });
-            const option = {
-                backgroundColor: "transparent",
-                tooltip: {
-                    formatter: (p) => {
-                        const r = p.data?.raw || {};
-                        const win =
-                            r.winnability > 1
-                                ? r.winnability
-                                : (r.winnability || 0) * 100;
-                        return `${r.account_name || "-"}<br/>State ${
-                            r.primary_risk_state || "-"
-                        } · ${
-                            r.line_of_business || "-"
-                        }<br/>Premium $${Math.round(
-                            r.total_premium || 0
-                        ).toLocaleString()} · TIV $${Math.round(
-                            r.tiv || 0
-                        ).toLocaleString()} · Win ${(win || 0).toFixed(0)}%`;
-                    },
-                },
-                xAxis3D: axisName(
-                    logMode === "both" || logMode === "tiv"
-                        ? "log10(TIV)"
-                        : "TIV"
-                ),
-                yAxis3D: axisName(
-                    logMode === "both" || logMode === "prem"
-                        ? "log10(Premium)"
-                        : "Premium"
-                ),
-                zAxis3D: axisName("Winnability"),
-                grid3D: {
-                    viewControl: { beta: 20 },
-                    axisPointer: { lineStyle: { color: "#94a3b8" } },
-                },
-                series,
-            };
-            chart?.dispose();
-            chart = echarts.init(div);
-            chart.setOption(option);
-        }
-        document.getElementById("sc_apply").onclick = () =>
-            render().catch((e) =>
-                toast("3D render failed: " + e.message, "error")
-            );
-        render().catch((e) => toast("3D render failed: " + e.message, "error"));
-
-        // Actions
-        card.querySelector(".act-full").onclick = () => {
-            document
-                .querySelectorAll(".chart-card")
-                .forEach((c) => (c.dataset.active = "false"));
-            card.dataset.active = "true";
-            const node = host;
-            openFullscreen(node);
-        };
-        card.querySelector(".act-data").onclick = async () => {
-            const rows = await loadAllPolicies();
-            const cols = [
-                "account_name",
-                "primary_risk_state",
-                "line_of_business",
-                "total_premium",
-                "tiv",
-                "winnability",
-                "appetite_status",
-            ];
-            const head =
-                "<thead><tr>" +
-                cols.map((h) => `<th class="th">${h}</th>`).join("") +
-                "</tr></thead>";
-            const body =
-                "<tbody>" +
-                rows
-                    .slice(0, 500)
-                    .map(
-                        (r) =>
-                            '<tr class="tr">' +
-                            cols
-                                .map((h) => `<td class="td">${r[h] ?? ""}</td>`)
-                                .join("") +
-                            "</tr>"
-                    )
-                    .join("") +
-                "</tbody>";
-            window.__lastRawRows = rows;
-            openDataModal(
-                `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
-            );
-        };
-        card.querySelector(".act-share").onclick = () => {
-            copyToClipboard(location.href);
-            toast("Link copied", "success");
-        };
-        card.querySelector(".act-dl-img").onclick = () => {
-            try {
-                const url = chart?.getDataURL({ type: "png", pixelRatio: 2 });
-                if (url) {
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "scatter3d.png";
-                    a.click();
-                }
-            } catch (e) {
-                toast("Download failed", "error");
-            }
-        };
-        return card;
-    }
-
-    // ----- Sankey Flows (ECharts) -----
-    function createSankeyCard() {
-        const card = createCardShell("Flows — Segment to Appetite to Type");
-        const ctrl = document.createElement("div");
-        ctrl.className = "mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm";
-        ctrl.innerHTML = `
-    <div>
-      <label class=\"lbl\">From</label>
-      <select class=\"inp\" id=\"sk_from\">
-        <option value=\"construction_type\">Construction Type</option>
-        <option value=\"line_of_business\">Line of Business</option>
-        <option value=\"primary_risk_state\">State</option>
-      </select>
-    </div>
-    <div>
-      <label class=\"lbl\">To</label>
-      <select class=\"inp\" id=\"sk_mid\">
-        <option value=\"appetite_status\">Appetite</option>
-        <option value=\"renewal_or_new_business\">Submission Type</option>
-      </select>
-    </div>
-    <div>
-      <label class=\"lbl\">Then</label>
-      <select class=\"inp\" id=\"sk_to\">
-        <option value=\"renewal_or_new_business\">Submission Type</option>
-        <option value=\"appetite_status\">Appetite</option>
-      </select>
-    </div>
-    <div class=\"flex items-end\"><button class=\"btn btn-subtle\" id=\"sk_apply\">Apply</button></div>
-  `;
-        const host = document.createElement("div");
-        host.className = "mt-3";
-        const div = document.createElement("div");
-        div.style.height = "460px";
-        host.appendChild(div);
-        card.appendChild(ctrl);
-        card.appendChild(host);
-
-        let chart;
-        async function render() {
-            const from = document.getElementById("sk_from").value;
-            const mid = document.getElementById("sk_mid").value;
-            const to = document.getElementById("sk_to").value;
-            const rows = await loadAllPolicies();
-            // Build node names with prefixes to avoid collisions
-            const norm = (s) => String(s || "UNK");
-            const nodes = new Map();
-            const addNode = (name) => {
-                if (!nodes.has(name)) nodes.set(name, { name });
-            };
-            const linkMap = new Map();
-            function addLink(s, t) {
-                const key = s + "||" + t;
-                linkMap.set(key, (linkMap.get(key) || 0) + 1);
-                addNode(s);
-                addNode(t);
-            }
-            for (const r of rows) {
-                const a = `${from}:${norm(r[from])}`;
-                const b = `${mid}:${norm(r[mid])}`;
-                const c = `${to}:${norm(r[to])}`;
-                addLink(a, b);
-                addLink(b, c);
-            }
-            const links = Array.from(linkMap.entries()).map(([k, v]) => {
-                const [s, t] = k.split("||");
-                return { source: s, target: t, value: v };
-            });
-            const option = {
-                backgroundColor: "transparent",
-                tooltip: {
-                    formatter: (p) =>
-                        `${p.data.source?.split(":")[1] || ""} → ${
-                            p.data.target?.split(":")[1] || ""
-                        }: ${p.data.value}`,
-                },
-                series: [
-                    {
-                        type: "sankey",
-                        top: 20,
-                        bottom: 20,
-                        left: 10,
-                        right: 10,
-                        nodeAlign: "justify",
-                        emphasis: { focus: "adjacency" },
-                        data: Array.from(nodes.values()),
-                        links,
-                        lineStyle: { color: "gradient", curveness: 0.5 },
-                        label: { color: "#e2e8f0" },
-                    },
-                ],
-            };
-            chart?.dispose();
-            chart = echarts.init(div);
-            chart.setOption(option);
-        }
-        document.getElementById("sk_apply").onclick = () =>
-            render().catch((e) =>
-                toast("Sankey failed: " + e.message, "error")
-            );
-        render().catch((e) => toast("Sankey failed: " + e.message, "error"));
-
-        // Actions
-        card.querySelector(".act-full").onclick = () => {
-            document
-                .querySelectorAll(".chart-card")
-                .forEach((c) => (c.dataset.active = "false"));
-            card.dataset.active = "true";
-            const node = host;
-            openFullscreen(node);
-        };
-        card.querySelector(".act-data").onclick = async () => {
-            const rows = await loadAllPolicies();
-            const cols = [
-                "primary_risk_state",
-                "line_of_business",
-                "renewal_or_new_business",
-                "construction_type",
-                "appetite_status",
-            ];
-            const head =
-                "<thead><tr>" +
-                cols.map((h) => `<th class="th">${h}</th>`).join("") +
-                "</tr></thead>";
-            const body =
-                "<tbody>" +
-                rows
-                    .slice(0, 500)
-                    .map(
-                        (r) =>
-                            '<tr class="tr">' +
-                            cols
-                                .map((h) => `<td class="td">${r[h] ?? ""}</td>`)
-                                .join("") +
-                            "</tr>"
-                    )
-                    .join("") +
-                "</tbody>";
-            window.__lastRawRows = rows;
-            openDataModal(
-                `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
-            );
-        };
-        card.querySelector(".act-share").onclick = () => {
-            copyToClipboard(location.href);
-            toast("Link copied", "success");
-        };
-        card.querySelector(".act-dl-img").onclick = () => {
-            try {
-                const url = chart?.getDataURL({ type: "png", pixelRatio: 2 });
-                if (url) {
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "flows.png";
-                    a.click();
-                }
-            } catch (e) {
-                toast("Download failed", "error");
-            }
-        };
-        return card;
-    }
-</script>
 {% endblock %}
