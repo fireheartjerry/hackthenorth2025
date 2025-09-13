@@ -591,6 +591,7 @@ body {
 .table-container {
   max-height: 80vh; /* increased ~1/3 for larger analysis view */
   overflow-y: auto;
+  overflow-x: hidden; /* avoid side scroll; columns collapse responsively */
 }
 
 /* Glass panel improvements for better layout */
@@ -2238,6 +2239,28 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   justify-content: space-between;
 }
 
+/* Table stats chips */
+.table-stats .stat-chip{
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .35rem .6rem; border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: .75rem;
+}
+.table-stats .stat-chip b{ font-weight: 600; }
+.table-stats .dot{ width: .5rem; height: .5rem; border-radius: 999px; display: inline-block; }
+.table-stats .dot.target{ background: #8b5cf6; }
+.table-stats .dot.in{ background: #10b981; }
+.table-stats .dot.out{ background: #f43f5e; }
+.table-stats .dot.any{ background: #cbd5e1; }
+
+/* Sticky table header for better UX */
+.enhanced-submissions-table thead th{
+  position: sticky; top: 0; z-index: 5;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  backdrop-filter: blur(8px);
+}
+
 .table-title-section h3 {
   color: var(--indigo);
 }
@@ -2270,9 +2293,26 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   color: white;
 }
 
+/* Submissions header view toggle uses standalone buttons, not a grouped pill */
+.submissions-table-panel .view-options{
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  gap: .5rem; /* visual separation */
+}
+.submissions-table-panel .view-options .glass-btn-small{
+  border-radius: .6rem;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.submissions-table-panel .view-options .glass-btn-small.active{
+  outline: 1px solid rgba(99,102,241,.45);
+}
+
 /* Enhanced Table */
 .enhanced-submissions-table {
   background: transparent;
+  table-layout: fixed; /* enable ellipsis and avoid layout thrash */
 }
 
 .enhanced-submissions-table thead {
@@ -2300,6 +2340,14 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.9;
+}
+
+/* Prevent overflow inside cells and headers */
+.enhanced-submissions-table th,
+.enhanced-submissions-table td{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .th-icon {
@@ -2342,6 +2390,43 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   width: 140px;
 }
 
+/* Submissions Analysis — spacing and alignment tuning */
+.enhanced-submissions-table th,
+.enhanced-submissions-table td{ vertical-align: middle; }
+
+/* Checkbox column: center and consistent width */
+.enhanced-submissions-table th:first-child,
+.enhanced-submissions-table td:first-child{
+  width: 52px;
+  text-align: center;
+  padding-left: .75rem;
+  padding-right: .75rem;
+}
+.enhanced-submissions-table td:first-child .table-checkbox{
+  width: 18px; height: 18px;
+}
+
+/* Priority score pill: ensure consistent size/alignment */
+.enhanced-submissions-table td:nth-child(2) .priority-score{
+  min-width: 44px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Appetite pill alignment */
+.enhanced-submissions-table td:nth-child(3) .appetite-indicator{
+  align-items: center;
+  line-height: 1;
+}
+
+/* Tighter, consistent cell paddings for legibility */
+.enhanced-submissions-table th{ padding-top: .85rem; padding-bottom: .85rem; }
+.enhanced-submissions-table td{ padding-top: .9rem; padding-bottom: .9rem; }
+
+/* Header icon/text alignment */
+.th-content .th-icon{ margin-top: -1px; }
+.th-content .sort-icon{ margin-left: auto; }
+
 /* Table Rows */
 .enhanced-submissions-table tbody tr {
   border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -2355,9 +2440,85 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+/* Zebra striping for readability */
+.enhanced-submissions-table tbody tr:nth-child(even){
+  background: rgba(255,255,255,0.03);
+}
+
 .enhanced-submissions-table tbody tr.selected {
   background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.1));
   border-color: var(--indigo);
+}
+
+/* Numeric column alignment and tabular figures */
+.tabular-nums{ font-variant-numeric: tabular-nums; }
+.enhanced-submissions-table th:nth-child(6),
+.enhanced-submissions-table td:nth-child(6), /* Premium */
+.enhanced-submissions-table th:nth-child(7),
+.enhanced-submissions-table td:nth-child(7), /* TIV */
+.enhanced-submissions-table th:nth-child(8),
+.enhanced-submissions-table td:nth-child(8)  /* Win% */
+{ text-align: right; }
+
+/* Account column truncation with tooltip */
+.enhanced-submissions-table td.col-account .name{
+  display: block;
+  max-width: 28ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.enhanced-submissions-table td.col-account .sub{
+  opacity: .75; font-size: .75rem;
+  max-width: 32ch;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Actions: prevent wrapping pills */
+.enhanced-submissions-table td:nth-child(9) .pill{ white-space: nowrap; }
+
+/* Column sizing */
+.enhanced-submissions-table th:nth-child(4),
+.enhanced-submissions-table td:nth-child(4){ min-width: 260px; }
+.enhanced-submissions-table th:nth-child(5),
+.enhanced-submissions-table td:nth-child(5){ width: 88px; }
+.enhanced-submissions-table th:nth-child(6),
+.enhanced-submissions-table td:nth-child(6){ min-width: 140px; }
+.enhanced-submissions-table th:nth-child(7),
+.enhanced-submissions-table td:nth-child(7){ min-width: 160px; }
+.enhanced-submissions-table th:nth-child(8),
+.enhanced-submissions-table td:nth-child(8){ width: 100px; }
+
+/* Responsive column adjustments to remove need for horizontal scroll */
+@media (max-width: 1200px){
+  .enhanced-submissions-table th:nth-child(4),
+  .enhanced-submissions-table td:nth-child(4){ min-width: 220px; }
+  .enhanced-submissions-table th:nth-child(6),
+  .enhanced-submissions-table td:nth-child(6){ min-width: 120px; }
+}
+@media (max-width: 1024px){
+  /* Hide Actions column */
+  .enhanced-submissions-table th:nth-child(9),
+  .enhanced-submissions-table td:nth-child(9){ display: none; }
+}
+@media (max-width: 900px){
+  /* Hide TIV column */
+  .enhanced-submissions-table th:nth-child(7),
+  .enhanced-submissions-table td:nth-child(7){ display: none; min-width: 0 !important; }
+}
+@media (max-width: 768px){
+  /* Hide Win% column */
+  .enhanced-submissions-table th:nth-child(8),
+  .enhanced-submissions-table td:nth-child(8){ display: none; min-width: 0 !important; }
+  .enhanced-submissions-table th:nth-child(4),
+  .enhanced-submissions-table td:nth-child(4){ min-width: 200px; }
+}
+@media (max-width: 640px){
+  /* Hide Priority score column; keep key info only */
+  .enhanced-submissions-table th:nth-child(2),
+  .enhanced-submissions-table td:nth-child(2){ display: none; }
+  .enhanced-submissions-table th:nth-child(5),
+  .enhanced-submissions-table td:nth-child(5){ width: 72px; }
 }
 
 /* Target rows get special highlighting */

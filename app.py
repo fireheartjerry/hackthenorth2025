@@ -411,6 +411,51 @@ def home():
     tgt_ct = int((df["appetite_status"] == "TARGET").sum()) if not df.empty else 0
     out_ct = int((df["appetite_status"] == "OUT").sum()) if not df.empty else 0
     avg_premium = float(df["total_premium"].mean()) if not df.empty else 0.0
+    avg_premium_str = f"${avg_premium:,.0f}"
+    # Percent breakdowns from current dataset
+    def _pct(part, whole):
+        try:
+            return int(round((part / whole) * 100.0)) if whole else 0
+        except Exception:
+            return 0
+    pct_tgt = _pct(tgt_ct, total)
+    pct_in = _pct(in_ct, total)
+    pct_out = _pct(out_ct, total)
+
+    # 7-day vs prior 7-day deltas based on created_at
+    trend_target = trend_in = trend_out = trend_total = 0
+    if not df.empty and "created_at" in df.columns:
+        now = pd.Timestamp.utcnow()
+        w1_start = now - pd.Timedelta(days=7)
+        w2_start = now - pd.Timedelta(days=14)
+        recent = df[df["created_at"] >= w1_start]
+        prior = df[(df["created_at"] >= w2_start) & (df["created_at"] < w1_start)]
+
+        def _delta(cur, prev):
+            try:
+                if prev == 0:
+                    return 0
+                return int(round(((cur - prev) / prev) * 100.0))
+            except Exception:
+                return 0
+
+        trend_total = _delta(len(recent), len(prior))
+        trend_target = _delta(int((recent["appetite_status"] == "TARGET").sum()), int((prior["appetite_status"] == "TARGET").sum()))
+        trend_in = _delta(int((recent["appetite_status"] == "IN").sum()), int((prior["appetite_status"] == "IN").sum()))
+        trend_out = _delta(int((recent["appetite_status"] == "OUT").sum()), int((prior["appetite_status"] == "OUT").sum()))
+
+    # Winnability average (normalized 0..1)
+    avg_win = 0.0
+    if not df.empty and "winnability" in df.columns:
+        s = pd.to_numeric(df["winnability"], errors="coerce")
+        try:
+            s = s.apply(lambda x: np.nan if pd.isna(x) else (x/100.0 if x>1 else float(x)))
+            avg_win = float(s.mean(skipna=True)) if len(s) else 0.0
+        except Exception:
+            avg_win = 0.0
+
+    # Opportunities = targets + in-appetite
+    opp_ct = int(tgt_ct + in_ct)
     return render_template(
         "index.html",
         total=total,
@@ -418,6 +463,16 @@ def home():
         tgt_ct=tgt_ct,
         out_ct=out_ct,
         avg_premium=avg_premium,
+        avg_premium_str=avg_premium_str,
+        pct_tgt=pct_tgt,
+        pct_in=pct_in,
+        pct_out=pct_out,
+        trend_target=trend_target,
+        trend_in=trend_in,
+        trend_out=trend_out,
+        trend_total=trend_total,
+        avg_win=avg_win,
+        opp_ct=opp_ct,
         full_width=True,
     )
 

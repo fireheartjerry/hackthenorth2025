@@ -57,6 +57,13 @@
   
   <script>
     (function(){
+      // Seed quick stats from backend so they are factual on first paint
+      window._dashboardMetrics = {
+        targets: {{ tgt_ct|int }},
+        winRate: {{ (avg_win*100)|round(0) if avg_win is defined else 0 }},
+        avgPremium: {{ avg_premium|round(0) }},
+        opportunities: {{ (tgt_ct + in_ct)|int }}
+      };
       function greet(){
         const n = localStorage.getItem('USER_NAME') || '';
         const h = new Date().getHours();
@@ -114,9 +121,10 @@
     <div class="metric-card-enhanced target-metric hover-lift" data-metric="target">
         <div class="metric-header">
             <div class="metric-icon target-icon">🎯</div>
-            <div class="metric-trend trend-up">
-                <span class="trend-icon">↗</span>
-                <span class="trend-value">+12%</span>
+            {% set t = trend_target %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
             </div>
         </div>
         <div class="metric-content">
@@ -126,18 +134,19 @@
         </div>
         <div class="metric-progress">
             <div class="progress-bar bg-purple-500/30">
-                <div class="progress-fill bg-purple-400" style="width: 85%"></div>
+                <div class="progress-fill bg-purple-400" style="width: {{ pct_tgt }}%"></div>
             </div>
-            <div class="progress-text">85% of goal</div>
+            <div class="progress-text">{{ pct_tgt }}% of submissions</div>
         </div>
     </div>
     
     <div class="metric-card-enhanced in-metric hover-lift" data-metric="in">
         <div class="metric-header">
             <div class="metric-icon in-icon">✅</div>
-            <div class="metric-trend trend-up">
-                <span class="trend-icon">↗</span>
-                <span class="trend-value">+8%</span>
+            {% set t = trend_in %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
             </div>
         </div>
         <div class="metric-content">
@@ -147,18 +156,19 @@
         </div>
         <div class="metric-progress">
             <div class="progress-bar bg-emerald-500/30">
-                <div class="progress-fill bg-emerald-400" style="width: 72%"></div>
+                <div class="progress-fill bg-emerald-400" style="width: {{ pct_in }}%"></div>
             </div>
-            <div class="progress-text">72% conversion</div>
+            <div class="progress-text">{{ pct_in }}% of submissions</div>
         </div>
     </div>
     
     <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
         <div class="metric-header">
             <div class="metric-icon total-icon">📊</div>
-            <div class="metric-trend trend-neutral">
-                <span class="trend-icon">→</span>
-                <span class="trend-value">+2%</span>
+            {% set t = trend_total %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
             </div>
         </div>
         <div class="metric-content">
@@ -168,18 +178,19 @@
         </div>
         <div class="metric-progress">
             <div class="progress-bar bg-blue-500/30">
-                <div class="progress-fill bg-blue-400" style="width: 60%"></div>
+                <div class="progress-fill bg-blue-400" style="width: 100%"></div>
             </div>
-            <div class="progress-text">60% capacity</div>
+            <div class="progress-text">Avg premium {{ avg_premium_str }}</div>
         </div>
     </div>
     
     <div class="metric-card-enhanced out-metric hover-lift" data-metric="out">
         <div class="metric-header">
             <div class="metric-icon out-icon">❌</div>
-            <div class="metric-trend trend-down">
-                <span class="trend-icon">↘</span>
-                <span class="trend-value">-5%</span>
+            {% set t = trend_out %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
             </div>
         </div>
         <div class="metric-content">
@@ -189,9 +200,9 @@
         </div>
         <div class="metric-progress">
             <div class="progress-bar bg-rose-500/30">
-                <div class="progress-fill bg-rose-400" style="width: 25%"></div>
+                <div class="progress-fill bg-rose-400" style="width: {{ pct_out }}%"></div>
             </div>
-            <div class="progress-text">25% rejection rate</div>
+            <div class="progress-text">{{ pct_out }}% of submissions</div>
         </div>
     </div>
 </div>
