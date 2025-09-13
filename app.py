@@ -375,15 +375,6 @@ def dfToDict(df):
     return records
 
 
-def get_role():
-    # Simple role access control: cookie or query param, defaults to 'uw'
-    role = request.cookies.get("role") or request.args.get("role") or "uw"
-    role = str(role).lower()
-    if role not in {"uw", "leader", "admin"}:
-        role = "uw"
-    return role
-
-
 @app.route("/")
 def home():
     df, _ = refreshCache()
@@ -878,15 +869,7 @@ def api_classified_mode():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
 
-    # Score and rank using existing weights (map per mode)
-    weights_map = {
-        "unicorn_hunting": MODES.get("unicorn_hunting", MODES["balanced_growth"])["weights"],
-        "balanced_growth": MODES.get("balanced_growth", MODES["balanced_growth"])["weights"],
-        "loose_fits": MODES.get("loose_fits", MODES["balanced_growth"])["weights"],
-        "turnaround_bets": MODES.get("turnaround_bets", MODES["balanced_growth"])["weights"],
-    }
-    weights = weights_map.get(mode, MODES["balanced_growth"]["weights"])
-
+    # Score and rank using existing mode weights
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
@@ -942,12 +925,10 @@ def api_classified_mode():
         "mode_score",
     }
 
-    # Apply sorting if specified
-    if sort_by and sort_by in valid_keys:
-        rows = sorted(rows, key=lambda x: sort_key(x, sort_by), reverse=reverse)
+    if sort_by in valid_keys:
+        rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
     else:
-        # Default sorting by priority_score descending
-        rows = sorted(rows, key=lambda x: sort_key(x, "priority_score"), reverse=True)
+        rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
 
     return jsonify({
         "count": len(rows),
