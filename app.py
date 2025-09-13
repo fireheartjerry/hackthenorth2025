@@ -201,15 +201,39 @@ def classifyRow(row):
         else:
             score += 1
 
+    # Building age/year checks per guidelines:
+    # - Newer than 2010 => Target
+    # - Newer than 1990 => Acceptable
+    # - Older than 1990 => Not acceptable
     age = row.get("building_age", np.nan)
-    if pd.notna(age):
-        # newer than 2010 => target; newer than 1990 => acceptable; older than 1990 => not acceptable
-        if age <= (CURRENT_YEAR - 2010):
-            score += 2
-        elif age <= (CURRENT_YEAR - 1990):
-            score += 1
-        else:
-            reasons.append("Building age older than 1990")
+    year = row.get("oldest_building", np.nan)
+    # Prefer year-based strict comparisons when available; otherwise derive from age
+    if pd.notna(year):
+        try:
+            y = int(float(year))
+            if y > 2010:
+                score += 2
+            elif y > 1990:
+                score += 1
+            else:
+                reasons.append("Building age older than 1990")
+        except Exception:
+            # Fallback to age logic if parsing fails
+            if pd.notna(age):
+                if age < (CURRENT_YEAR - 2010):
+                    score += 2
+                elif age <= (CURRENT_YEAR - 1990):
+                    score += 1
+                else:
+                    reasons.append("Building age older than 1990")
+    else:
+        if pd.notna(age):
+            if age < (CURRENT_YEAR - 2010):
+                score += 2
+            elif age <= (CURRENT_YEAR - 1990):
+                score += 1
+            else:
+                reasons.append("Building age older than 1990")
 
     ctype = str(row.get("construction_type", "") or "").strip()
     if ctype in ACCEPT_CONSTRUCTION:
@@ -233,7 +257,10 @@ def classifyRow(row):
             st in TARGET_STATES
             and 75_000 <= (premium or 0) <= 100_000
             and 50_000_000 <= (tiv or 0) <= 100_000_000
-            and pd.notna(age) and age <= (CURRENT_YEAR - 2010)
+            and (
+                (pd.notna(year) and float(year) > 2010)
+                or (pd.notna(age) and age < (CURRENT_YEAR - 2010))
+            )
         ):
             status = "TARGET"
 
@@ -346,15 +373,6 @@ def dfToDict(df):
         x = {c: _safe_json_value(r[c]) for c in cols}
         records.append(x)
     return records
-
-
-def get_role():
-    # Simple role access control: cookie or query param, defaults to 'uw'
-    role = request.cookies.get("role") or request.args.get("role") or "uw"
-    role = str(role).lower()
-    if role not in {"uw", "leader", "admin"}:
-        role = "uw"
-    return role
 
 
 @app.route("/")
@@ -690,7 +708,11 @@ def apiNlq():
 
 @app.route("/api/modes")
 def api_modes():
-    return jsonify({"modes": list(MODES.keys())})
+    # Return an array of objects so the UI can render key/label pairs
+    arr = [
+        {"key": k, "label": k.replace("_", " ").title()} for k in MODES.keys()
+    ]
+    return jsonify(arr)
 
 
 @app.route("/api/mode/percentiles")
