@@ -195,6 +195,36 @@
             <button id="btn_export" class="quick-action">📊 Export</button>
         </div>
     </div>
+    
+    <!-- AI Summary Widget -->
+    <div id="ai_summary_widget" class="hidden mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg border border-purple-400/30">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white text-sm">🤖</span>
+                </div>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-purple-300">Gemini AI Activity</h4>
+                    <button id="ai_summary_close" class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="text-xs">✕</span>
+                    </button>
+                </div>
+                <div id="ai_summary_content" class="text-xs text-slate-300 space-y-1">
+                    <!-- AI activity will be populated here -->
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20">
+                    <div class="text-xs text-purple-400/80">
+                        <span id="ai_model_info">Powered by Gemini Flash 2.0</span>
+                    </div>
+                    <div class="text-xs text-purple-400/60" id="ai_last_used">
+                        <!-- Last used timestamp -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Enhanced Submissions Table -->
@@ -749,21 +779,34 @@
                 fetch("/api/nlq", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query }),
+                    body: JSON.stringify({ q: query }),
                 })
                 .then((r) => r.json())
                 .then((j) => {
-                    if (j.ok) {
+                    // Show AI summary
+                    const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
+                    const summary = j.ai_summary || "Processed query";
+                    const activity = `
+                        <div><strong>Query:</strong> "${query}"</div>
+                        <div><strong>AI Status:</strong> ${aiUsed}</div>
+                        <div><strong>Action:</strong> ${summary}</div>
+                        ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
+                    `;
+                    if (window.showAiSummary) {
+                        window.showAiSummary(activity);
+                    }
+                    
+                    if (j.filters) {
                         // Apply the AI-generated filters
-                        Object.entries(j.filters || {}).forEach(([key, value]) => {
+                        Object.entries(j.filters).forEach(([key, value]) => {
                             const element = document.getElementById(`f_${key}`);
-                            if (element) element.value = value;
+                            if (element && value) element.value = value;
                         });
                         const applyBtn = document.getElementById("btn_apply");
                         if (applyBtn) applyBtn.click();
                         toast("AI filters applied", "success");
                     } else {
-                        toast("AI query failed: " + (j.error || "Unknown error"), "error");
+                        toast("No filters generated from query", "warning");
                     }
                 })
                 .catch(() => toast("AI query failed", "error"));

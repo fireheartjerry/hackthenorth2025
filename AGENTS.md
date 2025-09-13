@@ -4,7 +4,7 @@
 
 ---
 
-## 1) Mission & Objective
+## 1) Mission & Objective 
 Design a **next‑generation RiskOps underwriting dashboard** that, on user login, **surfaces and prioritizes high‑value, in‑appetite submissions** so underwriters can act faster and more effectively.
 
 - **Primary Goal:** Reimagine the *landing page* experience to intelligently curate submissions aligned with **carrier appetite**.
@@ -108,12 +108,13 @@ Implement the **Commercial Property** appetite rules exactly; use them to comput
 
 ---
 
-## 6) AI (OpenAI) — Where To Use The $50 Credit
-- **One‑liner Appetite Explanations:** Given a submission’s fields + the guideline text, generate a concise reason for `"TARGET"/"IN"/"OUT"`.
-- **Natural‑Language Query (NLQ):** Convert English queries like “out‑of‑appetite in FL > 100k premium” into structured filters.
-- **Assistant Q&A:** “Why was submission 123 out‑of‑appetite?” returns rule‑referenced explanation; “Show top 5 targets this week” returns a filtered/sorted set.
+## 6) AI (Gemini) — Enhanced AI Features
+- **One‑liner Appetite Explanations:** Given a submission's fields + the guideline text, generate a concise reason for `"TARGET"/"IN"/"OUT"` using Gemini Flash 2.0.
+- **Natural‑Language Query (NLQ):** Convert English queries like "out‑of‑appetite in FL > 100k premium" into structured filters with Gemini intelligence.
+- **Assistant Q&A:** "Why was submission 123 out‑of‑appetite?" returns rule‑referenced explanation; "Show top 5 targets this week" returns a filtered/sorted set.
+- **AI Activity Tracking:** Real-time widget displays what AI operations were performed, whether AI was used or fallback applied, and relevant notes.
 
-(Ref: *Underwriting Guidelines Explained.pdf* — encourages AI use for clarity; credit announced in challenge brief)
+(Powered by Google's Gemini Flash 2.0 for faster, more efficient AI processing)
 
 ---
 
@@ -128,8 +129,8 @@ Implement the **Commercial Property** appetite rules exactly; use them to comput
 - **API Endpoints:**
   - `/api/policies` — raw+classified
   - `/api/classified` — supports filters: `state`, `status`, `min_premium`, `max_premium`, `q`
-  - `/api/explain/<id>` — AI one‑liner explanation
-  - `/api/nlq` — English → filter JSON
+  - `/api/explain/<id>` — Gemini AI one‑liner explanation with usage tracking
+  - `/api/nlq` — English → filter JSON with Gemini intelligence and activity logs
 - **Error Handling:** Graceful 401/5xx handling; surface UI toasts/messages.
 
 ### 7.2 Frontend (templates or SPA; sample uses server‑rendered + Tailwind)
@@ -158,8 +159,8 @@ FEDERATO_AUTH_URL=https://product-federato.us.auth0.com/oauth/token
 FEDERATO_POLICIES_URL=https://product.federato.ai/integrations-api/handlers/all-policies?outputOnly=true
 FEDERATO_POLICIES_URL_TYPO=https://product.federato.ai/integrations-api/handlers/all-pollicies?outputOnly=true
 USE_LOCAL_DATA=false
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.0-flash-exp
 ```
 (Refs: *API Documentation.pdf*; typo path observed in real responses.)
 
@@ -170,7 +171,7 @@ OPENAI_MODEL=gpt-4o-mini
 2. **DataFrame Build:** Parse types; derive `building_age`; fix `winnability` scale.
 3. **Rules Engine:** Encode appetite thresholds; produce status + reasons + scores.
 4. **Cache Layer:** Memoize raw+classified; scheduled refresh or manual button.
-5. **API Surface:** `/api/classified` with filters; `/api/explain` and `/api/nlq` using OpenAI.
+5. **API Surface:** `/api/classified` with filters; `/api/explain` and `/api/nlq` using Gemini Flash 2.0 with activity tracking.
 6. **UI Build:** KPI tiles, prioritized list, filters+table, detail view with “Explain” CTA.
 7. **Polish & QA:** Empty states, loading skeletons, accessibility, responsive, sanity tests on rules.
 8. **Demo Scripts:** Seed `.env`, run app, present curated “wow” scenarios (targets vs outs).
