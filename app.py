@@ -418,6 +418,7 @@ def home():
         tgt_ct=tgt_ct,
         out_ct=out_ct,
         avg_premium=avg_premium,
+        full_width=True,
     )
 
 

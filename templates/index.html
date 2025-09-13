@@ -240,9 +240,9 @@
 </div>
 
 <!-- Modern Workload Management -->
-<div class="workload-section grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-    <!-- Left: Prioritized Submissions -->
-    <div class="lg:col-span-2">
+<div class="workload-section mb-6">
+    <!-- Prioritized Submissions - Full Width -->
+    <div class="w-full">
         <div class="workload-panel glass-panel">
             <div class="panel-header">
                 <div class="flex items-center gap-3">
@@ -316,219 +316,6 @@
                 <div class="stat">
                     <span class="stat-label">Avg Review Time</span>
                     <span class="stat-value" id="avg_time">—min</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right: Enhanced Sidebar -->
-    <div class="sidebar-content space-y-6">
-        <!-- Performance Dashboard -->
-        <div class="performance-panel glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <span class="performance-icon">🎯</span>
-                    Performance Goals
-                </h3>
-                <button class="expand-btn" data-target="goals">
-                    <span class="expand-icon">↗</span>
-                </button>
-            </div>
-            
-            <div class="goals-grid">
-                <div class="goal-card overperforming">
-                    <div class="goal-header">
-                        <div class="goal-status success">
-                            <span class="status-icon">✓</span>
-                            <span class="status-text">On Track</span>
-                        </div>
-                        <div class="goal-progress">128%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">Account Retention</h4>
-                        <p class="goal-desc">Retain 90% of accounts with LR ≤ 50%</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill" style="width: 128%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="goal-card on-track">
-                    <div class="goal-header">
-                        <div class="goal-status warning">
-                            <span class="status-icon">⚠</span>
-                            <span class="status-text">Watch</span>
-                        </div>
-                        <div class="goal-progress">92%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">TIV Exposure</h4>
-                        <p class="goal-desc">Keep Zone 6 TIV under $150M</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill warning" style="width: 92%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="goal-card underperforming">
-                    <div class="goal-header">
-                        <div class="goal-status danger">
-                            <span class="status-icon">!</span>
-                            <span class="status-text">Action Needed</span>
-                        </div>
-                        <div class="goal-progress">67%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">Rate Increases</h4>
-                        <p class="goal-desc">20% rate target on West Commercial</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill danger" style="width: 67%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Smart Insights -->
-        <div class="insights-panel glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <span class="insights-icon">🧠</span>
-                    Smart Insights
-                </h3>
-                <div class="insight-badge">AI-Powered</div>
-            </div>
-            
-            <div class="insights-list">
-                <div class="insight-item trending">
-                    <div class="insight-icon trend-up">📈</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Premium Surge</div>
-                        <div class="insight-desc">CA submissions up 23% this week</div>
-                        <div class="insight-action">Review targets →</div>
-                    </div>
-                </div>
-                
-                <div class="insight-item alert">
-                    <div class="insight-icon trend-down">⚠️</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Risk Alert</div>
-                        <div class="insight-desc">Higher loss ratios in construction</div>
-                        <div class="insight-action">Investigate →</div>
-                    </div>
-                </div>
-                
-                <div class="insight-item opportunity">
-                    <div class="insight-icon trend-neutral">💡</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Market Opportunity</div>
-                        <div class="insight-desc">Underwriting capacity in FL</div>
-                        <div class="insight-action">Explore →</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Quick Analytics -->
-        <div class="analytics-enhanced glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold">📊 Portfolio Analytics</h3>
-                <button class="view-all-btn" onclick="window.location.href='/insights'">
-                    View All →
-                </button>
-            </div>
-            
-            <!-- Enhanced Analytics with Animation -->
-            <div class="analytics-grid enhanced">
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">💰</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Avg Premium</div>
-                        <div class="analytic-value">$<span class="counter" data-target="{{ (avg_premium/1000)|round }}">0</span>K</div>
-                        <div class="analytic-trend up">+5.2%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 82%; background: linear-gradient(90deg, #10b981, #34d399);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">🎯</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Win Rate</div>
-                        <div class="analytic-value"><span class="counter" data-target="72.4">0</span>%</div>
-                        <div class="analytic-trend up">+1.8%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 72%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">⏱️</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Cycle Time</div>
-                        <div class="analytic-value"><span class="counter" data-target="3.2">0</span>d</div>
-                        <div class="analytic-trend down">-0.5d</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 68%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">📈</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Pipeline</div>
-                        <div class="analytic-value">$<span class="counter" data-target="12.4">0</span>M</div>
-                        <div class="analytic-trend up">+8.1%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 88%; background: linear-gradient(90deg, #8b5cf6, #a78bfa);"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Interactive Trend Chart -->
-            <div class="trend-chart-container">
-                <div class="chart-header">
-                    <h4 class="text-sm font-semibold text-indigo-400 mb-2">Performance Trend</h4>
-                    <div class="chart-tabs">
-                        <button class="chart-tab active" data-metric="premium">Premium</button>
-                        <button class="chart-tab" data-metric="volume">Volume</button>
-                        <button class="chart-tab" data-metric="win-rate">Win Rate</button>
-                    </div>
-                </div>
-                <div class="mini-chart-wrapper">
-                    <canvas id="portfolioTrendChart" width="300" height="80"></canvas>
-                </div>
-            </div>
-
-            <!-- Risk Distribution Donut -->
-            <div class="risk-distribution">
-                <h4 class="text-sm font-semibold text-indigo-400 mb-3">Risk Distribution</h4>
-                <div class="risk-visual">
-                    <div class="risk-donut-container">
-                        <canvas id="riskDonutChart" width="100" height="100"></canvas>
-                        <div class="donut-center">
-                            <div class="text-sm font-bold"><span class="counter" data-target="247">0</span></div>
-                            <div class="text-xs opacity-75">Total</div>
-                        </div>
-                    </div>
-                    <div class="risk-legend">
-                        <div class="legend-item">
-                            <span class="legend-dot target"></span>
-                            <span class="text-xs">Target</span>
-                            <span class="text-xs font-bold text-indigo-400">35%</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-dot in"></span>
-                            <span class="text-xs">In-Appetite</span>
-                            <span class="text-xs font-bold text-emerald-400">45%</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-dot out"></span>
-                            <span class="text-xs">Out-of-Appetite</span>
-                            <span class="text-xs font-bold text-red-400">20%</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -637,9 +424,11 @@
                     <tr class="loading-row">
                         <td colspan="7">
                             <div class="loading-content">
-                                <div class="skeleton-row"></div>
-                                <div class="skeleton-row"></div>
-                                <div class="skeleton-row"></div>
+                                <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
+                                <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 98%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 92%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 97%; height: 2.5rem;"></div>
                             </div>
                         </td>
                     </tr>
