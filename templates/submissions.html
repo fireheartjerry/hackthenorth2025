@@ -1,84 +1,87 @@
 {% extends "base.html" %} {% block content %}
-<div class="flex items-end gap-3 flex-wrap glass-panel p-4">
-    <div>
-        <label class="lbl">State</label>
-        <input id="f_state" class="inp" placeholder="e.g., CA" />
+<!-- Enhanced Underwriter Filters -->
+<div class="glass-panel p-4 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Submission Pipeline</h2>
+        <div class="flex items-center gap-2">
+            <span id="subs_count" class="pill pill-sub">— submissions</span>
+            <span id="subs_last" class="text-xs opacity-70"></span>
+        </div>
     </div>
-    <div>
-        <label class="lbl">Status</label>
-        <select id="f_status" class="inp">
-            <option value="">Any</option>
-            <option value="TARGET">Target</option>
-            <option value="IN">In-Appetite</option>
-            <option value="OUT">Out-of-Appetite</option>
-        </select>
+    
+    <!-- Quick Filter Presets -->
+    <div class="mb-4">
+        <div class="flex flex-wrap gap-2 mb-3">
+            <button class="quick-action filter-preset active" data-preset="all">📋 All Submissions</button>
+            <button class="quick-action filter-preset" data-preset="targets">🎯 Targets Only</button>
+            <button class="quick-action filter-preset" data-preset="in-appetite">✅ In-Appetite</button>
+            <button class="quick-action filter-preset" data-preset="high-value">💎 High Value ($100k+)</button>
+            <button class="quick-action filter-preset" data-preset="new-business">🆕 New Business</button>
+            <button class="quick-action filter-preset" data-preset="recent">⏰ Recent (7 days)</button>
+        </div>
     </div>
     <div>
         <label class="lbl">Mode</label>
         <select id="f_mode" class="inp"></select>
         <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
     </div>
-    <div>
-        <label class="lbl">Min Premium</label>
-        <input id="f_min" class="inp" type="number" placeholder="50000" />
-    </div>
-    <div>
-        <label class="lbl">Max Premium</label>
-        <input id="f_max" class="inp" type="number" placeholder="175000" />
-    </div>
-    <div class="flex-1">
-        <label class="lbl">Search</label>
-        <input id="f_q" class="inp" placeholder="Account name..." />
-    </div>
-    <button id="btn_apply" class="btn hover-glow">Apply</button>
-    <div class="flex-1"></div>
-    <div class="flex items-end gap-2">
-        <input
-            id="nlq"
-            class="inp w-72"
-            placeholder="NL query e.g. out-of-appetite in FL >100k"
-        />
-        <button id="btn_nlq" class="btn btn-subtle">Ask</button>
-        <button id="btn_refresh" class="btn btn-subtle">Refresh</button>
+    
+    <div class="flex items-center justify-between mt-4">
+        <div class="flex items-center gap-2">
+            <button id="btn_apply" class="quick-action primary">Apply Filters</button>
+            <button id="btn_clear" class="quick-action">Clear All</button>
+            <button id="btn_save_filter" class="quick-action">💾 Save Filter</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <input id="nlq" class="inp w-72" placeholder="Ask: 'Show targets in CA over $100k premium'" />
+            <button id="btn_nlq" class="quick-action">Ask AI</button>
+            <button id="btn_refresh" class="quick-action">🔄 Refresh</button>
+            <button id="btn_export" class="quick-action">📊 Export</button>
+        </div>
     </div>
 </div>
 
-<div class="mt-6 overflow-x-auto glass-panel p-0">
-    <table class="w-full text-sm table-glass">
-        <thead>
-            <tr>
-                <th class="th th-sort" data-key="id">
-                    ID <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="account_name">
-                    Account <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="primary_risk_state">
-                    State <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="line_of_business">
-                    LOB <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="total_premium">
-                    Premium <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="tiv">
-                    TIV <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="winnability">
-                    Win <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="appetite_status">
-                    Appetite <span class="arrow"></span>
-                </th>
-                <th class="th th-sort" data-key="priority_score">
-                    Priority <span class="arrow"></span>
-                </th>
-                <th class="th"></th>
-            </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-    </table>
+<!-- Enhanced Table -->
+<div class="enhanced-table">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="border-b border-white border-opacity-10">
+                <tr>
+                    <th class="th th-sort text-left py-4 px-6" data-key="priority_score">
+                        Priority <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="appetite_status">
+                        Status <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="account_name">
+                        Account <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="primary_risk_state">
+                        State <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="total_premium">
+                        Premium <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="tiv">
+                        TIV <span class="arrow"></span>
+                    </th>
+                    <th class="th th-sort text-left py-4 px-4" data-key="winnability">
+                        Win% <span class="arrow"></span>
+                    </th>
+                    <th class="th text-left py-4 px-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden text-center py-12">
+        <div class="text-4xl mb-3">📋</div>
+        <h3 class="text-lg font-semibold mb-2">No submissions match your filters</h3>
+        <p class="text-sm opacity-75 mb-4">Try adjusting your criteria or use one of the preset filters above</p>
+        <button class="quick-action primary" onclick="clearAllFilters()">Clear All Filters</button>
+    </div>
 </div>
 
 <script>
@@ -197,19 +200,27 @@
     };
 
     async function populateModes() {
+        const wrap = document.getElementById('f_mode_wrap');
         try {
             const j = await fetchJSON("/api/modes");
-            const modes = j.modes || [];
+            const modes = (j.modes || []).filter(Boolean);
             const sel = document.getElementById("f_mode");
+            if (!sel) return;
+            if (!modes.length) {
+                wrap?.classList?.add('hidden');
+                sel.innerHTML = '<option value="" disabled selected>No modes available</option>';
+                return;
+            }
+            wrap?.classList?.remove('hidden');
             sel.innerHTML = modes
-                .map((m) => `<option value="${m}">${m}</option>`)
+                .map((m) => `<option value="${m}">${m.replace(/_/g,' ')}</option>`)
                 .join("");
-            // default
-            sel.value = modes.includes("balanced_growth")
-                ? "balanced_growth"
-                : modes[0] || "";
+            // default to ACTIVE_MODE if available
+            const active = localStorage.getItem('ACTIVE_MODE') || 'balanced_growth';
+            sel.value = modes.includes(active) ? active : (modes.includes('balanced_growth') ? 'balanced_growth' : (modes[0] || ''));
         } catch (e) {
             console.error("Failed to load modes", e);
+            wrap?.classList?.add('hidden');
         }
     }
 
@@ -302,5 +313,62 @@
         else startAuto();
     });
     startAuto();
+</script>
+<script type="module">
+    import { startAutoRefresh } from "{{ url_for('static', filename='js/refresh.js') }}";
+    function endpointBuilder(){
+        const p = {
+          state: document.getElementById('f_state').value || '',
+          status: document.getElementById('f_status').value || '',
+          min_premium: document.getElementById('f_min').value || '',
+          max_premium: document.getElementById('f_max').value || '',
+          q: document.getElementById('f_q').value || '',
+          mode: document.getElementById('f_mode').value || (localStorage.getItem('ACTIVE_MODE') || 'balanced_growth'),
+          sort_by: window.SORT_BY,
+          sort_dir: window.SORT_DIR,
+        };
+        const qs = new URLSearchParams(p).toString();
+        return `/api/classified_mode?${qs}`;
+    }
+    function hashSelector(row){
+      return {
+        id: row.id,
+        account_name: row.account_name,
+        primary_risk_state: row.primary_risk_state,
+        line_of_business: row.line_of_business,
+        total_premium: row.total_premium,
+        tiv: row.tiv,
+        winnability: row.winnability,
+        appetite_status: row.appetite_status,
+        priority_score: row.priority_score,
+      };
+    }
+    const ctl = startAutoRefresh({
+      targetId: 'tbody',
+      endpointBuilder,
+      hashSelector,
+      onUpdate: (json, changed) => {
+        const rows = json?.data || [];
+        if (changed) { window.renderTable?.(rows); }
+        const el = document.getElementById('subs_last');
+        if (el) {
+          const d = new Date();
+          const hh = d.getHours().toString().padStart(2,'0');
+          const mm = d.getMinutes().toString().padStart(2,'0');
+          el.textContent = `Last updated ${hh}:${mm}`;
+        }
+      },
+    });
+    // Trigger immediate refresh on filter and sort changes
+    ['f_state','f_status','f_mode','f_min','f_max','f_q'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', ()=> ctl?.triggerNow());
+      el.addEventListener('input', ()=> ctl?.triggerNow());
+    });
+    document.querySelectorAll('th.th-sort').forEach(th => {
+      th.addEventListener('click', ()=> ctl?.triggerNow());
+    });
+    window._subsRefreshCtl = ctl;
 </script>
 {% endblock %}

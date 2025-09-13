@@ -1,20 +1,60 @@
 {% extends "base.html" %} {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="card glass hover-up">
-        <div class="card-title">Total Submissions</div>
-        <div class="card-value">{{ total }}</div>
+<!-- Enhanced Underwriter Dashboard -->
+<div class="glass-panel mb-6 flex items-center justify-between">
+  <div>
+    <div id="hero_greet" class="text-2xl font-semibold tracking-tight">Welcome</div>
+    <div id="hero_sub" class="text-xs opacity-70 mt-1">High-value opportunities ready for your review</div>
+  </div>
+  <div class="hidden md:flex items-center gap-3">
+    <button id="btn_persona" class="quick-action primary">Build Persona</button>
+    <button id="btn_refresh_home" class="quick-action">Refresh Data</button>
+    <span class="chip">Vibe: <span id="hero_vibe" class="ml-1">—</span></span>
+    <a href="#" id="open_vibes" class="pill pill-sub hover-glow">Tweak vibe</a>
+  </div>
+  <script>
+    (function(){
+      function greet(){
+        const n = localStorage.getItem('USER_NAME') || '';
+        const h = new Date().getHours();
+        const g = h<12? 'Good morning' : h<18? 'Good afternoon' : 'Good evening';
+        document.getElementById('hero_greet').textContent = n ? `${g}, ${n} 👋` : `${g} 👋`;
+      }
+      function vibe(){
+        const v = (localStorage.getItem('VIBE') || 'aurora');
+        const pretty = v.charAt(0).toUpperCase()+v.slice(1);
+        document.getElementById('hero_vibe').textContent = pretty;
+      }
+      document.getElementById('open_vibes')?.addEventListener('click', (e)=>{
+        e.preventDefault();
+        document.getElementById('vibe_btn')?.click();
+      });
+      greet(); vibe();
+      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
+    })();
+  </script>
+</div>
+
+<!-- Enhanced Metrics Dashboard -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="metric-card">
+        <div class="metric-value text-purple-300">{{ tgt_ct }}</div>
+        <div class="metric-label">Target Opportunities</div>
+        <div class="text-xs text-purple-200 mt-1">High priority</div>
     </div>
-    <div class="card glass hover-up">
-        <div class="card-title">In-Appetite</div>
-        <div class="card-value text-emerald-300">{{ in_ct }}</div>
+    <div class="metric-card">
+        <div class="metric-value text-emerald-300">{{ in_ct }}</div>
+        <div class="metric-label">In-Appetite</div>
+        <div class="text-xs text-emerald-200 mt-1">Ready to review</div>
     </div>
-    <div class="card glass hover-up">
-        <div class="card-title">Target</div>
-        <div class="card-value text-indigo-300">{{ tgt_ct }}</div>
+    <div class="metric-card">
+        <div class="metric-value">{{ total }}</div>
+        <div class="metric-label">Total Submissions</div>
+        <div class="text-xs opacity-60 mt-1">This period</div>
     </div>
-    <div class="card glass hover-up">
-        <div class="card-title">Out-of-Appetite</div>
-        <div class="card-value text-rose-300">{{ out_ct }}</div>
+    <div class="metric-card">
+        <div class="metric-value text-rose-300">{{ out_ct }}</div>
+        <div class="metric-label">Out-of-Appetite</div>
+        <div class="text-xs text-rose-200 mt-1">Review criteria</div>
     </div>
 </div>
 
@@ -32,41 +72,28 @@
                     <span id="mode_expl" class="ml-2 text-xs opacity-70"></span>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button
-                    id="btn_refresh_home"
-                    class="text-sm pill pill-sub hover-glow"
-                >
-                    Refresh
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="glass-panel">
+            <h3 class="text-sm font-semibold mb-3">Quick Actions</h3>
+            <div class="space-y-2">
+                <button class="w-full quick-action text-left" onclick="window.location.href='/submissions?status=TARGET'">
+                    🎯 Review All Targets
                 </button>
-                <button
-                    id="btn_persona"
-                    class="text-sm pill pill-sub hover-glow"
-                >
-                    Build Persona
+                <button class="w-full quick-action text-left" onclick="exportOpportunities()">
+                    📊 Export Current View
                 </button>
-                <a
-                    href="{{ url_for('submissions') }}"
-                    class="text-indigo-300 text-sm hover:underline"
-                    >Open full table →</a
-                >
+                <button class="w-full quick-action text-left" onclick="showBulkActions()">
+                    ⚡ Bulk Actions
+                </button>
+                <button class="w-full quick-action text-left" onclick="showAnalytics()">
+                    📈 Portfolio Analytics
+                </button>
             </div>
         </div>
-        <!-- Tabs -->
-        <div class="mt-3 flex items-center gap-2 text-xs">
-            <button id="tab_assigned" class="pill pill-sub hover-glow">
-                Assigned to me
-                <span id="ct_assigned" class="ml-1 opacity-75">—</span>
-            </button>
-            <button id="tab_related" class="pill pill-sub hover-glow">
-                Related to me
-                <span id="ct_related" class="ml-1 opacity-75">—</span>
-            </button>
-            <button id="tab_referrals" class="pill pill-sub hover-glow">
-                Referrals
-                <span id="ct_referrals" class="ml-1 opacity-75">—</span>
-            </button>
-        </div>
+    </div>
+</div>
         <div id="worklist" class="mt-4 text-sm"></div>
     </div>
 
@@ -149,124 +176,12 @@
     </div>
 </div>
 
-<!-- Persona Modal -->
-<div id="persona_modal" class="overlay hidden">
-    <div class="overlay-inner">
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="text-lg font-semibold">
-                Persona-Based Appetite Builder
-            </h3>
-            <button id="persona_close" class="pill pill-sub">Close</button>
-        </div>
-        <div id="persona_steps" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Step containers (simple wizard) -->
-            <div class="space-y-3">
-                <label class="lbl"
-                    >Risk posture (1=Conservative, 5=Aggressive)</label
-                >
-                <input
-                    id="ans_aggr"
-                    type="range"
-                    min="1"
-                    max="5"
-                    value="3"
-                    class="w-full"
-                />
-            </div>
-            <div class="space-y-3">
-                <label class="lbl">Primary objective</label>
-                <select id="ans_obj" class="inp">
-                    <option value="expected_premium">Expected premium</option>
-                    <option value="win_rate">Win rate</option>
-                    <option value="freshness">Freshness</option>
-                    <option value="balance" selected>Balance</option>
-                </select>
-            </div>
-            <div class="space-y-3">
-                <label class="lbl">Premium band ($)</label>
-                <div class="flex gap-2">
-                    <input
-                        id="ans_prem_lo"
-                        type="number"
-                        class="inp w-full"
-                        placeholder="100000"
-                        value="100000"
-                    />
-                    <input
-                        id="ans_prem_hi"
-                        type="number"
-                        class="inp w-full"
-                        placeholder="1500000"
-                        value="1500000"
-                    />
-                </div>
-            </div>
-            <div class="space-y-3">
-                <label class="lbl">Loss ratio tolerance (max)</label>
-                <input
-                    id="ans_lr"
-                    type="range"
-                    min="0.4"
-                    max="1.0"
-                    step="0.05"
-                    value="0.65"
-                    class="w-full"
-                />
-            </div>
-            <div class="space-y-3">
-                <label class="lbl">TIV ceiling ($)</label>
-                <input
-                    id="ans_tiv"
-                    type="number"
-                    class="inp w-full"
-                    placeholder="150000000"
-                    value="150000000"
-                />
-            </div>
-            <div class="space-y-3">
-                <label class="lbl">Business focus</label>
-                <div class="flex gap-4 items-center">
-                    <label class="flex items-center gap-2"
-                        ><input id="ans_new_only" type="checkbox" checked />
-                        <span>New business only</span></label
-                    >
-                    <label class="flex items-center gap-2"
-                        ><input id="ans_good_con" type="checkbox" />
-                        <span>Prefer good construction</span></label
-                    >
-                </div>
-            </div>
-            <div class="space-y-3 md:col-span-2">
-                <label class="lbl"
-                    >Construction preferences (comma-separated)</label
-                >
-                <input
-                    id="ans_con_list"
-                    class="inp w-full"
-                    placeholder="Fire Resistive, Masonry Non-Combustible"
-                />
-            </div>
-            <div class="space-y-3 md:col-span-2">
-                <label class="lbl">Additional comments</label>
-                <textarea
-                    id="ans_comments"
-                    class="inp w-full"
-                    rows="3"
-                    placeholder="Push West Coast but watch LR <= 0.6"
-                ></textarea>
-            </div>
-        </div>
-        <div class="mt-4 flex items-center gap-3">
-            <button id="persona_seed" class="btn-subtle btn">Seed Only</button>
-            <button id="persona_submit" class="btn">Propose with Gemini</button>
-            <div id="persona_status" class="text-xs opacity-80"></div>
-        </div>
-    </div>
-</div>
+<!-- Persona Modal: removed (use global in base.html) -->
 
 <script>
     let ALL = [];
-    let currentTab = "ASSIGNED"; // ASSIGNED | RELATED | REFERRALS
+    let currentFilter = "all";
+    let currentData = [];
 
     function getActiveMode() {
         return localStorage.getItem("ACTIVE_MODE") || "balanced_growth";
@@ -311,70 +226,152 @@
                 toast(`Updated ${j.count} results — ${mode}`, "success");
             }
         });
+        const topState = Object.keys(stateCounts).reduce((a, b) => stateCounts[a] > stateCounts[b] ? a : b, '—');
+        
+        const avgWinnability = data.length ? 
+            data.reduce((sum, item) => sum + (item.winnability || 0), 0) / data.length : 0;
+            
+        const inAppetite = data.filter(item => item.appetite_status === 'IN' || item.appetite_status === 'TARGET').length;
+        const conversionRate = data.length ? (inAppetite / data.length * 100) : 0;
+        
+        document.getElementById('avg-premium-targets').textContent = 
+            avgPremiumTargets > 0 ? `$${Math.round(avgPremiumTargets).toLocaleString()}` : '—';
+        document.getElementById('top-state').textContent = topState;
+        document.getElementById('avg-winnability').textContent = 
+            avgWinnability > 0 ? `${(avgWinnability * (avgWinnability > 1 ? 1 : 100)).toFixed(0)}%` : '—';
+        document.getElementById('conversion-rate').textContent = `${conversionRate.toFixed(1)}%`;
     }
-    function renderWorklistRows(rows, mode) {
-        const el = document.getElementById("worklist");
-        rows = rows.slice(0, 8);
-        el.innerHTML = rows
-            .map(
-                (r) => `
-    <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
-      <div class="row-main">
-        <div class="row-title">${r.account_name || "-"}</div>
-        <div class="row-sub">${r.primary_risk_state || "-"} · ${
-                    r.line_of_business || "-"
-                } · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
-      </div>
-      <div class="row-badges">
-        ${badge(r.appetite_status)}
-        <span class="chip">Score ${Number(r.priority_score || 0).toFixed(
-            2
-        )}</span>
-      </div>
-    </a>
-  `
-            )
-            .join("");
+
+    // Quick action functions
+    function exportOpportunities() {
+        toast('Export functionality will be available soon', 'info');
     }
-    function badge(s) {
-        if (s === "TARGET")
-            return `<span class="pill pill-indigo">Target</span>`;
-        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
-        return `<span class="pill pill-rose">Out</span>`;
+
+    function showBulkActions() {
+        toast('Bulk actions panel will be available soon', 'info');
     }
-    document.getElementById("btn_refresh_home").onclick = () => {
-        fetchJSON("/api/refresh", { method: "POST" })
-            .then(() => {
-                toast("Data refreshed", "success");
-                loadHome();
-            })
-            .catch((err) => toast("Refresh failed: " + err.message, "error"));
+
+    function showAnalytics() {
+        window.location.href = '/insights';
+    }
+    
+    // Enhanced data loading and initialization
+    async function loadHome() {
+        try {
+            const mode = getActiveMode();
+            const response = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(mode)}`);
+            
+            // Store all data
+            ALL = response.data || [];
+            
+            // Apply current filter
+            applyFilter(currentFilter);
+            
+            updateModeChip();
+            updateLastUpdated('worklist_last');
+        } catch (error) {
+            toast('Failed to load opportunities: ' + error.message, 'error');
+        }
+    }
+
+    function updateModeChip(){
+        const mode = getActiveMode();
+        const chip = document.getElementById('mode_chip');
+        if(chip) chip.innerHTML = `Mode: ${prettyMode(mode)}`;
+    }
+    
+    function updateLastUpdated(elId){
+        const el = document.getElementById(elId);
+        if(!el) return;
+        const d = new Date();
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mm = d.getMinutes().toString().padStart(2,'0');
+        el.textContent = `Last updated ${hh}:${mm}`;
+    }
+
+    // Event handlers
+    document.addEventListener('DOMContentLoaded', () => {
+        // Filter button handlers
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyFilter(btn.dataset.filter);
+            });
+        });
+
+        // Refresh handler
+        document.getElementById('btn_refresh_home')?.addEventListener('click', () => {
+            fetchJSON('/api/refresh', { method: 'POST' })
+                .then(() => {
+                    toast('Data refreshed', 'success');
+                    loadHome();
+                })
+                .catch(err => toast('Refresh failed: ' + err.message, 'error'));
+        });
+
+        // Mode change handler
+        document.getElementById('home_mode')?.addEventListener('change', (e) => {
+            setActiveMode(e.target.value);
+            loadHome();
+        });
+
+        // Load modes and initialize
+        loadModes().then(() => {
+            loadHome();
+        });
+    });
+
+    // Load available modes
+    async function loadModes() {
+        try {
+            const modes = await fetchJSON('/api/modes');
+            const selects = ['home_mode'];
+            
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                
+                sel.innerHTML = modes.map(m => 
+                    `<option value="${m.key}">${m.label}</option>`
+                ).join('');
+                
+                sel.value = getActiveMode();
+            });
+        } catch (error) {
+            console.error('Failed to load modes:', error);
+        }
+    }
     };
 
     async function populateHomeModes() {
+        const wrap = document.getElementById('home_mode_wrap');
         try {
             const j = await fetchJSON("/api/modes");
-            const modes = j.modes || [];
+            const modes = (j.modes || []).filter(Boolean);
             const sel = document.getElementById("home_mode");
             if (!sel) return;
+            if (!modes.length) {
+                wrap?.classList?.add('hidden');
+                sel.innerHTML = '<option value="" disabled selected>No modes available</option>';
+                return;
+            }
+            wrap?.classList?.remove('hidden');
             sel.innerHTML = modes
-                .map((m) => `<option value="${m}">${m}</option>`)
+                .map((m) => `<option value="${m}">${m.replace(/_/g,' ')}</option>`)
                 .join("");
             const active = getActiveMode();
             sel.value = modes.includes(active)
                 ? active
-                : modes.includes("balanced_growth")
-                ? "balanced_growth"
-                : modes[0] || "";
+                : (modes.includes("balanced_growth") ? "balanced_growth" : (modes[0] || ""));
             setActiveMode(sel.value);
-            sel.addEventListener("change", () => {
+            sel.onchange = () => {
                 setActiveMode(sel.value);
-                loadHome().catch((err) =>
-                    toast("Load failed: " + err.message, "error")
-                );
-            });
+                updateModeChip();
+                try { window._worklistRefreshCtl?.triggerNow(); } catch {}
+                loadHome().catch((err) => toast("Load failed: " + err.message, "error"));
+            };
         } catch (e) {
             console.warn("Failed to load modes", e);
+            wrap?.classList?.add('hidden');
         }
     }
 
@@ -392,7 +389,7 @@
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean);
-        return {
+        const a = {
             aggressiveness: Number(
                 document.getElementById("ans_aggr").value || 3
             ),
@@ -413,6 +410,8 @@
             construction_pref: con,
             comments: document.getElementById("ans_comments").value || "",
         };
+        try { localStorage.setItem('personaAnswers', JSON.stringify(a)); } catch {}
+        return a;
     }
 
     document.getElementById("persona_seed").onclick = async () => {
@@ -420,6 +419,8 @@
         const status = document.getElementById("persona_status");
         try {
             status.textContent = "Seeding…";
+            document.getElementById("persona_seed").setAttribute('disabled','');
+            document.getElementById("persona_submit").setAttribute('disabled','');
             const res = await fetchJSON("/api/persona/seed", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -434,6 +435,8 @@
             toast("Seed failed: " + e.message, "error");
         } finally {
             status.textContent = "";
+            document.getElementById("persona_seed").removeAttribute('disabled');
+            document.getElementById("persona_submit").removeAttribute('disabled');
         }
     };
 
@@ -442,6 +445,8 @@
         const status = document.getElementById("persona_status");
         try {
             status.textContent = "Calling Gemini…";
+            document.getElementById("persona_seed").setAttribute('disabled','');
+            document.getElementById("persona_submit").setAttribute('disabled','');
             const res = await fetchJSON("/api/persona/propose", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -452,6 +457,10 @@
             });
             toast("Persona proposed and set as custom", "success");
             setActiveMode("custom");
+            const d = new Date();
+            const hh = d.getHours().toString().padStart(2,'0');
+            const mm = d.getMinutes().toString().padStart(2,'0');
+            localStorage.setItem('LAST_REFINED_AT', `${hh}:${mm}`);
             await populateHomeModes();
             document.getElementById("home_mode").value = "custom";
             await loadHome();
@@ -460,8 +469,45 @@
             toast("Propose failed: " + e.message, "error");
         } finally {
             status.textContent = "";
+            document.getElementById("persona_seed").removeAttribute('disabled');
+            document.getElementById("persona_submit").removeAttribute('disabled');
         }
     };
+
+    // Preview rendering (no server override path; show summary only)
+    (function(){
+      const prevBtn = document.getElementById('persona_preview_btn');
+      if (!prevBtn) return;
+      prevBtn.onclick = () => {
+        const a = gatherAnswers();
+        const pv = document.getElementById('persona_preview');
+        if (!pv) return;
+        const lines = [];
+        lines.push(`Aggressiveness: ${a.aggressiveness} · Objective: ${a.objective}`);
+        lines.push(`Premium: $${a.premium_lo.toLocaleString()}–$${a.premium_hi.toLocaleString()} · Max LR: ${a.max_lr}`);
+        lines.push(`TIV ≤ $${a.tiv_max.toLocaleString()} · New only: ${a.new_only ? 'yes' : 'no'} · Good construction: ${a.strict_construction ? 'yes' : 'no'}`);
+        pv.textContent = `Preview — ${lines.join(' • ')} · Estimated count: not available in demo`;
+      };
+    })();
+
+    // Restore answers from localStorage on modal open
+    document.getElementById("btn_persona").addEventListener('click', () => {
+        try {
+          const raw = localStorage.getItem('personaAnswers');
+          if (!raw) return;
+          const a = JSON.parse(raw);
+          if (a.aggressiveness) document.getElementById('ans_aggr').value = a.aggressiveness;
+          if (a.objective) document.getElementById('ans_obj').value = a.objective;
+          if (a.premium_lo) document.getElementById('ans_prem_lo').value = a.premium_lo;
+          if (a.premium_hi) document.getElementById('ans_prem_hi').value = a.premium_hi;
+          if (a.max_lr) document.getElementById('ans_lr').value = a.max_lr;
+          if (a.tiv_max) document.getElementById('ans_tiv').value = a.tiv_max;
+          document.getElementById('ans_new_only').checked = !!a.new_only;
+          document.getElementById('ans_good_con').checked = !!a.strict_construction;
+          if (Array.isArray(a.construction_pref)) document.getElementById('ans_con_list').value = a.construction_pref.join(', ');
+          if (a.comments) document.getElementById('ans_comments').value = a.comments;
+        } catch {}
+    });
 
     // Initial load
     populateHomeModes()
