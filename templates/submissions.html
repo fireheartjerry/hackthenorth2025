@@ -20,10 +20,40 @@
             <button class="quick-action filter-preset" data-preset="recent">⏰ Recent (7 days)</button>
         </div>
     </div>
-    <div>
-        <label class="lbl">Mode</label>
-        <select id="f_mode" class="inp"></select>
-        <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
+    <!-- Detailed Filters -->
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div>
+            <label class="lbl">State</label>
+            <input id="f_state" class="inp" placeholder="e.g., CA" />
+        </div>
+        <div>
+            <label class="lbl">Appetite Status</label>
+            <select id="f_status" class="inp">
+                <option value="">Any Status</option>
+                <option value="TARGET">🎯 Target</option>
+                <option value="IN">✅ In-Appetite</option>
+                <option value="OUT">❌ Out-of-Appetite</option>
+            </select>
+        </div>
+        <div>
+            <label class="lbl">Analysis Mode</label>
+            <select id="f_mode" class="inp">
+                <option value="" disabled selected>Loading modes…</option>
+            </select>
+            <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
+        </div>
+        <div>
+            <label class="lbl">Min Premium</label>
+            <input id="f_min" class="inp" type="number" placeholder="50,000" />
+        </div>
+        <div>
+            <label class="lbl">Max Premium</label>
+            <input id="f_max" class="inp" type="number" placeholder="175,000" />
+        </div>
+        <div>
+            <label class="lbl">Search Account</label>
+            <input id="f_q" class="inp" placeholder="Account name..." />
+        </div>
     </div>
     
     <div class="flex items-center justify-between mt-4">
@@ -85,68 +115,331 @@
 </div>
 
 <script>
+    // Ensure utility functions are available (fallback if app.js hasn't loaded yet)
+    if (typeof window.fetchJSON === 'undefined') {
+        window.fetchJSON = async function(url, opts={}){
+            const res = await fetch(url, opts);
+            if(!res.ok){
+                let msg = `${res.status} ${res.statusText}`;
+                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch (e) {}
+                throw new Error(msg);
+            }
+            return res.json();
+        }
+    }
+    
+    if (typeof window.withLoading === 'undefined') {
+        window.withLoading = async function(el, fn){
+            try{ el?.classList?.add("is-loading"); return await fn(); } finally { el?.classList?.remove("is-loading"); }
+        }
+    }
+    
+    if (typeof window.toast === 'undefined') {
+        window.toast = function(msg, type = "info") {
+            const host = document.getElementById("toasts") || (function(){
+                const d = document.createElement("div");
+                d.id = "toasts"; d.className = "toasts"; document.body.appendChild(d); return d;
+            })();
+            const el = document.createElement("div");
+            el.className = `toast ${type}`;
+            el.textContent = msg;
+            host.appendChild(el);
+            setTimeout(()=>{ el.classList.add("out"); setTimeout(()=>host.removeChild(el), 200); }, 2800);
+        }
+    }
+    
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
     let ALL_SUBMISSIONS = [];
     let currentPreset = "all";
 
-    let LAST_PARAMS = {};
-    let lastHash = "";
+    // Enhanced table rendering with visual priorities
+    function renderTable(rows){
+        const tbody = document.getElementById("tbody");
+        const emptyState = document.getElementById("empty-state");
+        const countSpan = document.getElementById("subs_count");
+        
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = "";
+            emptyState?.classList.remove("hidden");
+            countSpan.textContent = "0 submissions";
+            return;
+        }
+        
+        emptyState?.classList.add("hidden");
+        countSpan.textContent = `${rows.length} submissions`;
+        
+        tbody.innerHTML = rows.map((r) => {
+            const appetiteClass = r.appetite_status === 'TARGET' ? 'target-row' : 
+                                r.appetite_status === 'IN' ? 'in-row' : 'out-row';
+            
+            const priorityClass = r.priority_score >= 7 ? 'priority-high' : 
+                                r.priority_score >= 4 ? 'priority-medium' : 'priority-low';
+            
+            const appetiteBadge = r.appetite_status === 'TARGET' ? 
+                                '<span class="appetite-indicator appetite-target pill">🎯 TARGET</span>' :
+                                r.appetite_status === 'IN' ? 
+                                '<span class="appetite-indicator appetite-in pill">✅ IN</span>' :
+                                '<span class="appetite-indicator appetite-out pill">❌ OUT</span>';
+            
+            const winnabilityPercent = typeof r.winnability === 'number' ? 
+                                      Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
+            
+            return `
+                <tr class="table-row ${appetiteClass}" onclick="window.location.href='/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode')?.value || '')}'">
+                    <td class="td py-4 px-6">
+                        <div class="flex items-center gap-2">
+                            <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>
+                        </div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        ${appetiteBadge}
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-white">${r.account_name || "—"}</div>
+                        <div class="text-xs opacity-75">${r.line_of_business || "—"}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <span class="chip">${r.primary_risk_state || "—"}</span>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-emerald-300">$${Math.round(r.total_premium || 0).toLocaleString()}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold">$${Math.round(r.tiv || 0).toLocaleString()}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-purple-300">${winnabilityPercent}%</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="flex items-center gap-2">
+                            <button class="pill pill-sub text-xs" onclick="event.stopPropagation(); explain(${r.id})">💡 Explain</button>
+                            <button class="pill pill-sub text-xs" onclick="event.stopPropagation(); addToWatch(${r.id})">👀 Watch</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+        updateLastUpdated();
+    }
+
+    // Filter presets for common underwriter workflows
+    function applyPreset(preset) {
+        currentPreset = preset;
+        
+        // Update active preset button
+        document.querySelectorAll('.filter-preset').forEach(btn => btn.classList.remove('active'));
+        const presetBtn = document.querySelector(`[data-preset="${preset}"]`);
+        if (presetBtn) presetBtn.classList.add('active');
+        
+        const params = { sort_by: SORT_BY, sort_dir: SORT_DIR };
+        
+        switch(preset) {
+            case 'targets':
+                params.status = 'TARGET';
+                break;
+            case 'in-appetite':
+                params.status = 'IN';
+                break;
+            case 'high-value':
+                params.min_premium = '100000';
+                break;
+            case 'new-business':
+                params.renewal_or_new_business = 'NEW_BUSINESS';
+                break;
+            case 'recent':
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                break;
+            case 'all':
+            default:
+                // No additional filters
+                break;
+        }
+        
+        load(params);
+    }
+
     async function load(params = {}) {
-        LAST_PARAMS = params;
         const qs = new URLSearchParams(params).toString();
-        const tb = document.getElementById("tbody");
-        await withLoading(tb, async () => {
-            const j = await fetchJSON("/api/classified_mode?" + qs);
-            document.getElementById("sub_mode_expl").textContent =
-                j.mode_explanation || "";
-            const newHash = JSON.stringify(j.data || []);
-            if (newHash === lastHash) return;
-            lastHash = newHash;
-            tb.innerHTML = (j.data || [])
-                .map(
-                    (r) => `
-      <tr class="tr">
-        <td class="td">${r.id}</td>
-        <td class="td"><a class="link" href="/detail/${
-            r.id
-        }?mode=${encodeURIComponent(
-                        document.getElementById("f_mode").value || ""
-                    )}">${r.account_name || "-"}</a></td>
-        <td class="td">${r.primary_risk_state || "-"}</td>
-        <td class="td">${r.line_of_business || "-"}</td>
-        <td class="td">$${Math.round(
-            r.total_premium || 0
-        ).toLocaleString()}</td>
-        <td class="td">$${Math.round(r.tiv || 0).toLocaleString()}</td>
-        <td class="td">${
-            typeof r.winnability === "number"
-                ? Number(
-                      r.winnability > 1 ? r.winnability : r.winnability * 100
-                  ).toFixed(0) + "%"
-                : "-"
-        }</td>
-        <td class="td">${badge(r.appetite_status)}</td>
-        <td class="td">${Number(r.priority_score || 0).toFixed(2)}</td>
-        <td class="td"><button class="pill pill-sub" onclick="explain(${
-            r.id
-        })">Explain</button></td>
-      </tr>
-    `
-                )
-                .join("");
-            toast(`Updated ${j.count} results`, "info");
+        const tbody = document.getElementById("tbody");
+        
+        try {
+            await withLoading(tbody, async () => {
+                const response = await fetchJSON("/api/classified_mode?" + qs);
+                const modeExpl = document.getElementById("sub_mode_expl");
+                if (modeExpl) {
+                    modeExpl.textContent = response.mode_explanation || "";
+                }
+                ALL_SUBMISSIONS = response.data || [];
+                renderTable(ALL_SUBMISSIONS);
+            });
+        } catch (error) {
+            toast("Failed to load submissions: " + error.message, "error");
+        }
+    }
+
+    function addToWatch(id) {
+        toast(`Added submission ${id} to watch list`, 'success');
+    }
+
+    function clearAllFilters() {
+        const fields = ['f_state', 'f_status', 'f_min', 'f_max', 'f_q'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
         });
+        applyPreset('all');
     }
-    function badge(s) {
-        if (s === "TARGET")
-            return `<span class="pill pill-indigo">Target</span>`;
-        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
-        return `<span class="pill pill-rose">Out</span>`;
+
+    function updateLastUpdated() {
+        const el = document.getElementById("subs_last");
+        if(!el) return;
+        const d = new Date();
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mm = d.getMinutes().toString().padStart(2,'0');
+        el.textContent = `Updated ${hh}:${mm}`;
     }
+
+    // Event handlers
+    document.addEventListener('DOMContentLoaded', () => {
+        // Preset filter handlers
+        document.querySelectorAll('.filter-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyPreset(btn.dataset.preset);
+            });
+        });
+
+        // Manual filter handlers
+        const applyBtn = document.getElementById("btn_apply");
+        if (applyBtn) {
+            applyBtn.onclick = () => {
+                const params = {
+                    state: document.getElementById("f_state")?.value || "",
+                    status: document.getElementById("f_status")?.value || "",
+                    min_premium: document.getElementById("f_min")?.value || "",
+                    max_premium: document.getElementById("f_max")?.value || "",
+                    q: document.getElementById("f_q")?.value || "",
+                    mode: document.getElementById("f_mode")?.value || "",
+                    sort_by: SORT_BY,
+                    sort_dir: SORT_DIR,
+                };
+                load(params);
+            };
+        }
+
+        const clearBtn = document.getElementById("btn_clear");
+        if (clearBtn) {
+            clearBtn.onclick = clearAllFilters;
+        }
+
+        const refreshBtn = document.getElementById("btn_refresh");
+        if (refreshBtn) {
+            refreshBtn.onclick = () => {
+                fetchJSON("/api/refresh", { method: "POST" })
+                    .then(() => {
+                        toast("Data refreshed", "success");
+                        applyPreset(currentPreset);
+                    })
+                    .catch((err) => toast("Refresh failed: " + err.message, "error"));
+            };
+        }
+
+        const exportBtn = document.getElementById("btn_export");
+        if (exportBtn) {
+            exportBtn.onclick = () => {
+                toast('Export functionality will be available soon', 'info');
+            };
+        }
+
+        // NLQ handler
+        const nlqBtn = document.getElementById("btn_nlq");
+        if (nlqBtn) {
+            nlqBtn.onclick = () => {
+                const query = document.getElementById("nlq")?.value.trim();
+                if (!query) {
+                    toast("Please enter a question", "warning");
+                    return;
+                }
+                
+                fetch("/api/nlq", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query }),
+                })
+                .then((r) => r.json())
+                .then((j) => {
+                    if (j.ok) {
+                        // Apply the AI-generated filters
+                        Object.entries(j.filters || {}).forEach(([key, value]) => {
+                            const element = document.getElementById(`f_${key}`);
+                            if (element) element.value = value;
+                        });
+                        const applyBtn = document.getElementById("btn_apply");
+                        if (applyBtn) applyBtn.click();
+                        toast("AI filters applied", "success");
+                    } else {
+                        toast("AI query failed: " + (j.error || "Unknown error"), "error");
+                    }
+                })
+                .catch(() => toast("AI query failed", "error"));
+            };
+        }
+
+        // Sorting handlers
+        document.querySelectorAll(".th-sort").forEach((th) => {
+            th.onclick = () => {
+                const key = th.dataset.key;
+                if (SORT_BY === key) {
+                    SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
+                } else {
+                    SORT_BY = key;
+                    SORT_DIR = "desc";
+                }
+                
+                // Update arrow indicators
+                document.querySelectorAll(".arrow").forEach(a => a.textContent = "");
+                const arrow = th.querySelector(".arrow");
+                if (arrow) arrow.textContent = SORT_DIR === "asc" ? "↑" : "↓";
+                
+                // Reapply current filters with new sort
+                if (currentPreset !== 'all') {
+                    applyPreset(currentPreset);
+                } else {
+                    const applyBtn = document.getElementById("btn_apply");
+                    if (applyBtn) applyBtn.click();
+                }
+            };
+        });
+
+        // Load modes and initialize
+        loadModes().then(() => {
+            applyPreset('all');
+        }).catch(() => {
+            applyPreset('all');
+        });
+    });
+
+    // Load available modes
+    async function loadModes() {
+        try {
+            const modes = await fetchJSON('/api/modes');
+            const sel = document.getElementById('f_mode');
+            
+            if (sel && Array.isArray(modes)) {
+                sel.innerHTML = modes.map(m => 
+                    `<option value="${m.key}">${m.label}</option>`
+                ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load modes:', error);
+        }
+    }
+
     function explain(id) {
-        const mode = document.getElementById("f_mode").value || "";
-        const url = mode
+        const mode = document.getElementById('f_mode')?.value;
+        const url = mode && mode !== '' 
             ? `/api/explain/${id}?mode=${encodeURIComponent(mode)}`
             : `/api/explain/${id}`;
         fetch(url, { method: "POST" })
@@ -227,15 +520,6 @@
         };
 
         document.getElementById("btn_clear").onclick = clearAllFilters;
-
-        document.getElementById("btn_refresh").onclick = () => {
-            fetchJSON("/api/refresh", { method: "POST" })
-                .then(() => {
-                    toast("Data refreshed", "success");
-                    applyPreset(currentPreset);
-                })
-                .catch((err) => toast("Refresh failed: " + err.message, "error"));
-        };
 
         document.getElementById("btn_export").onclick = () => {
             toast('Export functionality will be available soon', 'info');
@@ -334,14 +618,6 @@
                 document.getElementById("btn_apply").click();
             })
             .catch((err) => toast("NLQ failed: " + err.message, "error"));
-    };
-    document.getElementById("btn_refresh").onclick = () => {
-        fetchJSON("/api/refresh", { method: "POST" })
-            .then(() => {
-                toast("Data refreshed", "success");
-                document.getElementById("btn_apply").click();
-            })
-            .catch((err) => toast("Refresh failed: " + err.message, "error"));
     };
 
     async function populateModes() {
