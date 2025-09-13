@@ -673,7 +673,6 @@
                 if (isHidden) {
                     m.classList.remove('hidden');
                     requestAnimationFrame(()=> m.classList.add('open'));
-                    addMenuBackdrop();
                 } else {
                     m.classList.remove('open');
                     setTimeout(()=> m.classList.add('hidden'), 130);

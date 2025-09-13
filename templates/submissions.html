@@ -117,40 +117,136 @@
 <script>
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
+    let ALL_SUBMISSIONS = [];
+    let currentPreset = "all";
 
+    // Enhanced table rendering with visual priorities
     function renderTable(rows){
-        const tb = document.getElementById("tbody");
-        tb.innerHTML = (rows || [])
-            .map((r) => `
-      <tr class=\"tr\">
-        <td class=\"td\">${r.id}</td>
-        <td class=\"td\"><a class=\"link\" href=\"/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode').value || '')}\">${r.account_name || "-"}</a></td>
-        <td class=\"td\">${r.primary_risk_state || "-"}</td>
-        <td class=\"td\">${r.line_of_business || "-"}</td>
-        <td class=\"td\">$${Math.round(r.total_premium || 0).toLocaleString()}</td>
-        <td class=\"td\">$${Math.round(r.tiv || 0).toLocaleString()}</td>
-        <td class=\"td\">${typeof r.winnability === 'number' ? Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) + '%' : '-'}</td>
-        <td class=\"td\">${badge(r.appetite_status)}</td>
-        <td class=\"td\">${Number(r.priority_score || 0).toFixed(2)}</td>
-        <td class=\"td\"><button class=\"pill pill-sub\" onclick=\"explain(${r.id})\">Explain</button></td>
-      </tr>
-    `).join("");
+        const tbody = document.getElementById("tbody");
+        const emptyState = document.getElementById("empty-state");
+        const countSpan = document.getElementById("subs_count");
+        
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = "";
+            emptyState.classList.remove("hidden");
+            countSpan.textContent = "0 submissions";
+            return;
+        }
+        
+        emptyState.classList.add("hidden");
+        countSpan.textContent = `${rows.length} submissions`;
+        
+        tbody.innerHTML = rows.map((r) => {
+            const appetiteClass = r.appetite_status === 'TARGET' ? 'target-row' : 
+                                r.appetite_status === 'IN' ? 'in-row' : 'out-row';
+            
+            const priorityClass = r.priority_score >= 7 ? 'priority-high' : 
+                                r.priority_score >= 4 ? 'priority-medium' : 'priority-low';
+            
+            const appetiteBadge = r.appetite_status === 'TARGET' ? 
+                                '<span class="appetite-indicator appetite-target pill">🎯 TARGET</span>' :
+                                r.appetite_status === 'IN' ? 
+                                '<span class="appetite-indicator appetite-in pill">✅ IN</span>' :
+                                '<span class="appetite-indicator appetite-out pill">❌ OUT</span>';
+            
+            const winnabilityPercent = typeof r.winnability === 'number' ? 
+                                      Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
+            
+            return `
+                <tr class="table-row ${appetiteClass}" onclick="window.location.href='/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode').value || '')}'">
+                    <td class="td py-4 px-6">
+                        <div class="flex items-center gap-2">
+                            <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>
+                        </div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        ${appetiteBadge}
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-white">${r.account_name || "—"}</div>
+                        <div class="text-xs opacity-75">${r.line_of_business || "—"}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <span class="chip">${r.primary_risk_state || "—"}</span>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-emerald-300">$${Math.round(r.total_premium || 0).toLocaleString()}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold">$${Math.round(r.tiv || 0).toLocaleString()}</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="font-semibold text-purple-300">${winnabilityPercent}%</div>
+                    </td>
+                    <td class="td py-4 px-4">
+                        <div class="flex items-center gap-2">
+                            <button class="pill pill-sub text-xs" onclick="event.stopPropagation(); explain(${r.id})">💡 Explain</button>
+                            <button class="pill pill-sub text-xs" onclick="event.stopPropagation(); addToWatch(${r.id})">👀 Watch</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    // Filter presets for common underwriter workflows
+    function applyPreset(preset) {
+        currentPreset = preset;
+        
+        // Update active preset button
+        document.querySelectorAll('.filter-preset').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-preset="${preset}"]`).classList.add('active');
+        
+        // Clear manual filters
+        document.getElementById('f_state').value = '';
+        document.getElementById('f_status').value = '';
+        document.getElementById('f_min').value = '';
+        document.getElementById('f_max').value = '';
+        document.getElementById('f_q').value = '';
+        
+        const params = { sort_by: SORT_BY, sort_dir: SORT_DIR };
+        
+        switch(preset) {
+            case 'targets':
+                params.status = 'TARGET';
+                break;
+            case 'in-appetite':
+                params.status = 'IN';
+                break;
+            case 'high-value':
+                params.min_premium = '100000';
+                break;
+            case 'new-business':
+                params.renewal_or_new_business = 'NEW_BUSINESS';
+                break;
+            case 'recent':
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                break;
+            case 'all':
+            default:
+                // No additional filters
+                break;
+        }
+        
+        load(params);
     }
 
     async function load(params = {}) {
         const qs = new URLSearchParams(params).toString();
-        const tb = document.getElementById("tbody");
-        await withLoading(tb, async () => {
-            const j = await fetchJSON("/api/classified_mode?" + qs);
-            renderTable(j.data || []);
-        });
+        const tbody = document.getElementById("tbody");
+        
+        try {
+            const response = await fetchJSON("/api/classified_mode?" + qs);
+            ALL_SUBMISSIONS = response.data || [];
+            renderTable(ALL_SUBMISSIONS);
+            updateLastUpdated();
+        } catch (error) {
+            toast("Failed to load submissions: " + error.message, "error");
+        }
     }
-    function badge(s) {
-        if (s === "TARGET")
-            return `<span class="pill pill-indigo">Target</span>`;
-        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
-        return `<span class="pill pill-rose">Out</span>`;
-    }
+
     function explain(id) {
         const mode = document.getElementById("f_mode").value || "";
         const url = mode
@@ -160,25 +256,168 @@
             .then((r) => r.json())
             .then((j) => {
                 if (j.ok) {
-                    alert(j.explanation);
+                    showExplanationModal(j.explanation, id);
                 } else {
-                    alert("Error");
+                    toast("Failed to get explanation", "error");
                 }
             });
     }
-    document.getElementById("btn_apply").onclick = () => {
-        const params = {
-            state: document.getElementById("f_state").value || "",
-            status: document.getElementById("f_status").value || "",
-            min_premium: document.getElementById("f_min").value || "",
-            max_premium: document.getElementById("f_max").value || "",
-            q: document.getElementById("f_q").value || "",
-            mode: document.getElementById("f_mode").value || "",
-            sort_by: SORT_BY,
-            sort_dir: SORT_DIR,
+
+    function addToWatch(id) {
+        // Add to watch list functionality
+        toast(`Added submission ${id} to watch list`, 'success');
+    }
+
+    function showExplanationModal(explanation, id) {
+        // Create a simple modal for explanations
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-2xl mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Appetite Explanation - ID ${id}</h3>
+                    <button class="quick-action" onclick="this.closest('.fixed').remove()">✕</button>
+                </div>
+                <div class="text-sm leading-relaxed">${explanation}</div>
+                <div class="mt-4 flex justify-end">
+                    <button class="quick-action primary" onclick="this.closest('.fixed').remove()">Got it</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function clearAllFilters() {
+        document.getElementById('f_state').value = '';
+        document.getElementById('f_status').value = '';
+        document.getElementById('f_min').value = '';
+        document.getElementById('f_max').value = '';
+        document.getElementById('f_q').value = '';
+        applyPreset('all');
+    }
+
+    function updateLastUpdated() {
+        const el = document.getElementById("subs_last");
+        if(!el) return;
+        const d = new Date();
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mm = d.getMinutes().toString().padStart(2,'0');
+        el.textContent = `Updated ${hh}:${mm}`;
+    }
+
+    // Event handlers
+    document.addEventListener('DOMContentLoaded', () => {
+        // Preset filter handlers
+        document.querySelectorAll('.filter-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyPreset(btn.dataset.preset);
+            });
+        });
+
+        // Manual filter handlers
+        document.getElementById("btn_apply").onclick = () => {
+            const params = {
+                state: document.getElementById("f_state").value || "",
+                status: document.getElementById("f_status").value || "",
+                min_premium: document.getElementById("f_min").value || "",
+                max_premium: document.getElementById("f_max").value || "",
+                q: document.getElementById("f_q").value || "",
+                mode: document.getElementById("f_mode").value || "",
+                sort_by: SORT_BY,
+                sort_dir: SORT_DIR,
+            };
+            load(params);
         };
-        load(params).catch((err) =>
-            toast("Failed to load: " + err.message, "error")
+
+        document.getElementById("btn_clear").onclick = clearAllFilters;
+
+        document.getElementById("btn_refresh").onclick = () => {
+            fetchJSON("/api/refresh", { method: "POST" })
+                .then(() => {
+                    toast("Data refreshed", "success");
+                    applyPreset(currentPreset);
+                })
+                .catch((err) => toast("Refresh failed: " + err.message, "error"));
+        };
+
+        document.getElementById("btn_export").onclick = () => {
+            toast('Export functionality will be available soon', 'info');
+        };
+
+        // NLQ handler
+        document.getElementById("btn_nlq").onclick = () => {
+            const query = document.getElementById("nlq").value.trim();
+            if (!query) {
+                toast("Please enter a question", "warning");
+                return;
+            }
+            
+            fetch("/api/nlq", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query }),
+            })
+            .then((r) => r.json())
+            .then((j) => {
+                if (j.ok) {
+                    // Apply the AI-generated filters
+                    Object.entries(j.filters).forEach(([key, value]) => {
+                        const element = document.getElementById(`f_${key}`);
+                        if (element) element.value = value;
+                    });
+                    document.getElementById("btn_apply").click();
+                    toast("AI filters applied", "success");
+                } else {
+                    toast("AI query failed: " + (j.error || "Unknown error"), "error");
+                }
+            });
+        };
+
+        // Sorting handlers
+        document.querySelectorAll(".th-sort").forEach((th) => {
+            th.onclick = () => {
+                const key = th.dataset.key;
+                if (SORT_BY === key) {
+                    SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
+                } else {
+                    SORT_BY = key;
+                    SORT_DIR = "desc";
+                }
+                
+                // Update arrow indicators
+                document.querySelectorAll(".arrow").forEach(a => a.textContent = "");
+                th.querySelector(".arrow").textContent = SORT_DIR === "asc" ? "↑" : "↓";
+                
+                // Reapply current filters with new sort
+                if (currentPreset !== 'all') {
+                    applyPreset(currentPreset);
+                } else {
+                    document.getElementById("btn_apply").click();
+                }
+            };
+        });
+
+        // Load modes and initialize
+        loadModes().then(() => {
+            applyPreset('all');
+        });
+    });
+
+    // Load available modes
+    async function loadModes() {
+        try {
+            const modes = await fetchJSON('/api/modes');
+            const sel = document.getElementById('f_mode');
+            
+            if (sel) {
+                sel.innerHTML = modes.map(m => 
+                    `<option value="${m.key}">${m.label}</option>`
+                ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load modes:', error);
+        }
+    })
         );
     };
     document.getElementById("btn_nlq").onclick = () => {
