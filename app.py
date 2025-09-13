@@ -710,7 +710,54 @@ def apply_hard_filters(df, f):
         d = d[(d["building_year"]>=f["min_year"]) | (d["building_year"].isna())]
     if f.get("good_construction_only"):
         d = d[d["is_good_construction"]==True]
+    if "fresh_days_max" in f:
+        d = d[d["fresh_days"]<=f["fresh_days_max"]]
     return d
+
+
+def sanitize_row(row):
+    out = {}
+    for k, v in row.items():
+        if isinstance(v, (np.integer, np.int64, np.int32)):
+            out[k] = int(v)
+        elif isinstance(v, (np.floating, np.float64, np.float32)):
+            out[k] = float(v)
+        elif isinstance(v, (pd.Timestamp, dt.datetime)):
+            out[k] = None if pd.isna(v) else v.isoformat()
+        elif v is None:
+            out[k] = None
+        elif isinstance(v, float) and np.isnan(v):
+            out[k] = None
+        else:
+            out[k] = v
+    return out
+
+
+def generate_explanation(r, qs):
+    parts = []
+    prem = r.get("total_premium")
+    if prem is not None and not (isinstance(prem, float) and np.isnan(prem)):
+        if prem >= qs["premium"].loc[0.9]:
+            parts.append(f"premium ${prem:,.0f} is in top 10%")
+        elif prem >= qs["premium"].loc[0.5]:
+            parts.append(f"premium ${prem:,.0f} above median")
+    tiv = r.get("tiv")
+    if tiv is not None and not (isinstance(tiv, float) and np.isnan(tiv)):
+        if tiv <= 150_000_000:
+            parts.append(f"TIV ${tiv:,.0f} ≤ cap")
+    win = r.get("winnability")
+    if win is not None and not (isinstance(win, float) and np.isnan(win)):
+        med_win = qs["winnability"].loc[0.5]
+        if win >= med_win:
+            parts.append(f"winnability {win:.2f} ≥ median")
+    if not parts:
+        return "No clear reasons available."
+    prefix = (
+        "In Appetite because "
+        if r.get("appetite_status") != "OUT"
+        else "Out of Appetite because "
+    )
+    return prefix + ", ".join(parts) + "."
 
 
 @app.route("/api/classified_mode")
@@ -721,7 +768,45 @@ def api_classified_mode():
         return jsonify({"count": 0, "data": []})
 
     preset = MODES.get(mode, MODES["balanced_growth"])
-    d = apply_hard_filters(df, preset["filters"])
+
+    qs = {
+        "premium": df["total_premium"].quantile([0.99, 0.9, 0.8, 0.5, 0.4, 0.2]),
+        "winnability": df["winnability"].quantile([0.99, 0.8, 0.5, 0.4]),
+        "loss_ratio": df["loss_ratio"].quantile([0.4, 0.7, 0.9]),
+        "fresh_days": df["fresh_days"].quantile([0.5]),
+    }
+    mode_filters = {
+        "unicorn_hunting": {
+            "premium_range": [qs["premium"].loc[0.99], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.99],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.4],
+        },
+        "balanced_growth": {
+            "premium_range": [qs["premium"].loc[0.8], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.8],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.7],
+        },
+        "loose_fits": {
+            "premium_range": [qs["premium"].loc[0.2], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.4],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.9],
+        },
+        "turnaround_bets": {
+            "premium_range": [df["total_premium"].min(), qs["premium"].loc[0.4]],
+            "min_winnability": qs["winnability"].loc[0.4],
+            "loss_ratio_max": 1.0,
+            "fresh_days_max": qs["fresh_days"].loc[0.5],
+        },
+    }
+    filters = mode_filters.get(mode, mode_filters["balanced_growth"])
+    d = apply_hard_filters(df, filters)
+
+    mode_expl = {
+        "unicorn_hunting": "You're in Unicorn Mode — top 1% premiums & winnability",
+        "balanced_growth": "You're in Balanced Mode — top 20% premiums, LR ≤ 70th percentile",
+        "loose_fits": "You're in Loose Mode — wide net up to 80th percentile",
+        "turnaround_bets": "You're in Turnaround Mode — smaller premiums but fresh",
+    }
 
     # Optional UI filters
     state = request.args.get("state")
@@ -745,13 +830,14 @@ def api_classified_mode():
     out_rows = []
     for r in d.to_dict(orient="records"):
         stat, reasons, s, pscore = classify_for_mode_row(
-            r, preset["weights"], preset["filters"], scounts
+            r, preset["weights"], filters, scounts
         )
         r["appetite_status"] = stat
         r["appetite_reasons"] = reasons
         r["priority_score"] = float(pscore)
         r["mode_score"] = round(float(pscore), 4)
-        out_rows.append(r)
+        r["appetite_explanation"] = generate_explanation(r, qs)
+        out_rows.append(sanitize_row(r))
 
     if status_filter:
         out_rows = [r for r in out_rows if r.get("appetite_status") == status_filter]
@@ -810,7 +896,12 @@ def api_classified_mode():
         out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
         out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
 
-    return jsonify({"count": len(out_rows), "data": out_rows})
+    return jsonify({
+        "count": len(out_rows),
+        "data": out_rows,
+        "mode": mode,
+        "mode_explanation": mode_expl.get(mode, ""),
+    })
 
 
 @app.route("/api/persona/seed", methods=["POST"])

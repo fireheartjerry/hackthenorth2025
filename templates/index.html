@@ -29,6 +29,7 @@
                 <div>
                     <label class="lbl">Mode</label>
                     <select id="home_mode" class="inp text-xs"></select>
+                    <span id="mode_expl" class="ml-2 text-xs opacity-70"></span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -274,6 +275,7 @@
         localStorage.setItem("ACTIVE_MODE", m);
     }
 
+    let lastHash = "";
     async function loadHome() {
         const el = document.getElementById("worklist");
         await withLoading(el, async () => {
@@ -282,24 +284,32 @@
             const j = await fetchJSON(
                 `/api/classified_mode?mode=${encodeURIComponent(mode)}`
             );
-            // Fallback if custom yields no rows
-            if ((j.count || 0) === 0 && mode === "custom") {
-                const last =
-                    localStorage.getItem("LAST_NON_EMPTY_MODE") ||
-                    "balanced_growth";
-                toast("Custom mode empty — showing " + last, "error");
-                setActiveMode(last);
-                if (sel) sel.value = last;
+            document.getElementById("mode_expl").textContent =
+                j.mode_explanation || "";
+            if ((j.count || 0) === 0) {
+                const fb = "balanced_growth";
+                toast("Mode empty — switched to Balanced", "error");
+                setActiveMode(fb);
+                if (sel) sel.value = fb;
                 const jj = await fetchJSON(
-                    `/api/classified_mode?mode=${encodeURIComponent(last)}`
+                    `/api/classified_mode?mode=${encodeURIComponent(fb)}`
                 );
-                renderWorklistRows(jj.data || [], last);
+                document.getElementById("mode_expl").textContent =
+                    jj.mode_explanation || "";
+                const h2 = JSON.stringify(jj.data);
+                lastHash = h2;
+                renderWorklistRows(jj.data || [], fb);
                 return;
             }
             if ((j.count || 0) > 0) {
                 localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
             }
-            renderWorklistRows(j.data || [], mode);
+            const newHash = JSON.stringify(j.data || []);
+            if (newHash !== lastHash) {
+                lastHash = newHash;
+                renderWorklistRows(j.data || [], mode);
+                toast(`Updated ${j.count} results — ${mode}`, "success");
+            }
         });
     }
     function renderWorklistRows(rows, mode) {
@@ -457,5 +467,25 @@
     populateHomeModes()
         .then(() => loadHome())
         .catch(() => loadHome());
+
+    let autoH;
+    function startAuto() {
+        clearInterval(autoH);
+        autoH = setInterval(() => {
+            if (!document.hidden) {
+                loadHome().catch((err) =>
+                    toast("Auto-refresh failed: " + err.message, "error")
+                );
+            }
+        }, 45000);
+    }
+    function stopAuto() {
+        clearInterval(autoH);
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopAuto();
+        else startAuto();
+    });
+    startAuto();
 </script>
 {% endblock %}

@@ -16,6 +16,7 @@
     <div>
         <label class="lbl">Mode</label>
         <select id="f_mode" class="inp"></select>
+        <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
     </div>
     <div>
         <label class="lbl">Min Premium</label>
@@ -84,11 +85,19 @@
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
 
+    let LAST_PARAMS = {};
+    let lastHash = "";
     async function load(params = {}) {
+        LAST_PARAMS = params;
         const qs = new URLSearchParams(params).toString();
         const tb = document.getElementById("tbody");
         await withLoading(tb, async () => {
             const j = await fetchJSON("/api/classified_mode?" + qs);
+            document.getElementById("sub_mode_expl").textContent =
+                j.mode_explanation || "";
+            const newHash = JSON.stringify(j.data || []);
+            if (newHash === lastHash) return;
+            lastHash = newHash;
             tb.innerHTML = (j.data || [])
                 .map(
                     (r) => `
@@ -121,6 +130,7 @@
     `
                 )
                 .join("");
+            toast(`Updated ${j.count} results`, "info");
         });
     }
     function badge(s) {
@@ -272,5 +282,25 @@
                 toast("Initial load failed: " + err.message, "error")
             );
         });
+
+    let autoT;
+    function startAuto() {
+        clearInterval(autoT);
+        autoT = setInterval(() => {
+            if (!document.hidden) {
+                load(LAST_PARAMS).catch((err) =>
+                    toast("Auto-refresh failed: " + err.message, "error")
+                );
+            }
+        }, 45000);
+    }
+    function stopAuto() {
+        clearInterval(autoT);
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopAuto();
+        else startAuto();
+    });
+    startAuto();
 </script>
 {% endblock %}
