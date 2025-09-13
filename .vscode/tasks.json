@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Flask app",
+			"type": "shell",
+			"command": "$env:FLASK_APP=app.py; $env:FLASK_RUN_PORT=5050; $env:FLASK_ENV=development; python -m flask run",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "none"
+		}
+	]
+}
