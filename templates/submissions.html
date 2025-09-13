@@ -20,40 +20,10 @@
             <button class="quick-action filter-preset" data-preset="recent">⏰ Recent (7 days)</button>
         </div>
     </div>
-    
-    <!-- Detailed Filters -->
-    <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
-        <div>
-            <label class="lbl">State</label>
-            <input id="f_state" class="inp" placeholder="e.g., CA" />
-        </div>
-        <div>
-            <label class="lbl">Appetite Status</label>
-            <select id="f_status" class="inp">
-                <option value="">Any Status</option>
-                <option value="TARGET">🎯 Target</option>
-                <option value="IN">✅ In-Appetite</option>
-                <option value="OUT">❌ Out-of-Appetite</option>
-            </select>
-        </div>
-        <div id="f_mode_wrap">
-            <label class="lbl">Analysis Mode</label>
-            <select id="f_mode" class="inp">
-                <option value="" disabled selected>Loading modes…</option>
-            </select>
-        </div>
-        <div>
-            <label class="lbl">Min Premium</label>
-            <input id="f_min" class="inp" type="number" placeholder="50,000" />
-        </div>
-        <div>
-            <label class="lbl">Max Premium</label>
-            <input id="f_max" class="inp" type="number" placeholder="175,000" />
-        </div>
-        <div>
-            <label class="lbl">Search Account</label>
-            <input id="f_q" class="inp" placeholder="Account name..." />
-        </div>
+    <div>
+        <label class="lbl">Mode</label>
+        <select id="f_mode" class="inp"></select>
+        <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
     </div>
     
     <div class="flex items-center justify-between mt-4">
@@ -118,31 +88,52 @@
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
 
-    function renderTable(rows){
-        const tb = document.getElementById("tbody");
-        tb.innerHTML = (rows || [])
-            .map((r) => `
-      <tr class=\"tr\">
-        <td class=\"td\">${r.id}</td>
-        <td class=\"td\"><a class=\"link\" href=\"/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode').value || '')}\">${r.account_name || "-"}</a></td>
-        <td class=\"td\">${r.primary_risk_state || "-"}</td>
-        <td class=\"td\">${r.line_of_business || "-"}</td>
-        <td class=\"td\">$${Math.round(r.total_premium || 0).toLocaleString()}</td>
-        <td class=\"td\">$${Math.round(r.tiv || 0).toLocaleString()}</td>
-        <td class=\"td\">${typeof r.winnability === 'number' ? Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) + '%' : '-'}</td>
-        <td class=\"td\">${badge(r.appetite_status)}</td>
-        <td class=\"td\">${Number(r.priority_score || 0).toFixed(2)}</td>
-        <td class=\"td\"><button class=\"pill pill-sub\" onclick=\"explain(${r.id})\">Explain</button></td>
-      </tr>
-    `).join("");
-    }
-
+    let LAST_PARAMS = {};
+    let lastHash = "";
     async function load(params = {}) {
+        LAST_PARAMS = params;
         const qs = new URLSearchParams(params).toString();
         const tb = document.getElementById("tbody");
         await withLoading(tb, async () => {
             const j = await fetchJSON("/api/classified_mode?" + qs);
-            renderTable(j.data || []);
+            document.getElementById("sub_mode_expl").textContent =
+                j.mode_explanation || "";
+            const newHash = JSON.stringify(j.data || []);
+            if (newHash === lastHash) return;
+            lastHash = newHash;
+            tb.innerHTML = (j.data || [])
+                .map(
+                    (r) => `
+      <tr class="tr">
+        <td class="td">${r.id}</td>
+        <td class="td"><a class="link" href="/detail/${
+            r.id
+        }?mode=${encodeURIComponent(
+                        document.getElementById("f_mode").value || ""
+                    )}">${r.account_name || "-"}</a></td>
+        <td class="td">${r.primary_risk_state || "-"}</td>
+        <td class="td">${r.line_of_business || "-"}</td>
+        <td class="td">$${Math.round(
+            r.total_premium || 0
+        ).toLocaleString()}</td>
+        <td class="td">$${Math.round(r.tiv || 0).toLocaleString()}</td>
+        <td class="td">${
+            typeof r.winnability === "number"
+                ? Number(
+                      r.winnability > 1 ? r.winnability : r.winnability * 100
+                  ).toFixed(0) + "%"
+                : "-"
+        }</td>
+        <td class="td">${badge(r.appetite_status)}</td>
+        <td class="td">${Number(r.priority_score || 0).toFixed(2)}</td>
+        <td class="td"><button class="pill pill-sub" onclick="explain(${
+            r.id
+        })">Explain</button></td>
+      </tr>
+    `
+                )
+                .join("");
+            toast(`Updated ${j.count} results`, "info");
         });
     }
     function badge(s) {
@@ -302,6 +293,26 @@
                 toast("Initial load failed: " + err.message, "error")
             );
         });
+
+    let autoT;
+    function startAuto() {
+        clearInterval(autoT);
+        autoT = setInterval(() => {
+            if (!document.hidden) {
+                load(LAST_PARAMS).catch((err) =>
+                    toast("Auto-refresh failed: " + err.message, "error")
+                );
+            }
+        }, 45000);
+    }
+    function stopAuto() {
+        clearInterval(autoT);
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopAuto();
+        else startAuto();
+    });
+    startAuto();
 </script>
 <script type="module">
     import { startAutoRefresh } from "{{ url_for('static', filename='js/refresh.js') }}";

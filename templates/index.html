@@ -58,72 +58,18 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Priority Worklist -->
-    <div class="lg:col-span-2">
-        <!-- Quick Filters for Underwriters -->
-        <div class="glass-panel mb-4">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">Priority Filters</h3>
-                <div class="flex items-center gap-2">
-                    <span id="mode_chip" class="pill pill-sub text-xs">Mode: —</span>
-                    <div id="home_mode_wrap">
-                        <select id="home_mode" class="inp text-xs">
-                            <option value="" disabled selected>Loading modes…</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button class="quick-action filter-btn" data-filter="target">🎯 Targets Only</button>
-                <button class="quick-action filter-btn" data-filter="high-value">💎 High Value (>$100k)</button>
-                <button class="quick-action filter-btn" data-filter="new-business">🆕 New Business</button>
-                <button class="quick-action filter-btn" data-filter="target-states">🗺️ Target States</button>
-                <button class="quick-action filter-btn" data-filter="recent">⏰ Recent (7 days)</button>
-                <button class="quick-action filter-btn active" data-filter="all">📋 All Opportunities</button>
-            </div>
-        </div>
-        
-        <!-- Enhanced Opportunity List -->
-        <div class="glass-panel">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-lg font-semibold">Today's Prioritized Worklist</h2>
-                    <span id="worklist_count" class="pill pill-sub text-xs">— items</span>
-                    <span id="worklist_last" class="text-xs opacity-70"></span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <a href="{{ url_for('submissions') }}" class="quick-action">Full Table View →</a>
-                </div>
-            </div>
-            
-            <div id="opportunity-list" class="space-y-3">
-                <!-- Opportunities will be populated here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Insights Panel -->
-    <div class="space-y-4">
-        <!-- Quick Stats -->
-        <div class="glass-panel">
-            <h3 class="text-sm font-semibold mb-3">Today's Insights</h3>
-            <div class="space-y-3 text-sm">
-                <div class="flex items-center justify-between">
-                    <span class="opacity-75">Avg Premium (Targets)</span>
-                    <span class="font-semibold" id="avg-premium-targets">—</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="opacity-75">Top State</span>
-                    <span class="font-semibold" id="top-state">—</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="opacity-75">Avg Winnability</span>
-                    <span class="font-semibold" id="avg-winnability">—</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="opacity-75">Conversion Rate</span>
-                    <span class="font-semibold text-emerald-300" id="conversion-rate">—</span>
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: Recent workload with tabs -->
+    <div class="lg:col-span-2 glass-panel">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <h2 class="text-lg font-semibold">
+                    Today’s Prioritized Worklist
+                </h2>
+                <div>
+                    <label class="lbl">Mode</label>
+                    <select id="home_mode" class="inp text-xs"></select>
+                    <span id="mode_expl" class="ml-2 text-xs opacity-70"></span>
                 </div>
             </div>
         </div>
@@ -244,150 +190,40 @@
         localStorage.setItem("ACTIVE_MODE", m);
     }
 
-    function prettyMode(name){
-        const s = String(name || "");
-        return s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    }
-    
-    function updateModeChip(){
-        const mode = getActiveMode();
-        const chip = document.getElementById('mode_chip');
-        if(chip) chip.innerHTML = `Mode: ${prettyMode(mode)}`;
-    }
-
-    // Enhanced opportunity rendering for underwriters
-    function renderOpportunityCard(item) {
-        const appetiteClass = item.appetite_status === 'TARGET' ? 'target-opportunity' : 
-                            item.appetite_status === 'IN' ? 'in-opportunity' : 'out-opportunity';
-        
-        const priorityClass = item.priority_score >= 7 ? 'priority-high' : 
-                            item.priority_score >= 4 ? 'priority-medium' : 'priority-low';
-        
-        const appetiteIndicator = item.appetite_status === 'TARGET' ? 
-                                 '<span class="appetite-indicator appetite-target pill">🎯 TARGET</span>' :
-                                 item.appetite_status === 'IN' ? 
-                                 '<span class="appetite-indicator appetite-in pill">✅ IN</span>' :
-                                 '<span class="appetite-indicator appetite-out pill">❌ OUT</span>';
-        
-        const winnabilityPercent = typeof item.winnability === 'number' ? 
-                                  Number(item.winnability > 1 ? item.winnability : item.winnability * 100).toFixed(0) : '—';
-        
-        return `
-            <div class="opportunity-card ${appetiteClass}" onclick="window.location.href='/detail/${item.id}?mode=${encodeURIComponent(getActiveMode())}'">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-white mb-1">${item.account_name || 'Unknown Account'}</h4>
-                        <div class="flex items-center gap-2 text-sm opacity-75">
-                            <span>📍 ${item.primary_risk_state || '—'}</span>
-                            <span>📋 ${item.line_of_business || '—'}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        ${appetiteIndicator}
-                        <span class="priority-score ${priorityClass}">${Number(item.priority_score || 0).toFixed(1)}</span>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                        <div class="opacity-60 text-xs">Premium</div>
-                        <div class="font-semibold text-emerald-300">$${Math.round(item.total_premium || 0).toLocaleString()}</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60 text-xs">TIV</div>
-                        <div class="font-semibold">$${Math.round(item.tiv || 0).toLocaleString()}</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60 text-xs">Win Rate</div>
-                        <div class="font-semibold text-purple-300">${winnabilityPercent}%</div>
-                    </div>
-                </div>
-                
-                ${item.appetite_reasons && item.appetite_reasons.length > 0 ? `
-                <div class="mt-3 pt-3 border-t border-white border-opacity-10">
-                    <div class="text-xs opacity-75">${item.appetite_reasons[0]}</div>
-                </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    // Filter functions for underwriters
-    function applyFilter(filterType) {
-        currentFilter = filterType;
-        
-        // Update active filter button
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-filter="${filterType}"]`).classList.add('active');
-        
-        let filtered = [...ALL];
-        
-        switch(filterType) {
-            case 'target':
-                filtered = filtered.filter(item => item.appetite_status === 'TARGET');
-                break;
-            case 'high-value':
-                filtered = filtered.filter(item => (item.total_premium || 0) > 100000);
-                break;
-            case 'new-business':
-                filtered = filtered.filter(item => item.renewal_or_new_business === 'NEW_BUSINESS');
-                break;
-            case 'target-states':
-                const targetStates = ['OH', 'PA', 'MD', 'CO', 'CA', 'FL'];
-                filtered = filtered.filter(item => targetStates.includes(item.primary_risk_state));
-                break;
-            case 'recent':
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                filtered = filtered.filter(item => {
-                    const created = new Date(item.created_at);
-                    return created >= sevenDaysAgo;
-                });
-                break;
-            case 'all':
-            default:
-                // No additional filtering
-                break;
-        }
-        
-        // Sort by priority score descending
-        filtered.sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
-        
-        currentData = filtered;
-        renderOpportunityList(filtered.slice(0, 10)); // Show top 10
-        updateInsights(filtered);
-    }
-
-    function renderOpportunityList(items) {
-        const container = document.getElementById('opportunity-list');
-        const countSpan = document.getElementById('worklist_count');
-        
-        if (!items.length) {
-            container.innerHTML = `
-                <div class="text-center py-8 opacity-60">
-                    <div class="text-lg mb-2">📋</div>
-                    <div>No opportunities match your current filter</div>
-                    <button class="quick-action mt-3" onclick="applyFilter('all')">View All Opportunities</button>
-                </div>
-            `;
-            countSpan.textContent = '0 items';
-            return;
-        }
-        
-        container.innerHTML = items.map(renderOpportunityCard).join('');
-        countSpan.textContent = `${items.length} items`;
-    }
-
-    function updateInsights(data) {
-        const targets = data.filter(item => item.appetite_status === 'TARGET');
-        const avgPremiumTargets = targets.length ? 
-            targets.reduce((sum, item) => sum + (item.total_premium || 0), 0) / targets.length : 0;
-        
-        const stateCounts = {};
-        data.forEach(item => {
-            const state = item.primary_risk_state;
-            if (state) {
-                stateCounts[state] = (stateCounts[state] || 0) + 1;
+    let lastHash = "";
+    async function loadHome() {
+        const el = document.getElementById("worklist");
+        await withLoading(el, async () => {
+            const sel = document.getElementById("home_mode");
+            const mode = sel?.value || getActiveMode();
+            const j = await fetchJSON(
+                `/api/classified_mode?mode=${encodeURIComponent(mode)}`
+            );
+            document.getElementById("mode_expl").textContent =
+                j.mode_explanation || "";
+            if ((j.count || 0) === 0) {
+                const fb = "balanced_growth";
+                toast("Mode empty — switched to Balanced", "error");
+                setActiveMode(fb);
+                if (sel) sel.value = fb;
+                const jj = await fetchJSON(
+                    `/api/classified_mode?mode=${encodeURIComponent(fb)}`
+                );
+                document.getElementById("mode_expl").textContent =
+                    jj.mode_explanation || "";
+                const h2 = JSON.stringify(jj.data);
+                lastHash = h2;
+                renderWorklistRows(jj.data || [], fb);
+                return;
+            }
+            if ((j.count || 0) > 0) {
+                localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
+            }
+            const newHash = JSON.stringify(j.data || []);
+            if (newHash !== lastHash) {
+                lastHash = newHash;
+                renderWorklistRows(j.data || [], mode);
+                toast(`Updated ${j.count} results — ${mode}`, "success");
             }
         });
         const topState = Object.keys(stateCounts).reduce((a, b) => stateCounts[a] > stateCounts[b] ? a : b, '—');
@@ -675,52 +511,27 @@
 
     // Initial load
     populateHomeModes()
-        .then(() => { updateModeChip(); return loadHome(); })
-        .catch(() => { updateModeChip(); return loadHome(); });
-</script>
-<script type="module">
-    import { startAutoRefresh } from "{{ url_for('static', filename='js/refresh.js') }}";
-    function endpointBuilder() {
-      const mode = localStorage.getItem('ACTIVE_MODE') || 'balanced_growth';
-      return `/api/classified_mode?mode=${encodeURIComponent(mode)}`;
-    }
-    function hashSelector(row){
-      return {
-        id: row.id,
-        account_name: row.account_name,
-        primary_risk_state: row.primary_risk_state,
-        line_of_business: row.line_of_business,
-        total_premium: row.total_premium,
-        appetite_status: row.appetite_status,
-        priority_score: row.priority_score,
-      };
-    }
-    window._worklistRefreshCtl = startAutoRefresh({
-      targetId: 'worklist',
-    };
+        .then(() => loadHome())
+        .catch(() => loadHome());
 
-    document.getElementById('home_mode')?.addEventListener('change', (e) => {
-        setActiveMode(e.target.value);
-        document.getElementById('mode_chip').innerHTML = `Mode: ${prettyMode(e.target.value)}`;
+    let autoH;
+    function startAuto() {
+        clearInterval(autoH);
+        autoH = setInterval(() => {
+            if (!document.hidden) {
+                loadHome().catch((err) =>
+                    toast("Auto-refresh failed: " + err.message, "error")
+                );
+            }
+        }, 45000);
+    }
+    function stopAuto() {
+        clearInterval(autoH);
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopAuto();
+        else startAuto();
     });
-    
-    loadModes().then(() => {
-        // Setup real-time refresh if needed
-        try { 
-            window._worklistRefreshCtl?.start(); 
-            loadHome();
-        } catch(e) { 
-            loadHome(); 
-        }
-    });
-    
-    // Keep select in sync when ACTIVE_MODE changes elsewhere
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'ACTIVE_MODE') {
-        const sel = document.getElementById('home_mode');
-        if (sel) sel.value = e.newValue;
-        updateModeChip();
-      }
-    });
+    startAuto();
 </script>
 {% endblock %}
