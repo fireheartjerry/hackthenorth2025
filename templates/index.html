@@ -28,6 +28,10 @@
         e.preventDefault();
         document.getElementById('vibe_btn')?.click();
       });
+      document.getElementById('btn_persona')?.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if(typeof _openPersona !== 'undefined') _openPersona();
+      });
       greet(); vibe();
       window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
     })();
@@ -247,7 +251,7 @@
         if (!el) return;
         await withLoading(el, async () => {
             const sel = document.getElementById("home_mode");
-            const mode = sel?.value || getActiveMode();
+            const mode = (sel?.value && sel.value !== "") ? sel.value : getActiveMode();
             const j = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(mode)}`);
             // Fallback if custom yields no rows
             if ((j.count || 0) === 0 && mode === "custom") {
@@ -333,8 +337,11 @@
             const j = await fetchJSON('/api/modes');
             const sel = document.getElementById('home_mode');
             if (sel && j && Array.isArray(j)) {
-                sel.innerHTML = j.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
-                sel.value = getActiveMode();
+                // Add placeholder option first
+                const options = ['<option value="" disabled selected>Mode</option>'];
+                options.push(...j.map(m => `<option value="${m.key}">${m.label}</option>`));
+                sel.innerHTML = options.join('');
+                // Don't set a default value - let the placeholder show
             }
         } catch (e) {
             console.error('Failed to load modes:', e);
@@ -369,9 +376,11 @@
     const modeSelect = document.getElementById('home_mode');
     if (modeSelect) {
         modeSelect.addEventListener('change', (e) => {
-            setActiveMode(e.target.value);
-            updateModeChip();
-            loadHome();
+            if (e.target.value && e.target.value !== "") {
+                setActiveMode(e.target.value);
+                updateModeChip();
+                loadHome();
+            }
         });
     }
 

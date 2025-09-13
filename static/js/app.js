@@ -33,3 +33,12 @@ document.addEventListener('pointermove', (e)=>{
   const x = ((e.clientX - rect.left) / rect.width) * 100;
   target.style.setProperty('--x', x + '%');
 });
+
+// Footer year helper
+(()=>{
+  try{
+    const y = new Date().getFullYear();
+    const el = document.getElementById('footer_year');
+    if (el) el.textContent = String(y);
+  }catch(_){/* noop */}
+})();
