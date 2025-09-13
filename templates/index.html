@@ -185,7 +185,7 @@
             const res = await fetch(url, opts);
             if(!res.ok){
                 let msg = `${res.status} ${res.statusText}`;
-                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch {}
+                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch (e) {}
                 throw new Error(msg);
             }
             return res.json();
@@ -399,7 +399,7 @@
             construction_pref: con ? con.split(',').map(s => s.trim()).filter(Boolean) : [],
             comments: document.getElementById("ans_comments")?.value || "",
         };
-        try { localStorage.setItem('personaAnswers', JSON.stringify(ans)); } catch {}
+        try { localStorage.setItem('personaAnswers', JSON.stringify(ans)); } catch (e) {}
         return ans;
     }
 
@@ -497,14 +497,21 @@
     }
     };
 
-    // Persona modal wiring
-    const modal = document.getElementById("persona_modal");
-    document.getElementById("btn_persona").onclick = () => {
-        modal.classList.remove("hidden");
-    };
-    document.getElementById("persona_close").onclick = () => {
-        modal.classList.add("hidden");
-    };
+    // Persona modal wiring - use global functions from base.html
+    const btnPersona = document.getElementById("btn_persona");
+    if (btnPersona) {
+        btnPersona.onclick = () => {
+            // Use global persona open function from base.html
+            const modal = document.getElementById("persona_modal");
+            if (modal) {
+                modal.classList.remove("hidden");
+                // Initialize persona flow if function exists
+                if (typeof initPersonaFlow !== 'undefined') {
+                    initPersonaFlow();
+                }
+            }
+        };
+    }
 
     function gatherAnswers() {
         const con = (document.getElementById("ans_con_list").value || "")
@@ -532,7 +539,7 @@
             construction_pref: con,
             comments: document.getElementById("ans_comments").value || "",
         };
-        try { localStorage.setItem('personaAnswers', JSON.stringify(a)); } catch {}
+        try { localStorage.setItem('personaAnswers', JSON.stringify(a)); } catch (e) {}
         return a;
     }
 
@@ -628,7 +635,9 @@
           document.getElementById('ans_good_con').checked = !!a.strict_construction;
           if (Array.isArray(a.construction_pref)) document.getElementById('ans_con_list').value = a.construction_pref.join(', ');
           if (a.comments) document.getElementById('ans_comments').value = a.comments;
-        } catch {}
+        } catch (e) {
+            // Ignore errors when restoring persona data
+        }
     });
 
     // Initial load

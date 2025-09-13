@@ -121,7 +121,7 @@
             const res = await fetch(url, opts);
             if(!res.ok){
                 let msg = `${res.status} ${res.statusText}`;
-                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch {}
+                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch (e) {}
                 throw new Error(msg);
             }
             return res.json();
