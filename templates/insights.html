@@ -31,21 +31,21 @@
 
 <!-- Fullscreen overlay -->
 <div id="fs_overlay" class="overlay hidden">
-    <div class="overlay-inner">
-        <div class="flex items-center justify-between mb-2">
+    <div class="overlay-inner flex flex-col max-h-[calc(100vh-2rem)]">
+        <div class="flex items-center justify-between mb-2 flex-shrink-0">
             <div class="text-sm opacity-80">Fullscreen</div>
             <button class="pill pill-sub" onclick="closeFullscreen()">
                 Close
             </button>
         </div>
-        <div id="fs_host" class="h-[70vh]"></div>
+        <div id="fs_host" class="flex-grow min-h-0 overflow-hidden"></div>
     </div>
 </div>
 
 <!-- Data modal -->
 <div id="data_modal" class="overlay hidden">
-    <div class="overlay-inner max-w-5xl">
-        <div class="flex items-center justify-between mb-2">
+    <div class="overlay-inner max-w-5xl flex flex-col max-h-[calc(100vh-2rem)]">
+        <div class="flex items-center justify-between mb-2 flex-shrink-0">
             <div class="flex items-center gap-2">
                 <div class="text-sm opacity-80">Underlying Data</div>
                 <button id="dl_raw_csv" class="pill pill-sub">
@@ -56,7 +56,7 @@
                 Close
             </button>
         </div>
-        <div id="data_table" class="overflow-auto max-h-[70vh]"></div>
+        <div id="data_table" class="overflow-auto flex-grow min-h-0"></div>
     </div>
 </div>
 

@@ -19,6 +19,34 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# Custom Jinja2 filter for date formatting
+@app.template_filter('dateformat')
+def dateformat(value, format='%b %d, %Y'):
+    """Format a date that could be a string or datetime object."""
+    if not value:
+        return '—'
+    
+    # If it's already a datetime object, use strftime directly
+    if hasattr(value, 'strftime'):
+        return value.strftime(format)
+    
+    # If it's a string, try to parse it first
+    if isinstance(value, str):
+        try:
+            # Try parsing common datetime formats
+            for fmt in ['%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+                try:
+                    dt_obj = dt.datetime.strptime(value, fmt)
+                    return dt_obj.strftime(format)
+                except ValueError:
+                    continue
+            # If parsing fails, return the string as-is
+            return value
+        except:
+            return value
+    
+    return '—'
+
 FEDERATO_TOKEN = os.environ.get("FEDERATO_TOKEN")
 CLIENT_ID = os.environ.get("FEDERATO_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("FEDERATO_CLIENT_SECRET")

@@ -14,7 +14,7 @@
         <!-- Ambient background scene -->
         <div class="ambient-bg" aria-hidden="true"></div>
 
-        <header class="navbar glass">
+        <header class="navbar glass flex-shrink-0">
             <div
                 class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between"
             >
@@ -57,8 +57,8 @@
                             <span class="ml-1 opacity-70">▾</span>
                         </button>
                         <div id="vibe_menu" class="absolute right-0 mt-2 w-[280px] glass hidden shadow-xl" role="menu" aria-label="Select vibe">
-                            <div class="p-2 text-xs opacity-80">Choose your vibe</div>
-                            <div id="vibe_list" class="p-2 pt-0 grid grid-cols-5 gap-2"></div>
+                            <div class="p-2 text-xs opacity-80 text-center">Choose your vibe</div>
+                            <div id="vibe_list" class="p-2 pt-0 grid grid-cols-5 gap-2 justify-items-center"></div>
                             <div class="p-2 border-t border-white/10">
                                 <label class="lbl">Saturation</label>
                                 <input id="vibe_sat" type="range" min="100" max="180" value="120" class="w-full"/>
@@ -84,14 +84,29 @@
                 </nav>
             </div>
         </header>
-        <main class="mx-auto max-w-7xl px-4 py-8">
+        <main class="flex-grow mx-auto max-w-7xl px-4 py-8 overflow-y-auto">
             {% block content %}{% endblock %}
         </main>
+        <!-- Site-wide footer -->
+        <footer class="site-footer glass">
+            <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="logo">R</div>
+                    <div class="text-sm opacity-90">RiskOps • Underwriting Dashboard</div>
+                </div>
+                <nav class="flex items-center gap-4 text-xs">
+                    <a href="{{ url_for('home') }}" class="nav-link">Overview</a>
+                    <a href="{{ url_for('submissions') }}" class="nav-link">Submissions</a>
+                    <a href="{{ url_for('insights') }}" class="nav-link">Insights</a>
+                </nav>
+                <div class="text-xs opacity-70">© <span id="footer_year"></span> • Built for Hack the North</div>
+            </div>
+        </footer>
         <div id="toasts" class="toasts"></div>
         <!-- Global Persona Modal (available on all pages) -->
         <div id="persona_modal" class="overlay hidden">
-            <div class="overlay-inner max-w-2xl">
-                <div class="flex items-center justify-between mb-4">
+            <div class="overlay-inner max-w-2xl flex flex-col max-h-[calc(100vh-2rem)]">
+                <div class="flex items-center justify-between mb-4 flex-shrink-0">
                     <div>
                         <h3 class="text-xl font-semibold">Build Your Risk Appetite</h3>
                         <p class="text-sm opacity-70 mt-1">Let's create a personalized underwriting strategy</p>
@@ -100,7 +115,7 @@
                 </div>
 
                 <!-- Progress Indicator -->
-                <div class="mb-6">
+                <div class="mb-6 flex-shrink-0">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-medium">Progress</span>
                         <span id="progress_text" class="text-xs opacity-70">Step 1 of 8</span>
@@ -111,7 +126,7 @@
                 </div>
 
                 <!-- Step Container -->
-                <div id="persona_steps" class="min-h-[300px] mb-6">
+                <div id="persona_steps" class="flex-grow overflow-y-auto mb-6 min-h-0">
                     
                     <!-- Step 1: Risk Posture -->
                     <div class="persona-step active" data-step="1">
@@ -585,7 +600,7 @@
                 </div>
 
                 <!-- Navigation -->
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between flex-shrink-0">
                     <button id="btn_prev" class="btn btn-subtle" disabled>← Previous</button>
                     <div class="flex gap-2">
                         <button id="persona_seed" class="btn-subtle btn hidden">Seed Only</button>
@@ -594,7 +609,7 @@
                     </div>
                 </div>
                 
-                <div id="persona_status" class="text-xs opacity-60 mt-2 text-center"></div>
+                <div id="persona_status" class="text-xs opacity-60 mt-2 text-center flex-shrink-0"></div>
             </div>
         </div>
 
