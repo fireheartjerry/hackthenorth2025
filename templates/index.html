@@ -180,8 +180,6 @@
 
 <script>
     let ALL = [];
-    let currentFilter = "all";
-    let currentData = [];
 
     function getActiveMode() {
         return localStorage.getItem("ACTIVE_MODE") || "balanced_growth";
@@ -190,14 +188,207 @@
         localStorage.setItem("ACTIVE_MODE", m);
     }
 
-    let lastHash = "";
+    function prettyMode(name){
+        const s = String(name || "");
+        return s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }
+    function updateModeChip(){
+        const mode = getActiveMode();
+        const at = localStorage.getItem("LAST_REFINED_AT");
+        const mch = document.getElementById("mode_chip");
+        if (mch) {
+            mch.textContent = at && mode === 'custom' ? `Mode: ${prettyMode(mode)} · ${at}` : `Mode: ${prettyMode(mode)}`;
+        }
+    }
+    function updateLastUpdated(elId){
+        const el = document.getElementById(elId);
+        if(!el) return;
+        const d = new Date();
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mm = d.getMinutes().toString().padStart(2,'0');
+        el.textContent = `Last updated ${hh}:${mm}`;
+    }
+
     async function loadHome() {
         const el = document.getElementById("worklist");
+        if (!el) return;
         await withLoading(el, async () => {
             const sel = document.getElementById("home_mode");
             const mode = sel?.value || getActiveMode();
-            const j = await fetchJSON(
-                `/api/classified_mode?mode=${encodeURIComponent(mode)}`
+            const j = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(mode)}`);
+            // Fallback if custom yields no rows
+            if ((j.count || 0) === 0 && mode === "custom") {
+                const last = localStorage.getItem("LAST_NON_EMPTY_MODE") || "balanced_growth";
+                toast("Custom mode empty — showing " + last, "error");
+                setActiveMode(last);
+                if (sel) sel.value = last;
+                const jj = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(last)}`);
+                renderWorklistRows(jj.data || [], last);
+                return;
+            }
+            if ((j.count || 0) > 0) {
+                localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
+            }
+            renderWorklistRows(j.data || [], mode);
+            updateModeChip();
+            updateLastUpdated('worklist_last');
+        });
+    }
+
+    function renderWorklistRows(rows, mode) {
+        const el = document.getElementById("worklist");
+        if (!el) return;
+        const top = (rows || []).slice(0, 8);
+        // Empty state banner with relax option
+        if (!top.length) {
+            el.innerHTML = `
+                <div class="glass p-4 rounded-lg border border-dashed border-slate-600">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="font-semibold">No results for current mode</div>
+                      <div class="text-xs opacity-80">Try Balanced Growth or relax filters (+0.1 LR, +20% premium band)</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button id="btn_switch_bal" class="pill pill-sub">Switch to Balanced Growth</button>
+                      <button id="btn_relax" class="pill pill-sub">Relax Filters</button>
+                    </div>
+                  </div>
+                </div>`;
+            document.getElementById('btn_switch_bal')?.addEventListener('click', () => {
+                setActiveMode('balanced_growth');
+                const sel = document.getElementById('home_mode');
+                if (sel) sel.value = 'balanced_growth';
+                loadHome();
+            });
+            return;
+        }
+        el.innerHTML = top.map(r => `
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
+              <div class="row-main">
+                <div class="row-title">${r.account_name || "-"}</div>
+                <div class="row-sub">${r.primary_risk_state || "-"} · ${r.line_of_business || "-"} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
+              </div>
+              <div class="row-badges">
+                ${badge(r.appetite_status)}
+                <span class="chip">Score ${Number(r.priority_score || 0).toFixed(2)}</span>
+              </div>
+            </a>
+        `).join("");
+    }
+
+    function badge(s) {
+        if (s === "TARGET") return `<span class="pill pill-indigo">Target</span>`;
+        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
+        return `<span class="pill pill-rose">Out</span>`;
+    }
+
+    // Utility functions for quick actions
+    function exportOpportunities() {
+        toast('Export functionality coming soon', 'info');
+    }
+
+    function showBulkActions() {
+        toast('Bulk actions panel coming soon', 'info');
+    }
+
+    function showAnalytics() {
+        window.location.href = '/insights';
+    }
+
+    async function populateHomeModes() {
+        try {
+            const j = await fetchJSON('/api/modes');
+            const sel = document.getElementById('home_mode');
+            if (sel && j && Array.isArray(j)) {
+                sel.innerHTML = j.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+                sel.value = getActiveMode();
+            }
+        } catch (e) {
+            console.error('Failed to load modes:', e);
+        }
+    }
+
+    // Event handlers
+    const refreshBtn = document.getElementById("btn_refresh_home");
+    if (refreshBtn) {
+        refreshBtn.onclick = () => {
+            fetchJSON("/api/refresh", { method: "POST" })
+                .then(() => {
+                    toast("Data refreshed", "success");
+                    loadHome();
+                })
+                .catch((err) => toast("Refresh failed: " + err.message, "error"));
+        };
+    }
+
+    const refreshBtn2 = document.getElementById("btn_refresh_home_2");
+    if (refreshBtn2) {
+        refreshBtn2.onclick = () => {
+            fetchJSON("/api/refresh", { method: "POST" })
+                .then(() => {
+                    toast("Data refreshed", "success");
+                    loadHome();
+                })
+                .catch((err) => toast("Refresh failed: " + err.message, "error"));
+        };
+    }
+
+    const modeSelect = document.getElementById('home_mode');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', (e) => {
+            setActiveMode(e.target.value);
+            updateModeChip();
+            loadHome();
+        });
+    }
+
+    // Initialize page
+    populateHomeModes().then(() => {
+        loadHome();
+        updateModeChip();
+    }).catch(() => {
+        loadHome();
+        updateModeChip();
+    });
+
+    // Legacy persona functions for compatibility
+    function gatherAnswers() {
+        const con = document.getElementById("ans_con_list")?.value || "";
+        const ans = {
+            aggressiveness: Number(document.getElementById("ans_aggr")?.value || 5),
+            objective: document.getElementById("ans_obj")?.value || "balance",
+            premium_lo: Number(document.getElementById("ans_prem_lo")?.value || 75000),
+            premium_hi: Number(document.getElementById("ans_prem_hi")?.value || 1500000),
+            max_lr: Number(document.getElementById("ans_lr")?.value || 0.65),
+            tiv_max: Number(document.getElementById("ans_tiv")?.value || 150000000),
+            new_only: !!document.getElementById("ans_new_only")?.checked,
+            strict_construction: !!document.getElementById("ans_good_con")?.checked,
+            construction_pref: con ? con.split(',').map(s => s.trim()).filter(Boolean) : [],
+            comments: document.getElementById("ans_comments")?.value || "",
+        };
+        try { localStorage.setItem('personaAnswers', JSON.stringify(ans)); } catch {}
+        return ans;
+    }
+
+    // Auto-refresh functionality
+    let autoH;
+    function startAuto() {
+        clearInterval(autoH);
+        autoH = setInterval(() => {
+            if (!document.hidden) {
+                loadHome().catch((err) => console.error("Auto-refresh failed:", err));
+            }
+        }, 45000);
+    }
+    function stopAuto() {
+        clearInterval(autoH);
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopAuto();
+        else startAuto();
+    });
+    startAuto();
+</script>
             );
             document.getElementById("mode_expl").textContent =
                 j.mode_explanation || "";

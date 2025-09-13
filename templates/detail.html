@@ -31,6 +31,7 @@
       <span class="priority-score {% if item.priority_score >= 7 %}priority-high{% elif item.priority_score >= 4 %}priority-medium{% else %}priority-low{% endif %}">
         Priority {{ '%.1f'|format(item.priority_score or 0) }}
       </span>
+      <button id="btn_copy" class="quick-action">🔗 Copy Link</button>
       <button id="btn_watch" class="quick-action">👀 Watch</button>
       <button id="btn_note" class="quick-action">📝 Add Note</button>
       <button id="btn_refresh" class="quick-action">🔄 Refresh</button>
