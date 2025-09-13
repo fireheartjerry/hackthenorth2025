@@ -531,11 +531,13 @@
 
     // Enhanced table rendering with visual priorities and bulk selection
     function renderTable(rows){
+        console.log('renderTable called with', rows ? rows.length : 0, 'rows');
         const tbody = document.getElementById("tbody");
         const emptyState = document.getElementById("empty-state");
         const countSpan = document.getElementById("subs_count");
         
         if (!rows || rows.length === 0) {
+            console.log('No rows to display, showing empty state');
             tbody.innerHTML = "";
             emptyState?.classList.remove("hidden");
             countSpan.textContent = "0";
@@ -544,8 +546,10 @@
             return;
         }
         
+        console.log('Processing', rows.length, 'rows for pagination');
         // Get paginated rows
         const paginatedRows = updatePagination(rows);
+        console.log('Got', paginatedRows.length, 'paginated rows for display');
         
         emptyState?.classList.add("hidden");
         countSpan.textContent = `${rows.length}`;
@@ -559,6 +563,7 @@
         };
         // Consider "processed" as items that are Target or In-Appetite (triaged for action)
         stats.processed = stats.target + stats.in;
+        console.log('Calculated stats:', stats);
         updateStats(stats);
         updateHeaderChips(stats);
         
@@ -954,15 +959,48 @@
                 break;
         }
         
-        // Reset to first page and apply filters
+        // Reset to first page
         CURRENT_PAGE = 1;
-        applyFiltersAndRender();
+        
+        // If we have data, apply client-side filters, otherwise load from server
+        if (ALL_SUBMISSIONS.length > 0) {
+            console.log('Using existing data for preset filter');
+            applyFiltersAndRender();
+        } else {
+            console.log('Loading fresh data for preset filter');
+            const params = { mode: getActiveMode(), sort_by: SORT_BY, sort_dir: SORT_DIR };
+            
+            // Add preset-specific server-side filters
+            switch(preset) {
+                case 'targets':
+                    params.status = 'TARGET';
+                    break;
+                case 'in-appetite':
+                    params.status = 'IN';
+                    break;
+                case 'high-value':
+                    params.min_premium = '100000';
+                    break;
+                case 'new-business':
+                    params.renewal_or_new_business = 'NEW_BUSINESS';
+                    break;
+                case 'recent':
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                    break;
+            }
+            
+            load(params);
+        }
     }
 
     async function load(params = {}) {
+        console.log('load() called with params:', params);
         // Always include an explicit mode so sorting/filtering doesn't change the cohort
         if (!params.mode) params.mode = getActiveMode();
         const qs = new URLSearchParams(params).toString();
+        console.log('Fetching data with query string:', qs);
         const tbody = document.getElementById("tbody");
         
         // Reset to first page when loading new data
@@ -971,14 +1009,17 @@
         try {
             await withLoading(tbody, async () => {
                 const response = await fetchJSON("/api/classified_mode?" + qs);
+                console.log('Received response with', response.data?.length || 0, 'items');
                 const modeExpl = document.getElementById("sub_mode_expl");
                 if (modeExpl) {
                     modeExpl.textContent = response.mode_explanation || "";
                 }
                 ALL_SUBMISSIONS = response.data || [];
+                console.log('Updated ALL_SUBMISSIONS to', ALL_SUBMISSIONS.length, 'items');
                 renderTable(ALL_SUBMISSIONS);
             });
         } catch (error) {
+            console.error('Failed to load submissions:', error);
             toast("Failed to load submissions: " + error.message, "error");
         }
     }
@@ -1464,7 +1505,10 @@
     populateModes()
         .then(() => {
             updateSortHeaders();
-            apply();
+            // Load initial data instead of just applying filters
+            load({ mode: getActiveMode() }).catch((err) =>
+                toast("Initial load failed: " + err.message, "error")
+            );
         })
         .catch(() => {
             updateSortHeaders();
