@@ -29,6 +29,12 @@
 
 <div id="tab_content" class="mt-4 space-y-6"></div>
 
+<!-- US Map Section - Always Visible -->
+<div class="mt-8 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Geographic Overview</h2>
+    <div id="us_map_container" class="space-y-6"></div>
+</div>
+
 <!-- Fullscreen overlay -->
 <div id="fs_overlay" class="overlay hidden">
     <div class="overlay-inner flex flex-col max-h-[calc(100vh-2rem)]">
@@ -373,6 +379,16 @@
                 section(btn.dataset.tab);
             };
         });
+        
+        // Load the US map at the bottom of the page
+        const mapContainer = document.getElementById("us_map_container");
+        if (mapContainer) {
+            mapContainer.appendChild(createChoroplethChart("US State Heatmap — Premium/Count by State", {
+                location: "primary_risk_state",
+                metric: "sum:tiv"
+            }));
+        }
+        
         firstBtn?.click();
     }
 
@@ -866,12 +882,6 @@
     }
     
     function loadExposureTab(host) {
-        // State heatmap
-        host.appendChild(createChoroplethChart("State Heatmap", {
-            location: "primary_risk_state",
-            metric: "sum:tiv"
-        }));
-        
         // State-LOB matrix heatmap
         host.appendChild(createHeatmapChart("State-LOB Matrix", {
             x: "primary_risk_state",
