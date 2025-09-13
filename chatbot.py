@@ -7,12 +7,15 @@ import google.generativeai as genai
 from utils_data import load_df
 from utils_json import to_builtin
 from percentile_modes import summarize_percentiles
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class RiskOpsChatbot:
     def __init__(self):
         self.api_key = os.environ.get("GEMINI_API_KEY")
-        self.model_name = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro")
+        self.model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
         self.conversation_history = []
         
         if self.api_key:

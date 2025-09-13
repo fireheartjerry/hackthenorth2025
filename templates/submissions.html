@@ -367,7 +367,7 @@
     <div class="table-container overflow-x-auto">
         <!-- Enhanced Table -->
         <div class="overflow-x-auto">
-            <table class="enhanced-submissions-table w-full text-sm">
+            <table id="subs_table" class="enhanced-submissions-table w-full text-sm">
             <thead class="border-b border-white border-opacity-10">
                 <tr>
                     <th class="checkbox-col py-5 px-4">
@@ -434,6 +434,11 @@
                 <!-- Submissions will be loaded here -->
             </tbody>
         </table>
+
+        <!-- Cards container (for Cards view) -->
+        <div id="cards_container" class="hidden mt-4">
+            <div id="cards_grid" class="subs-cards-grid"></div>
+        </div>
 
         <!-- Empty State -->
         <div id="empty-state" class="empty-state hidden text-center py-12">
@@ -543,6 +548,9 @@
     let CURRENT_PAGE = 1;
     let PAGE_SIZE = 25;
     let TOTAL_ITEMS = 0;
+    // View state helpers
+    function getSubsView(){ try { return localStorage.getItem('SUBS_VIEW') || 'table'; } catch(e){ return 'table'; } }
+    function setSubsView(v){ try { localStorage.setItem('SUBS_VIEW', v); } catch(e){} }
     
     // Ensure a consistent analysis mode is always applied
     function getActiveMode() {
@@ -561,6 +569,8 @@
 
     // Enhanced table rendering with visual priorities and bulk selection
     function renderTable(rows){
+        // Route to cards renderer when needed
+        if (getSubsView() !== 'table') { return renderCards(rows); }
         console.log('renderTable called with', rows ? rows.length : 0, 'rows');
         const tbody = document.getElementById("tbody");
         const emptyState = document.getElementById("empty-state");
@@ -655,6 +665,58 @@
         // Setup bulk selection handlers
         setupBulkSelection();
         updateLastUpdated();
+    }
+
+    // Cards rendering for submissions (used when view = 'cards')
+    function renderCards(rows){
+        const tableEl = document.getElementById('subs_table');
+        const cardsWrap = document.getElementById('cards_container');
+        const cardsGrid = document.getElementById('cards_grid');
+        const emptyState = document.getElementById('empty-state');
+        const countSpan = document.getElementById('subs_count');
+
+        // Toggle visibility
+        tableEl?.classList.add('hidden');
+        cardsWrap?.classList.remove('hidden');
+
+        if (!rows || rows.length === 0) {
+            cardsGrid.innerHTML = '';
+            emptyState?.classList.remove('hidden');
+            if (countSpan) countSpan.textContent = '0';
+            updateStats({ total: 0, target: 0, processed: 0 });
+            updatePagination([]);
+            return;
+        }
+
+        emptyState?.classList.add('hidden');
+        if (countSpan) countSpan.textContent = `${rows.length}`;
+
+        // Stats
+        const stats = {
+            total: rows.length,
+            target: rows.filter(r => r.appetite_status === 'TARGET').length,
+            in: rows.filter(r => r.appetite_status === 'IN').length,
+            out: rows.filter(r => r.appetite_status === 'OUT').length,
+        };
+        stats.processed = stats.target + stats.in;
+        updateStats(stats);
+        updateHeaderChips(stats);
+
+        // Pagination slice
+        const pageRows = updatePagination(rows);
+        cardsGrid.innerHTML = pageRows.map(r => `
+            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')}" href="/detail/${r.id}">
+                <div class=\"flex items-start justify-between mb-1\">
+                    <div class=\"font-medium\">${r.account_name || '-'}</div>
+                    ${r.appetite_status ? `<span class=\"pill ${r.appetite_status==='TARGET'?'pill-indigo': (r.appetite_status==='IN'?'pill-emerald':'pill-rose')}\">${r.appetite_status}</span>` : ''}
+                </div>
+                <div class=\"text-sm opacity-80 mb-2\">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'} · $${Math.round(r.total_premium||0).toLocaleString()}</div>
+                <div class=\"flex items-center justify-between text-xs opacity-90\">
+                    <span>Score ${Number(r.priority_score||0).toFixed(1)}</span>
+                    <span>Win ${Number((r.winnability>1?r.winnability:(r.winnability||0)*100)).toFixed(0)}%</span>
+                </div>
+            </a>
+        `).join('');
     }
 
     function updateHeaderChips(stats){
@@ -1831,15 +1893,26 @@
         });
         
         // View toggle handlers
+        const tableEl = document.getElementById('subs_table');
+        const cardsWrap = document.getElementById('cards_container');
+        const initialView = getSubsView();
+        document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view===initialView));
+        if (initialView === 'table') { tableEl?.classList.remove('hidden'); cardsWrap?.classList.add('hidden'); }
+        else { tableEl?.classList.add('hidden'); cardsWrap?.classList.remove('hidden'); }
         document.querySelectorAll('[data-view]').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
                 const view = btn.dataset.view;
-                if (view === 'cards') {
-                    toast('Card view coming soon', 'info');
+                setSubsView(view);
+                if (view === 'table') {
+                    tableEl?.classList.remove('hidden');
+                    cardsWrap?.classList.add('hidden');
+                } else {
+                    tableEl?.classList.add('hidden');
+                    cardsWrap?.classList.remove('hidden');
                 }
+                renderTable(ALL_SUBMISSIONS);
             });
         });
         

@@ -624,6 +624,28 @@ body {
   overflow-y: auto;
 }
 
+/* Worklist: Cards view */
+.worklist-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+.work-card{display:flex;flex-direction:column;gap:.4rem;padding:.9rem;border-radius:.9rem;border:1px solid var(--glass-ring);background:rgba(255,255,255,.04);text-decoration:none;color:inherit;transition:all .18s ease}
+.work-card:hover{border-color:rgba(129,140,248,.45);background:rgba(129,140,248,.10);transform:translateY(-1px)}
+.work-card .work-card-head{display:flex;align-items:center;justify-content:space-between}
+.work-card .work-card-title{font-weight:500}
+.work-card .work-card-sub{opacity:.8;font-size:.85rem}
+.work-card .work-card-meta{display:flex;justify-content:space-between;gap:.6rem;font-size:.8rem;opacity:.9}
+
+/* Worklist: Kanban view */
+.kanban-board{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem}
+.kanban-col{display:flex;flex-direction:column;gap:.6rem;border:1px solid var(--glass-ring);border-radius:.9rem;background:rgba(255,255,255,.04);padding:.6rem}
+.kanban-header{display:flex;align-items:center;justify-content:space-between;padding:.2rem .35rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.kanban-title{font-size:.9rem;font-weight:500}
+.kanban-count{font-size:.8rem;opacity:.8}
+.kanban-items{display:flex;flex-direction:column;gap:.5rem;max-height:48vh;overflow-y:auto;padding:.25rem}
+.kanban-card{display:block;border:1px solid var(--glass-ring);border-radius:.7rem;padding:.6rem;background:rgba(255,255,255,.04);text-decoration:none;color:inherit;transition:all .15s ease}
+.kanban-card:hover{border-color:rgba(129,140,248,.45);background:rgba(129,140,248,.10)}
+.kanban-card .k-title{font-weight:500}
+.kanban-card .k-sub{opacity:.8;font-size:.8rem}
+.kanban-card .k-meta{display:flex;justify-content:space-between;font-size:.75rem;opacity:.9;margin-top:.25rem}
+
 /* Additional overflow prevention for large content */
 pre, code {
   word-wrap: break-word;
@@ -647,6 +669,10 @@ pre, code {
 input, select, textarea {
   max-width: 100%;
 }
+
+/* Submissions: Cards view */
+.subs-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.9rem}
+.subs-card{display:block;text-decoration:none;color:inherit}
 
 /* Key/Value */
 .kv{display:flex;flex-direction:column;gap:.22rem}

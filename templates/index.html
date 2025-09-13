@@ -570,6 +570,18 @@
         el.textContent = `Last updated ${hh}:${mm}`;
     }
 
+    // Worklist view state helpers
+    function getWorklistView(){
+        try { return localStorage.getItem('WORKLIST_VIEW') || 'list'; } catch(e){ return 'list'; }
+    }
+    function setWorklistView(v){
+        try { localStorage.setItem('WORKLIST_VIEW', v); } catch(e){}
+        // reflect active state on buttons if present
+        document.querySelectorAll('.view-btn').forEach(b=>{
+            b.classList.toggle('active', b.dataset.view===v);
+        });
+    }
+
     async function loadHome() {
         const el = document.getElementById("worklist");
         if (!el) return;
@@ -590,7 +602,9 @@
             if ((j.count || 0) > 0) {
                 localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
             }
-            renderWorklistRows(j.data || [], mode);
+            // cache rows so view toggle can re-render without refetch
+            window._worklistRows = j.data || [];
+            renderWorklistRows(window._worklistRows, mode);
             updateModeChip();
             updateLastUpdated('worklist_last');
         });
@@ -599,52 +613,59 @@
     function renderWorklistRows(rows, mode) {
         const el = document.getElementById("worklist");
         if (!el) return;
+        const view = getWorklistView();
         const top = (rows || []).slice(0, 8);
-        // Empty state banner with relax option
-        if (!top.length) {
-            el.innerHTML = `
-                <div class="glass p-4 rounded-lg border border-dashed border-slate-600">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div class="font-semibold">No results for current mode</div>
-                      <div class="text-xs opacity-80">Try Balanced Growth or relax filters (+0.1 LR, +20% premium band)</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <button id="btn_switch_bal" class="pill pill-sub">Switch to Balanced Growth</button>
-                      <button id="btn_relax" class="pill pill-sub">Relax Filters</button>
-                    </div>
-                  </div>
-                </div>`;
-            document.getElementById('btn_switch_bal')?.addEventListener('click', () => {
-                setActiveMode('balanced_growth');
-                const sel = document.getElementById('home_mode');
-                if (sel) sel.value = 'balanced_growth';
-                loadHome();
-                toast('Switched to Balanced Growth mode', 'success');
-            });
-            
-            document.getElementById('btn_relax')?.addEventListener('click', () => {
-                // Relax filters by expanding the search criteria
-                toast('Relaxing filter criteria...', 'info');
-                
-                // Store current mode as fallback
-                const currentMode = getActiveMode();
-                localStorage.setItem('LAST_STRICT_MODE', currentMode);
-                
-                // Switch to a more permissive mode
-                setActiveMode('loose_fits');
-                const sel = document.getElementById('home_mode');
-                if (sel) sel.value = 'loose_fits';
-                
-                loadHome().then(() => {
-                    toast('Filters relaxed - showing broader results', 'success');
-                }).catch(() => {
-                    toast('Could not relax filters', 'error');
-                });
-            });
-            return;
-        }
-        el.innerHTML = top.map(r => `
+        // If empty, show the helper banner regardless of view
+        if (!top.length) return renderWorklistEmpty();
+
+        if (view === 'list') return renderWorklistList(top, mode);
+        if (view === 'cards') return renderWorklistCards(top, mode);
+        return renderWorklistKanban(rows || [], mode);
+    }
+
+    function badge(s) {
+        if (s === "TARGET") return `<span class="pill pill-indigo">Target</span>`;
+        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
+        return `<span class="pill pill-rose">Out</span>`;
+    }
+    function renderWorklistEmpty(){
+        const el = document.getElementById('worklist');
+        if(!el) return;
+        el.innerHTML = `
+            <div class="glass p-4 rounded-lg border border-dashed border-slate-600">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-semibold">No results for current mode</div>
+                  <div class="text-xs opacity-80">Try Balanced Growth or relax filters (+0.1 LR, +20% premium band)</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="btn_switch_bal" class="pill pill-sub">Switch to Balanced Growth</button>
+                  <button id="btn_relax" class="pill pill-sub">Relax Filters</button>
+                </div>
+              </div>
+            </div>`;
+        document.getElementById('btn_switch_bal')?.addEventListener('click', () => {
+            setActiveMode('balanced_growth');
+            const sel = document.getElementById('home_mode');
+            if (sel) sel.value = 'balanced_growth';
+            loadHome();
+            toast('Switched to Balanced Growth mode', 'success');
+        });
+        document.getElementById('btn_relax')?.addEventListener('click', () => {
+            toast('Relaxing filter criteria...', 'info');
+            const currentMode = getActiveMode();
+            localStorage.setItem('LAST_STRICT_MODE', currentMode);
+            setActiveMode('loose_fits');
+            const sel = document.getElementById('home_mode');
+            if (sel) sel.value = 'loose_fits';
+            loadHome().then(()=> toast('Filters relaxed - showing broader results', 'success'))
+                     .catch(()=> toast('Could not relax filters', 'error'));
+        });
+    }
+
+    function renderWorklistList(rows, mode){
+        const el = document.getElementById('worklist');
+        el.innerHTML = rows.map(r => `
             <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
               <div class="row-main">
                 <div class="row-title">${r.account_name || "-"}</div>
@@ -658,10 +679,52 @@
         `).join("");
     }
 
-    function badge(s) {
-        if (s === "TARGET") return `<span class="pill pill-indigo">Target</span>`;
-        if (s === "IN") return `<span class="pill pill-emerald">In</span>`;
-        return `<span class="pill pill-rose">Out</span>`;
+    function renderWorklistCards(rows, mode){
+        const el = document.getElementById('worklist');
+        el.innerHTML = `
+          <div class="worklist-cards">${rows.map(r => `
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="work-card ${r.appetite_status?.toLowerCase() || ''}">
+              <div class="work-card-head">
+                <div class="work-card-title">${r.account_name || '-'}</div>
+                <div class="work-card-badges">${badge(r.appetite_status)}</div>
+              </div>
+              <div class="work-card-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'} </div>
+              <div class="work-card-meta">
+                <span>$${Math.round(r.total_premium || 0).toLocaleString()} premium</span>
+                <span>Score ${Number(r.priority_score || 0).toFixed(2)}</span>
+              </div>
+            </a>`).join('')}
+          </div>`;
+    }
+
+    function renderWorklistKanban(rows, mode){
+        const el = document.getElementById('worklist');
+        // group by appetite_status
+        const groups = { TARGET: [], IN: [], OUT: [] };
+        rows.forEach(r=>{ (groups[r.appetite_status]||groups.OUT).push(r); });
+        // sort each group by priority_score desc and take top 8 across columns
+        Object.keys(groups).forEach(k=> groups[k] = groups[k].sort((a,b)=> (b.priority_score||0)-(a.priority_score||0)).slice(0,8));
+        const col = (k,label,emoji)=>`
+          <div class="kanban-col">
+            <div class="kanban-header">
+              <div class="kanban-title">${emoji} ${label}</div>
+              <div class="kanban-count">${groups[k].length}</div>
+            </div>
+            <div class="kanban-items">
+              ${groups[k].map(r=>`
+                <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="kanban-card">
+                  <div class="k-title">${r.account_name || '-'}</div>
+                  <div class="k-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'}</div>
+                  <div class="k-meta">
+                    <span>$${Math.round(r.total_premium || 0).toLocaleString()}</span>
+                    <span>Score ${Number(r.priority_score || 0).toFixed(1)}</span>
+                  </div>
+                </a>`).join('')}
+            </div>
+          </div>`;
+        el.innerHTML = `<div class="kanban-board">${
+            col('TARGET','Target','🎯') + col('IN','In-Appetite','✅') + col('OUT','Out','❌')
+        }</div>`;
     }
 
     // Enhanced utility functions for modern UI
@@ -1154,13 +1217,16 @@
             });
         });
         
-        // View toggle functionality
+        // View toggle functionality: switch rendering modes
+        const current = getWorklistView();
+        setWorklistView(current); // sync active state on load
         document.querySelectorAll('.view-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
                 const view = btn.dataset.view;
-                toast(`Switched to ${view} view`, 'info');
+                setWorklistView(view);
+                const rows = window._worklistRows || [];
+                const mode = document.getElementById('home_mode')?.value || getActiveMode();
+                renderWorklistRows(rows, mode);
             });
         });
         
