@@ -53,7 +53,10 @@
 </div>
 <script>
 document.getElementById("btn_explain").onclick=()=>{
-  fetch("/api/explain/{{ item.id }}",{method:"POST"}).then(r=>r.json()).then(j=>{
+  const params = new URLSearchParams(window.location.search)
+  const mode = params.get('mode')
+  const url = mode? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`
+  fetch(url,{method:"POST"}).then(r=>r.json()).then(j=>{
     document.getElementById("ai_text").innerText = j.ok? j.explanation : "Error"
   })
 }
