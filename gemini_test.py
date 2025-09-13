@@ -235,7 +235,7 @@ def propose_with_gemini(summary_json: dict, seed_rules: dict, goal_text: str) ->
     Returns sanitized dict suitable for scoring engine.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
-    model = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
     if not api_key:
         # No Gemini available: return seed as proposal
         return _sanitize_proposal(seed_rules)
@@ -318,3 +318,233 @@ def propose_with_gemini(summary_json: dict, seed_rules: dict, goal_text: str) ->
         return _sanitize_proposal(seed_rules)
 
     return _sanitize_proposal(raw)
+
+
+def explain_with_gemini(item: dict, rule_text: str, label: str, raw_reason: list) -> dict:
+    """
+    Calls Gemini to generate a concise explanation for why a submission 
+    is classified as IN/OUT/TARGET appetite.
+    
+    Returns dict with keys: 'explanation', 'ai_used', 'fallback_reason'
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    
+    # Fallback explanation
+    fallback_explanation = f"{label}: " + (
+        "; ".join(raw_reason) 
+        if raw_reason 
+        else "Meets appetite and target criteria"
+    )
+    
+    if not api_key:
+        return {
+            "explanation": fallback_explanation,
+            "ai_used": False,
+            "fallback_reason": "No API key provided"
+        }
+    
+    # Build prompt for explanation
+    prompt = (
+        f"You are an underwriting assistant. Explain in one concise sentence why this submission is {label}. "
+        f"Use the guidelines and the submission fields to provide a clear, professional explanation. "
+        f"Focus on the key factors that led to this classification.\n\n"
+        f"Guidelines: {rule_text}\n\n"
+        f"Submission Details: {json.dumps(item, default=str)}\n\n"
+        f"Classification: {label}\n"
+        f"Rule-based reasons: {'; '.join(raw_reason) if raw_reason else 'Meets all criteria'}"
+    )
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "role": "user",
+            "parts": [{"text": prompt}]
+        }],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 120}
+    }
+    
+    try:
+        resp = requests.post(url, json=payload, timeout=20)
+        resp.raise_for_status()
+        j = resp.json()
+        cands = (j.get("candidates") or [])
+        if cands:
+            parts = ((cands[0] or {}).get("content") or {}).get("parts") or []
+            if parts and isinstance(parts[0], dict):
+                text = parts[0].get("text", "").strip()
+                if text:
+                    return {
+                        "explanation": text,
+                        "ai_used": True,
+                        "fallback_reason": None
+                    }
+    except Exception as e:
+        return {
+            "explanation": fallback_explanation,
+            "ai_used": False,
+            "fallback_reason": f"API error: {str(e)}"
+        }
+    
+    return {
+        "explanation": fallback_explanation,
+        "ai_used": False,
+        "fallback_reason": "No response from API"
+    }
+
+
+def nlq_with_gemini(query: str) -> dict:
+    """
+    Calls Gemini to parse natural language queries into structured filters.
+    
+    Returns dict with keys: 'filters', 'ai_used', 'fallback_reason', 'ai_summary'
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    
+    # Heuristic fallback parsing
+    def heuristic_parse(q):
+        st = None
+        status = None
+        min_p = None
+        max_p = None
+        search = None
+        
+        tokens = q.lower().split()
+        for tok in tokens:
+            if len(tok) == 2 and tok.upper() in {"OH", "PA", "MD", "CO", "CA", "FL", "NC", "SC", "GA", "VA", "UT", "TX", "NY"}:
+                st = tok.upper()
+            elif "target" in tok:
+                status = "TARGET"
+            elif "out" in tok:
+                status = "OUT"
+            elif "in" in tok and status is None:
+                status = "IN"
+            elif "k" in tok or "$" in tok:
+                try:
+                    num = float(tok.replace("k", "").replace("$", "").replace(",", ""))
+                    if "k" in tok:
+                        num *= 1000
+                    if min_p is None:
+                        min_p = num
+                    else:
+                        max_p = num
+                except:
+                    pass
+            elif not tok in {"show", "find", "get", "premium", "over", "under", "above", "below", "with", "in", "at"}:
+                if search is None:
+                    search = tok
+                else:
+                    search += " " + tok
+        
+        return {
+            "state": st,
+            "status": status,
+            "min_premium": min_p,
+            "max_premium": max_p,
+            "search": search
+        }
+    
+    fallback_filters = heuristic_parse(query)
+    
+    if not api_key:
+        return {
+            "filters": fallback_filters,
+            "ai_used": False,
+            "fallback_reason": "No API key provided",
+            "ai_summary": "Used heuristic parsing to extract filters from query"
+        }
+    
+    # Build prompt for NLQ parsing
+    system_prompt = (
+        "You are an expert at parsing natural language queries for underwriting data filtering. "
+        "Extract structured filters from the user's query and respond with ONLY valid JSON. "
+        "Do not include backticks or code fences. "
+        "\n\nSupported filters:"
+        "\n- state: 2-letter US state code or null"
+        "\n- status: 'IN' | 'OUT' | 'TARGET' | null (appetite classification)"
+        "\n- min_premium: number or null (minimum premium in dollars)"
+        "\n- max_premium: number or null (maximum premium in dollars)"  
+        "\n- search: string or null (general text search)"
+        "\n\nExamples:"
+        "\n'Show targets in CA over $100k premium' → {\"state\": \"CA\", \"status\": \"TARGET\", \"min_premium\": 100000, \"max_premium\": null, \"search\": null}"
+        "\n'Out of appetite submissions' → {\"state\": null, \"status\": \"OUT\", \"min_premium\": null, \"max_premium\": null, \"search\": null}"
+        "\n'Florida properties under 50k' → {\"state\": \"FL\", \"status\": null, \"min_premium\": null, \"max_premium\": 50000, \"search\": \"properties\"}"
+    )
+    
+    prompt = f"Query: {query}"
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "role": "user",
+            "parts": [{"text": system_prompt + "\n\n" + prompt}]
+        }],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ],
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 120}
+    }
+    
+    try:
+        resp = requests.post(url, json=payload, timeout=20)
+        resp.raise_for_status()
+        j = resp.json()
+        cands = (j.get("candidates") or [])
+        if cands:
+            parts = ((cands[0] or {}).get("content") or {}).get("parts") or []
+            if parts and isinstance(parts[0], dict):
+                text = parts[0].get("text", "").strip()
+                
+                # Strip code fences and extract JSON
+                if text.startswith("```"):
+                    text = text.strip("`\n ")
+                    if text.lower().startswith("json"):
+                        text = text[4:].strip()
+                
+                # Extract first {...}
+                try:
+                    start = text.index("{")
+                    end = text.rindex("}")
+                    text = text[start:end+1]
+                except ValueError:
+                    pass
+                
+                try:
+                    parsed_filters = json.loads(text)
+                    # Validate the structure
+                    valid_keys = {"state", "status", "min_premium", "max_premium", "search"}
+                    filtered_result = {k: v for k, v in parsed_filters.items() if k in valid_keys}
+                    
+                    return {
+                        "filters": filtered_result,
+                        "ai_used": True,
+                        "fallback_reason": None,
+                        "ai_summary": f"Gemini parsed query '{query}' into structured filters"
+                    }
+                except json.JSONDecodeError:
+                    pass
+                    
+    except Exception as e:
+        return {
+            "filters": fallback_filters,
+            "ai_used": False,
+            "fallback_reason": f"API error: {str(e)}",
+            "ai_summary": "Used heuristic parsing due to API error"
+        }
+    
+    return {
+        "filters": fallback_filters,
+        "ai_used": False,
+        "fallback_reason": "Invalid response from API",
+        "ai_summary": "Used heuristic parsing due to invalid API response"
+    }

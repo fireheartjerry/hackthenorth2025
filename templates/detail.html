@@ -179,6 +179,36 @@
         </div>
       </div>
     </div>
+    
+    <!-- AI Summary Widget for Detail Page -->
+    <div id="ai_summary_widget" class="hidden glass-panel">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white text-sm">🤖</span>
+                </div>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-purple-300">Gemini AI Activity</h4>
+                    <button id="ai_summary_close" class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="text-xs">✕</span>
+                    </button>
+                </div>
+                <div id="ai_summary_content" class="text-xs text-slate-300 space-y-1">
+                    <!-- AI activity will be populated here -->
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20">
+                    <div class="text-xs text-purple-400/80">
+                        <span id="ai_model_info">Powered by Gemini Flash 2.0</span>
+                    </div>
+                    <div class="text-xs text-purple-400/60" id="ai_last_used">
+                        <!-- Last used timestamp -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- AI Insights -->
     <div class="glass-panel">
@@ -334,6 +364,18 @@
       const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
       const j = await fetchJSON(url, { method: 'POST' });
       box.innerHTML = `<div class="text-sm">${j.explanation || 'No explanation available'}</div>`;
+      
+      // Show AI summary
+      const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
+      const activity = `
+          <div><strong>Action:</strong> Generated explanation for submission {{ item.id }}</div>
+          <div><strong>AI Status:</strong> ${aiUsed}</div>
+          <div><strong>Result:</strong> ${j.explanation ? 'Explanation provided' : 'No explanation available'}</div>
+          ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
+      `;
+      if (window.showAiSummary) {
+          window.showAiSummary(activity);
+      }
     } catch(e){
       box.innerHTML = `<div class="text-sm text-red-400">Failed to generate explanation: ${e.message}</div>`;
     }

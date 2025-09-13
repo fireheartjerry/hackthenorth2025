@@ -11,9 +11,14 @@ from utils_data import load_df
 from scoring import score_row
 from guidelines import classify_for_mode_row
 from modes import MODES
-from gemini_test import summarize_dataframe, seeds_from_answers, propose_with_gemini
+from ai_suggest import summarize_dataframe
+from persona_seed import seeds_from_answers
+from ai_constraints import propose_with_gemini
+from gemini_test import explain_with_gemini, nlq_with_gemini
 from utils_json import df_records_to_builtin, to_builtin
 from percentile_modes import build_percentile_filters, summarize_percentiles
+from blend import blend_modes
+from chatbot import chatbot
 
 load_dotenv()
 
@@ -64,8 +69,8 @@ POLICIES_URL = os.environ.get(
 )
 USE_LOCAL_DATA = os.environ.get("USE_LOCAL_DATA", "false").lower() == "true"
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+# AI functionality now handled by Gemini
+# GEMINI_API_KEY and GEMINI_MODEL are read directly in gemini_test.py
 
 CACHE_TTL = 300
 _cache_data = {"ts": 0, "df": None, "raw": None}
@@ -681,29 +686,20 @@ def apiExplain(pid):
         rule_text = buildGuidelineSummary()
     raw_reason = item.get("appetite_reasons", [])
     label = item.get("appetite_status", "IN")
-    if not OPENAI_API_KEY:
-        s = f"{label}: " + (
-            "; ".join(raw_reason)
-            if raw_reason
-            else "Meets appetite and target criteria"
-        )
-        return jsonify({"ok": True, "explanation": s})
-    from openai import OpenAI
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    prompt = f"You are an underwriting assistant. Explain in one concise sentence why this submission is {label}. Use the guidelines and the fields. Guidelines: {rule_text}. Fields: {json.dumps(item, default=str)}."
-    try:
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=120,
-        )
-        txt = resp.choices[0].message.content.strip()
-        return jsonify({"ok": True, "explanation": txt})
-    except Exception as e:
-        s = f"{label}: " + ("; ".join(raw_reason) if raw_reason else "Meets appetite and target criteria")
-        return jsonify({"ok": True, "explanation": s, "note": "AI fallback"})
+    
+    # Use Gemini for explanation
+    result = explain_with_gemini(item, rule_text, label, raw_reason)
+    
+    response = {
+        "ok": True, 
+        "explanation": result["explanation"],
+        "ai_used": result["ai_used"]
+    }
+    
+    if result["fallback_reason"]:
+        response["ai_note"] = result["fallback_reason"]
+    
+    return jsonify(response)
 
 
 @app.route("/api/nlq", methods=["POST"])
@@ -711,83 +707,21 @@ def apiNlq():
     data = request.get_json(silent=True) or {}
     q = (data.get("q") or "").strip()
     if not q:
-        return jsonify({"filters": {}, "note": "Empty query"})
-    if not OPENAI_API_KEY:
-        st = None
-        status = None
-        min_p = None
-        max_p = None
-        for tok in q.split():
-            if tok.upper() in ACCEPT_STATES:
-                st = tok.upper()
-        if "out" in q.lower():
-            status = "OUT"
-        elif "target" in q.lower():
-            status = "TARGET"
-        elif "in" in q.lower():
-            status = "IN"
-        return jsonify(
-            {
-                "filters": {
-                    "state": st,
-                    "status": status,
-                    "min_premium": min_p,
-                    "max_premium": max_p,
-                },
-                "note": "Heuristic",
-            }
-        )
-    from openai import OpenAI
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    sys = "Extract filters from a natural-language underwriting query. Respond as JSON with keys: state (2-letter or null), status (IN|OUT|TARGET|null), min_premium (number|null), max_premium (number|null), search (string|null)."
-    u = f"Query: {q}"
-    try:
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "system", "content": sys}, {"role": "user", "content": u}],
-            temperature=0.1,
-            max_tokens=120,
-        )
-        txt = resp.choices[0].message.content.strip()
-        try:
-            parsed = json.loads(txt)
-        except Exception:
-            parsed = {
-                "state": None,
-                "status": None,
-                "min_premium": None,
-                "max_premium": None,
-                "search": None,
-            }
-        return jsonify({"filters": parsed})
-    except Exception:
-        # Heuristic fallback on failure
-        st = None
-        status = None
-        min_p = None
-        max_p = None
-        for tok in q.split():
-            if tok.upper() in ACCEPT_STATES:
-                st = tok.upper()
-        if "out" in q.lower():
-            status = "OUT"
-        elif "target" in q.lower():
-            status = "TARGET"
-        elif "in" in q.lower():
-            status = "IN"
-        return jsonify(
-            {
-                "filters": {
-                    "state": st,
-                    "status": status,
-                    "min_premium": min_p,
-                    "max_premium": max_p,
-                    "search": None,
-                },
-                "note": "Heuristic fallback",
-            }
-        )
+        return jsonify({"filters": {}, "ai_used": False, "ai_summary": "Empty query provided"})
+    
+    # Use Gemini for NLQ parsing
+    result = nlq_with_gemini(q)
+    
+    response = {
+        "filters": result["filters"],
+        "ai_used": result["ai_used"],
+        "ai_summary": result["ai_summary"]
+    }
+    
+    if result["fallback_reason"]:
+        response["ai_note"] = result["fallback_reason"]
+    
+    return jsonify(response)
 
 
 @app.route("/api/modes")
@@ -809,6 +743,183 @@ def api_mode_percentiles():
         return jsonify({"ok": True, "summary": to_builtin(s)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/mode/blend", methods=["POST"])
+def api_mode_blend():
+    try:
+        data = request.get_json(silent=True) or {}
+        left = str(data.get("left") or "balanced_growth")
+        right = str(data.get("right") or "unicorn_hunting")
+        t = float(data.get("t") or 0.5)
+        lm = MODES.get(left)
+        rm = MODES.get(right)
+        if not lm or not rm:
+            return jsonify({"ok": False, "error": "Unknown mode(s)"}), 400
+        blended = blend_modes(lm, rm, t)
+        MODES["blend"] = blended
+        return jsonify({"ok": True, "mode": "blend", "blended": to_builtin(blended)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Chat with the AI assistant"""
+    try:
+        data = request.get_json(silent=True) or {}
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", "default")
+        
+        if not message:
+            return jsonify({"ok": False, "error": "No message provided"}), 400
+        
+        result = chatbot.chat(message, session_id)
+        return jsonify({"ok": True, **result})
+        
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/chat/stream")
+def api_chat_stream():
+    """Server-sent events for streaming chat responses"""
+    from flask import Response
+    
+    message = request.args.get("message", "").strip()
+    session_id = request.args.get("session_id", "default")
+    
+    if not message:
+        return Response("data: " + json.dumps({"type": "error", "content": "No message provided"}) + "\n\n", 
+                       mimetype="text/plain")
+    
+    def generate():
+        try:
+            for chunk in chatbot.get_streaming_response(message, session_id):
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+    
+    return Response(generate(), mimetype="text/event-stream")
+
+
+@app.route("/api/chat/execute", methods=["POST"])
+def api_chat_execute():
+    """Execute an action suggested by the chatbot"""
+    try:
+        data = request.get_json(silent=True) or {}
+        action = data.get("action", {})
+        
+        if not action or "type" not in action:
+            return jsonify({"ok": False, "error": "No valid action provided"}), 400
+        
+        action_type = action["type"]
+        params = action.get("params", {})
+        
+        # Build URL parameters for the action
+        url_params = []
+        
+        if action_type == "filter":
+            for key, value in params.items():
+                if value is not None:
+                    url_params.append(f"{key}={value}")
+        
+        elif action_type == "mode":
+            url_params.append(f"mode={params.get('mode', 'balanced')}")
+        
+        elif action_type == "search":
+            url_params.append(f"q={params.get('q', '')}")
+        
+        elif action_type == "sort":
+            url_params.append(f"sort_by={params.get('sort_by', 'priority_score')}")
+            url_params.append(f"sort_dir={params.get('sort_dir', 'desc')}")
+        
+        # Return the URL parameters for the frontend to apply
+        return jsonify({
+            "ok": True,
+            "action_type": action_type,
+            "url_params": "&".join(url_params),
+            "message": f"Applied {action_type} action successfully"
+        })
+        
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/chat/context", methods=["POST"])
+def api_chat_context():
+    """Update chatbot with current dashboard context"""
+    try:
+        data = request.get_json(silent=True) or {}
+        
+        # Update chatbot with current dashboard state
+        context_info = {
+            "current_mode": data.get("mode", "balanced"),
+            "active_filters": data.get("filters", {}),
+            "current_page": data.get("page", "dashboard"),
+            "visible_submissions": data.get("submission_count", 0),
+            "user_action": data.get("last_action", ""),
+        }
+        
+        # Store context in chatbot (you could extend this)
+        if hasattr(chatbot, 'current_context'):
+            chatbot.current_context = context_info
+        
+        return jsonify({"ok": True, "message": "Context updated"})
+        
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/chat/suggestions")
+def api_chat_suggestions():
+    """Get contextual suggestions based on current dashboard state"""
+    try:
+        df = load_df("data.json")
+        if df.empty:
+            return jsonify({"suggestions": []})
+        
+        suggestions = []
+        
+        # Analyze current data to provide smart suggestions
+        if "total_premium" in df.columns:
+            high_premium_count = len(df[df["total_premium"] > df["total_premium"].quantile(0.9)])
+            if high_premium_count > 0:
+                suggestions.append({
+                    "text": f"Show me the {high_premium_count} highest premium submissions",
+                    "action": "filter",
+                    "icon": "💰"
+                })
+        
+        if "primary_risk_state" in df.columns:
+            top_state = df["primary_risk_state"].value_counts().index[0]
+            state_count = df["primary_risk_state"].value_counts().iloc[0]
+            suggestions.append({
+                "text": f"Focus on {state_count} submissions in {top_state}",
+                "action": "filter",
+                "icon": "📍"
+            })
+        
+        if "fresh_days" in df.columns:
+            fresh_count = len(df[df["fresh_days"] <= 7])
+            if fresh_count > 0:
+                suggestions.append({
+                    "text": f"Show me {fresh_count} submissions from this week",
+                    "action": "filter",
+                    "icon": "🆕"
+                })
+        
+        # Mode suggestions
+        suggestions.extend([
+            {"text": "Switch to unicorn mode for premium opportunities", "action": "mode", "icon": "🦄"},
+            {"text": "Explain current filtering criteria", "action": "explain", "icon": "💡"},
+            {"text": "What are the trends in my portfolio?", "action": "analyze", "icon": "📈"}
+        ])
+        
+        return jsonify({"suggestions": suggestions[:6]})  # Limit to 6 suggestions
+        
+    except Exception as e:
+        return jsonify({"suggestions": [], "error": str(e)})
 
 
 def apply_hard_filters(df, f):
@@ -885,56 +996,49 @@ def generate_explanation(r, qs):
 
 @app.route("/api/classified_mode")
 def api_classified_mode():
-    """Percentile-driven modes with legacy preset fallback (e.g., custom).
+    """Percentile-driven modes and persona custom.
 
-    Supports overrides via query params: top_pct, max_lr_pct, min_win_pct, max_tiv_pct, fresh_pct.
-    Also supports UI filters: state, status, min_premium, max_premium, q.
+    Query params:
+      - mode: one of legacy [unicorn_hunting, balanced_growth, loose_fits, turnaround_bets] or new [unicorn, balanced, loose, turnaround, custom]
+      - overrides: top_pct, max_lr_pct, min_win_pct, max_tiv_pct, fresh_pct
+      - filters: state, status, min_premium, max_premium, q
+      - sorting: sort_by, sort_dir
     """
-    mode = request.args.get("mode", "balanced_growth")
+    mode = (request.args.get("mode") or "balanced_growth").strip()
     df = load_df("data.json")
     if df.empty:
         return jsonify({"count": 0, "data": []})
 
-    preset = MODES.get(mode, MODES["balanced_growth"])
+    # Map legacy/new names → percentile kind
+    name_map = {
+        "unicorn_hunting": "unicorn",
+        "balanced_growth": "balanced",
+        "loose_fits": "loose",
+        "turnaround_bets": "turnaround",
+        "unicorn": "unicorn",
+        "balanced": "balanced",
+        "loose": "loose",
+        "turnaround": "turnaround",
+    }
 
-    qs = {
-        "premium": df["total_premium"].quantile([0.99, 0.9, 0.8, 0.5, 0.4, 0.2]),
-        "winnability": df["winnability"].quantile([0.99, 0.8, 0.5, 0.4]),
-        "loss_ratio": df["loss_ratio"].quantile([0.4, 0.7, 0.9]),
-        "fresh_days": df["fresh_days"].quantile([0.5]),
-    }
-    mode_filters = {
-        "unicorn_hunting": {
-            "premium_range": [qs["premium"].loc[0.99], df["total_premium"].max()],
-            "min_winnability": qs["winnability"].loc[0.99],
-            "loss_ratio_max": qs["loss_ratio"].loc[0.4],
-        },
-        "balanced_growth": {
-            "premium_range": [qs["premium"].loc[0.8], df["total_premium"].max()],
-            "min_winnability": qs["winnability"].loc[0.8],
-            "loss_ratio_max": qs["loss_ratio"].loc[0.7],
-        },
-        "loose_fits": {
-            "premium_range": [qs["premium"].loc[0.2], df["total_premium"].max()],
-            "min_winnability": qs["winnability"].loc[0.4],
-            "loss_ratio_max": qs["loss_ratio"].loc[0.9],
-        },
-        "turnaround_bets": {
-            "premium_range": [df["total_premium"].min(), qs["premium"].loc[0.4]],
-            "min_winnability": qs["winnability"].loc[0.4],
-            "loss_ratio_max": 1.0,
-            "fresh_days_max": qs["fresh_days"].loc[0.5],
-        },
-    }
-    filters = mode_filters.get(mode, mode_filters["balanced_growth"])
-    d = apply_hard_filters(df, filters)
-
-    mode_expl = {
-        "unicorn_hunting": "You're in Unicorn Mode — top 1% premiums & winnability",
-        "balanced_growth": "You're in Balanced Mode — top 20% premiums, LR ≤ 70th percentile",
-        "loose_fits": "You're in Loose Mode — wide net up to 80th percentile",
-        "turnaround_bets": "You're in Turnaround Mode — smaller premiums but fresh",
-    }
+    if mode == "custom" and "custom" in MODES:
+        # Persona-driven
+        preset = MODES["custom"]
+        filters = preset.get("filters", {})
+        d = apply_hard_filters(df, filters)
+        weights = preset.get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        mode_explanation = "Custom mode (persona-refined)"
+    else:
+        kind = name_map.get(mode, "balanced")
+        # Collect overrides
+        overrides = {}
+        for k in ("top_pct", "max_lr_pct", "min_win_pct", "max_tiv_pct", "fresh_pct"):
+            if k in request.args:
+                overrides[k] = request.args.get(k)
+        filters, _summary = build_percentile_filters(df, kind=kind, overrides=overrides)
+        d = apply_hard_filters(df, filters)
+        weights = MODES.get("balanced_growth", {}).get("weights", {})
+        mode_explanation = f"{kind.title()} mode — dynamic percentile-based filters"
 
     # Optional UI filters
     state = request.args.get("state")
@@ -953,25 +1057,36 @@ def api_classified_mode():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
 
-    # Score and rank using existing mode weights
+    # Score and rank
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
         stat, reasons, s, pscore = classify_for_mode_row(
-            r, preset["weights"], filters, scounts
+            r, weights, filters, scounts
         )
         r["appetite_status"] = stat
         r["appetite_reasons"] = reasons
         r["priority_score"] = float(pscore)
         r["mode_score"] = round(float(pscore), 4)
-        r["appetite_explanation"] = generate_explanation(r, qs)
         rows.append(sanitize_row(r))
+
+    # Cut to top N% if provided in filters
+    top_pct = None
+    try:
+        if isinstance(filters.get("top_pct"), (int, float)):
+            top_pct = float(filters.get("top_pct"))
+    except Exception:
+        top_pct = None
+    if top_pct:
+        n = max(1, int(len(rows) * (top_pct / 100.0)))
+        rows.sort(key=lambda r: r.get("priority_score") or 0.0, reverse=True)
+        rows = rows[:n]
 
     # Filter by status if requested
     if status_filter:
         rows = [r for r in rows if str(r.get("appetite_status")) == status_filter]
 
-    # Sorting — support explicit sort_by/sort_dir like preset path
+    # Sorting
     sort_by = request.args.get("sort_by")
     sort_dir = (request.args.get("sort_dir") or "desc").lower()
     reverse = sort_dir != "asc"
@@ -997,18 +1112,10 @@ def api_classified_mode():
         return v
 
     valid_keys = {
-        "id",
-        "account_name",
-        "primary_risk_state",
-        "line_of_business",
-        "total_premium",
-        "tiv",
-        "winnability",
-        "appetite_status",
-        "priority_score",
-        "mode_score",
+        "id", "account_name", "primary_risk_state", "line_of_business",
+        "total_premium", "tiv", "winnability", "appetite_status",
+        "priority_score", "mode_score",
     }
-
     if sort_by in valid_keys:
         rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
     else:
@@ -1018,7 +1125,7 @@ def api_classified_mode():
         "count": len(rows),
         "data": rows,
         "mode": mode,
-        "mode_explanation": mode_expl.get(mode, ""),
+        "mode_explanation": mode_explanation,
     })
 
 
@@ -1113,7 +1220,7 @@ def api_aggregate():
     # Build aggregation
     def agg_series(frame):
         if metric == "count":
-            return frame.size5
+            return frame.size
         if metric.startswith("sum:"):
             col = metric.split(":", 1)[1]
             if col not in cols:
