@@ -869,6 +869,7 @@ def api_classified_mode():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
 
+    # Score and rank using existing mode weights
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
@@ -927,7 +928,7 @@ def api_classified_mode():
     if sort_by in valid_keys:
         rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
     else:
-        rows.sort(key=lambda r: sort_key(r, "priority_score"), reverse=True)
+        rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
 
     return jsonify({
         "count": len(rows),
