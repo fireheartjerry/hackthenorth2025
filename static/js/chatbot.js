@@ -660,16 +660,16 @@ class RiskOpsChatbot {
         botMessageDiv.innerHTML = `
             <div class="message-avatar">🤖</div>
             <div class="message-content">
-                <div class="message-text" id="streaming-text"></div>
+                <div class="message-text streaming-text"></div>
                 <div class="message-time">${new Date().toLocaleTimeString()}</div>
             </div>
         `;
-        
+
         this.hideTyping();
         messagesContainer.appendChild(botMessageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        
-        const streamingText = document.getElementById('streaming-text');
+
+        const streamingText = botMessageDiv.querySelector('.streaming-text');
         
         try {
             const url = `/api/chat/stream?message=${encodeURIComponent(message)}&session_id=${this.sessionId}`;
