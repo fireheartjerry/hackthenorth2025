@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>RiskOps Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"/>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <!-- Ambient background scene -->
+  <div class="ambient-bg" aria-hidden="true"></div>
+  
+  <header class="navbar glass">
+    <div class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="logo">R</div>
+        <div class="text-xl font-bold tracking-tight">RiskOps</div>
+      </div>
+      <nav class="flex items-center gap-6 text-sm">
+        <a href="{{ url_for('home') }}" class="nav-link">Overview</a>
+        <a href="{{ url_for('submissions') }}" class="nav-link">Submissions</a>
+        <a href="#" class="nav-link disabled">Portfolio</a>
+      </nav>
+    </div>
+  </header>
+  <main class="mx-auto max-w-7xl px-4 py-8">
+    {% block content %}{% endblock %}
+  </main>
+  <div id="toasts" class="toasts"></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
