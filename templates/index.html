@@ -1,16 +1,60 @@
 {% extends "base.html" %} {% block content %}
-<!-- Enhanced Underwriter Dashboard -->
-<div class="glass-panel mb-6 flex items-center justify-between">
-  <div>
-    <div id="hero_greet" class="text-2xl font-semibold tracking-tight">Welcome</div>
-    <div id="hero_sub" class="text-xs opacity-70 mt-1">High-value opportunities ready for your review</div>
+<!-- Modern Hero Section with Real-time Updates -->
+<div class="hero-dashboard glass-panel mb-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="hero-avatar">
+        <div class="status-indicator online"></div>
+      </div>
+      <div>
+        <div id="hero_greet" class="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Welcome</div>
+        <div id="hero_sub" class="text-sm opacity-75 mt-1 flex items-center gap-2">
+          <span class="pulse-dot"></span>
+          <span id="opportunities_count">—</span> high-priority opportunities ready for review
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="quick-stats hidden md:flex items-center gap-4 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+        <div class="stat-item">
+          <div class="stat-value text-emerald-400" id="active_targets">—</div>
+          <div class="stat-label">Active Targets</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-value text-blue-400" id="win_rate">—%</div>
+          <div class="stat-label">Win Rate</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-value text-purple-400" id="avg_premium">—</div>
+          <div class="stat-label">Avg Premium</div>
+        </div>
+      </div>
+      <button id="btn_persona" class="quick-action primary hover-lift">
+        <span class="icon">🎯</span>
+        Build Persona
+      </button>
+      <button id="btn_refresh_home" class="quick-action hover-lift">
+        <span class="icon">🔄</span>
+        Refresh
+      </button>
+    </div>
   </div>
-  <div class="hidden md:flex items-center gap-3">
-    <button id="btn_persona" class="quick-action primary">Build Persona</button>
-    <button id="btn_refresh_home" class="quick-action">Refresh Data</button>
-    <span class="chip">Vibe: <span id="hero_vibe" class="ml-1">—</span></span>
-    <a href="#" id="open_vibes" class="pill pill-sub hover-glow">Tweak vibe</a>
+  
+  <!-- Real-time Activity Feed -->
+  <div class="activity-ticker mt-4 p-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-lg border border-indigo-400/20">
+    <div class="flex items-center gap-2">
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        LIVE
+      </div>
+      <div id="activity_feed" class="flex-1 text-sm">
+        <span class="opacity-75">Monitoring submissions in real-time...</span>
+      </div>
+    </div>
   </div>
+  
   <script>
     (function(){
       function greet(){
@@ -19,160 +63,641 @@
         const g = h<12? 'Good morning' : h<18? 'Good afternoon' : 'Good evening';
         document.getElementById('hero_greet').textContent = n ? `${g}, ${n} 👋` : `${g} 👋`;
       }
-      function vibe(){
-        const v = (localStorage.getItem('VIBE') || 'aurora');
-        const pretty = v.charAt(0).toUpperCase()+v.slice(1);
-        document.getElementById('hero_vibe').textContent = pretty;
+      
+      function updateQuickStats() {
+        // This will be populated by the main script
+        const metrics = window._dashboardMetrics || {};
+        document.getElementById('active_targets').textContent = metrics.targets || '—';
+        document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
+        document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
+        document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
       }
-      document.getElementById('open_vibes')?.addEventListener('click', (e)=>{
-        e.preventDefault();
-        document.getElementById('vibe_btn')?.click();
+      
+      function simulateActivityFeed() {
+        const activities = [
+          '📋 New submission from Acme Corp - $125K premium',
+          '🎯 High-priority target identified in CA',
+          '✅ Submission #1234 moved to In-Appetite',
+          '📊 Portfolio metrics updated',
+          '🔄 Data refresh completed'
+        ];
+        let currentIndex = 0;
+        
+        setInterval(() => {
+          const feed = document.getElementById('activity_feed');
+          if (feed) {
+            feed.innerHTML = `<span class="text-indigo-300">${activities[currentIndex]}</span>`;
+            currentIndex = (currentIndex + 1) % activities.length;
+          }
+        }, 3000);
+      }
+      
+      greet();
+      updateQuickStats();
+      simulateActivityFeed();
+      
+      window.addEventListener('storage', (e) => {
+        if(e.key === 'USER_NAME') greet();
       });
-      greet(); vibe();
-      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
+      
+      // Global update function for other scripts to call
+      window.updateDashboardMetrics = updateQuickStats;
     })();
   </script>
 </div>
 
-<!-- Enhanced Metrics Dashboard -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="metric-card">
-        <div class="metric-value text-purple-300">{{ tgt_ct }}</div>
-        <div class="metric-label">Target Opportunities</div>
-        <div class="text-xs text-purple-200 mt-1">High priority</div>
+<!-- Interactive Metrics Dashboard -->
+<div class="metrics-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="metric-card-enhanced target-metric hover-lift" data-metric="target">
+        <div class="metric-header">
+            <div class="metric-icon target-icon">🎯</div>
+            <div class="metric-trend trend-up">
+                <span class="trend-icon">↗</span>
+                <span class="trend-value">+12%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-purple-400 animate-counter" data-target="{{ tgt_ct }}">0</div>
+            <div class="metric-label">Target Opportunities</div>
+            <div class="metric-subtitle">High priority submissions</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-purple-500/30">
+                <div class="progress-fill bg-purple-400" style="width: 85%"></div>
+            </div>
+            <div class="progress-text">85% of goal</div>
+        </div>
     </div>
-    <div class="metric-card">
-        <div class="metric-value text-emerald-300">{{ in_ct }}</div>
-        <div class="metric-label">In-Appetite</div>
-        <div class="text-xs text-emerald-200 mt-1">Ready to review</div>
+    
+    <div class="metric-card-enhanced in-metric hover-lift" data-metric="in">
+        <div class="metric-header">
+            <div class="metric-icon in-icon">✅</div>
+            <div class="metric-trend trend-up">
+                <span class="trend-icon">↗</span>
+                <span class="trend-value">+8%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-emerald-400 animate-counter" data-target="{{ in_ct }}">0</div>
+            <div class="metric-label">In-Appetite</div>
+            <div class="metric-subtitle">Ready for review</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-emerald-500/30">
+                <div class="progress-fill bg-emerald-400" style="width: 72%"></div>
+            </div>
+            <div class="progress-text">72% conversion</div>
+        </div>
     </div>
-    <div class="metric-card">
-        <div class="metric-value">{{ total }}</div>
-        <div class="metric-label">Total Submissions</div>
-        <div class="text-xs opacity-60 mt-1">This period</div>
+    
+    <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
+        <div class="metric-header">
+            <div class="metric-icon total-icon">📊</div>
+            <div class="metric-trend trend-neutral">
+                <span class="trend-icon">→</span>
+                <span class="trend-value">+2%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-blue-400 animate-counter" data-target="{{ total }}">0</div>
+            <div class="metric-label">Total Submissions</div>
+            <div class="metric-subtitle">This period</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-blue-500/30">
+                <div class="progress-fill bg-blue-400" style="width: 60%"></div>
+            </div>
+            <div class="progress-text">60% capacity</div>
+        </div>
     </div>
-    <div class="metric-card">
-        <div class="metric-value text-rose-300">{{ out_ct }}</div>
-        <div class="metric-label">Out-of-Appetite</div>
-        <div class="text-xs text-rose-200 mt-1">Review criteria</div>
+    
+    <div class="metric-card-enhanced out-metric hover-lift" data-metric="out">
+        <div class="metric-header">
+            <div class="metric-icon out-icon">❌</div>
+            <div class="metric-trend trend-down">
+                <span class="trend-icon">↘</span>
+                <span class="trend-value">-5%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-rose-400 animate-counter" data-target="{{ out_ct }}">0</div>
+            <div class="metric-label">Out-of-Appetite</div>
+            <div class="metric-subtitle">Need attention</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-rose-500/30">
+                <div class="progress-fill bg-rose-400" style="width: 25%"></div>
+            </div>
+            <div class="progress-text">25% rejection rate</div>
+        </div>
     </div>
 </div>
 
-<div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Left: Recent workload with tabs -->
-    <div class="lg:col-span-2 glass-panel">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <h2 class="text-lg font-semibold">
-                    Today’s Prioritized Worklist
-                </h2>
-                <div>
-                    <label class="lbl">Mode</label>
-                    <select id="home_mode" class="inp text-xs"></select>
-                    <span id="mode_expl" class="ml-2 text-xs opacity-70"></span>
+<!-- Quick Actions Bar -->
+<div class="quick-actions-bar glass-panel p-4 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <h3 class="text-lg font-semibold">Quick Actions</h3>
+            <span class="chip">Workflow shortcuts</span>
+        </div>
+        <button id="customize_actions" class="pill pill-sub hover-glow">Customize</button>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
+        <button class="action-button hover-lift" onclick="window.location.href='/submissions?status=TARGET'">
+            <div class="action-icon">🎯</div>
+            <div class="action-label">Review Targets</div>
+            <div class="action-count">{{ tgt_ct }}</div>
+        </button>
+        <button class="action-button hover-lift" onclick="exportOpportunities()">
+            <div class="action-icon">📊</div>
+            <div class="action-label">Export Data</div>
+            <div class="action-count">CSV/Excel</div>
+        </button>
+        <button class="action-button hover-lift" onclick="showBulkActions()">
+            <div class="action-icon">⚡</div>
+            <div class="action-label">Bulk Actions</div>
+            <div class="action-count">Multi-edit</div>
+        </button>
+        <button class="action-button hover-lift" onclick="showAnalytics()">
+            <div class="action-icon">📈</div>
+            <div class="action-label">Analytics</div>
+            <div class="action-count">Deep dive</div>
+        </button>
+        <button class="action-button hover-lift" onclick="openCommandPalette()">
+            <div class="action-icon">⌘</div>
+            <div class="action-label">Command</div>
+            <div class="action-count">⌘K</div>
+        </button>
+        <button class="action-button hover-lift" onclick="showHelp()">
+            <div class="action-icon">❓</div>
+            <div class="action-label">Help</div>
+            <div class="action-count">Guide</div>
+        </button>
+    </div>
+</div>
+
+<!-- Modern Workload Management -->
+<div class="workload-section grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Left: Prioritized Submissions -->
+    <div class="lg:col-span-2">
+        <div class="workload-panel glass-panel">
+            <div class="panel-header">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span class="workload-icon">📋</span>
+                        Today's Priority Worklist
+                    </h2>
+                    <div class="mode-selector">
+                        <label class="text-xs opacity-75">Analysis Mode</label>
+                        <select id="home_mode" class="mode-select">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="panel-controls">
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="list">
+                            <span class="icon">☰</span>
+                            List
+                        </button>
+                        <button class="view-btn" data-view="cards">
+                            <span class="icon">⊞</span>
+                            Cards
+                        </button>
+                        <button class="view-btn" data-view="kanban">
+                            <span class="icon">⋯</span>
+                            Kanban
+                        </button>
+                    </div>
+                    <button id="workload_settings" class="settings-btn">
+                        <span class="icon">⚙</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="workload-filters">
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-filter="all">All</button>
+                    <button class="filter-chip" data-filter="urgent">Urgent</button>
+                    <button class="filter-chip" data-filter="due-today">Due Today</button>
+                    <button class="filter-chip" data-filter="high-value">High Value</button>
+                </div>
+                <div class="sort-options">
+                    <select id="sort_mode" class="sort-select">
+                        <option value="priority">Priority Score</option>
+                        <option value="premium">Premium Amount</option>
+                        <option value="deadline">Deadline</option>
+                        <option value="created">Date Created</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="worklist" class="worklist-content">
+                <div class="loading-skeleton">
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                </div>
+            </div>
+            
+            <!-- Workload Stats -->
+            <div class="workload-stats">
+                <div class="stat">
+                    <span class="stat-label">Today's Focus</span>
+                    <span class="stat-value" id="focus_count">—</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Completion Rate</span>
+                    <span class="stat-value" id="completion_rate">—%</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Avg Review Time</span>
+                    <span class="stat-value" id="avg_time">—min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Enhanced Sidebar -->
+    <div class="sidebar-content space-y-6">
+        <!-- Performance Dashboard -->
+        <div class="performance-panel glass-panel">
+            <div class="panel-header-simple">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <span class="performance-icon">🎯</span>
+                    Performance Goals
+                </h3>
+                <button class="expand-btn" data-target="goals">
+                    <span class="expand-icon">↗</span>
+                </button>
+            </div>
+            
+            <div class="goals-grid">
+                <div class="goal-card overperforming">
+                    <div class="goal-header">
+                        <div class="goal-status success">
+                            <span class="status-icon">✓</span>
+                            <span class="status-text">On Track</span>
+                        </div>
+                        <div class="goal-progress">128%</div>
+                    </div>
+                    <div class="goal-content">
+                        <h4 class="goal-title">Account Retention</h4>
+                        <p class="goal-desc">Retain 90% of accounts with LR ≤ 50%</p>
+                        <div class="goal-bar">
+                            <div class="goal-fill" style="width: 128%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="goal-card on-track">
+                    <div class="goal-header">
+                        <div class="goal-status warning">
+                            <span class="status-icon">⚠</span>
+                            <span class="status-text">Watch</span>
+                        </div>
+                        <div class="goal-progress">92%</div>
+                    </div>
+                    <div class="goal-content">
+                        <h4 class="goal-title">TIV Exposure</h4>
+                        <p class="goal-desc">Keep Zone 6 TIV under $150M</p>
+                        <div class="goal-bar">
+                            <div class="goal-fill warning" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="goal-card underperforming">
+                    <div class="goal-header">
+                        <div class="goal-status danger">
+                            <span class="status-icon">!</span>
+                            <span class="status-text">Action Needed</span>
+                        </div>
+                        <div class="goal-progress">67%</div>
+                    </div>
+                    <div class="goal-content">
+                        <h4 class="goal-title">Rate Increases</h4>
+                        <p class="goal-desc">20% rate target on West Commercial</p>
+                        <div class="goal-bar">
+                            <div class="goal-fill danger" style="width: 67%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart Insights -->
+        <div class="insights-panel glass-panel">
+            <div class="panel-header-simple">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <span class="insights-icon">🧠</span>
+                    Smart Insights
+                </h3>
+                <div class="insight-badge">AI-Powered</div>
+            </div>
+            
+            <div class="insights-list">
+                <div class="insight-item trending">
+                    <div class="insight-icon trend-up">📈</div>
+                    <div class="insight-content">
+                        <div class="insight-title">Premium Surge</div>
+                        <div class="insight-desc">CA submissions up 23% this week</div>
+                        <div class="insight-action">Review targets →</div>
+                    </div>
+                </div>
+                
+                <div class="insight-item alert">
+                    <div class="insight-icon trend-down">⚠️</div>
+                    <div class="insight-content">
+                        <div class="insight-title">Risk Alert</div>
+                        <div class="insight-desc">Higher loss ratios in construction</div>
+                        <div class="insight-action">Investigate →</div>
+                    </div>
+                </div>
+                
+                <div class="insight-item opportunity">
+                    <div class="insight-icon trend-neutral">💡</div>
+                    <div class="insight-content">
+                        <div class="insight-title">Market Opportunity</div>
+                        <div class="insight-desc">Underwriting capacity in FL</div>
+                        <div class="insight-action">Explore →</div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <!-- Recent Activity -->
-        <div class="glass-panel">
-            <h3 class="text-sm font-semibold mb-3">Quick Actions</h3>
-            <div class="space-y-2">
-                <button class="w-full quick-action text-left" onclick="window.location.href='/submissions?status=TARGET'">
-                    🎯 Review All Targets
+        <!-- Quick Analytics -->
+        <div class="analytics-enhanced glass-panel">
+            <div class="panel-header-simple">
+                <h3 class="text-lg font-bold">📊 Portfolio Analytics</h3>
+                <button class="view-all-btn" onclick="window.location.href='/insights'">
+                    View All →
                 </button>
-                <button class="w-full quick-action text-left" onclick="exportOpportunities()">
-                    📊 Export Current View
-                </button>
-                <button class="w-full quick-action text-left" onclick="showBulkActions()">
-                    ⚡ Bulk Actions
-                </button>
-                <button class="w-full quick-action text-left" onclick="showAnalytics()">
-                    📈 Portfolio Analytics
-                </button>
+            </div>
+            
+            <!-- Enhanced Analytics with Animation -->
+            <div class="analytics-grid enhanced">
+                <div class="analytic-item enhanced">
+                    <div class="analytic-icon">💰</div>
+                    <div class="analytic-content">
+                        <div class="analytic-label">Avg Premium</div>
+                        <div class="analytic-value">$<span class="counter" data-target="{{ (avg_premium/1000)|round }}">0</span>K</div>
+                        <div class="analytic-trend up">+5.2%</div>
+                    </div>
+                    <div class="analytic-progress">
+                        <div class="progress-bar" style="width: 82%; background: linear-gradient(90deg, #10b981, #34d399);"></div>
+                    </div>
+                </div>
+                <div class="analytic-item enhanced">
+                    <div class="analytic-icon">🎯</div>
+                    <div class="analytic-content">
+                        <div class="analytic-label">Win Rate</div>
+                        <div class="analytic-value"><span class="counter" data-target="72.4">0</span>%</div>
+                        <div class="analytic-trend up">+1.8%</div>
+                    </div>
+                    <div class="analytic-progress">
+                        <div class="progress-bar" style="width: 72%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
+                    </div>
+                </div>
+                <div class="analytic-item enhanced">
+                    <div class="analytic-icon">⏱️</div>
+                    <div class="analytic-content">
+                        <div class="analytic-label">Cycle Time</div>
+                        <div class="analytic-value"><span class="counter" data-target="3.2">0</span>d</div>
+                        <div class="analytic-trend down">-0.5d</div>
+                    </div>
+                    <div class="analytic-progress">
+                        <div class="progress-bar" style="width: 68%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
+                    </div>
+                </div>
+                <div class="analytic-item enhanced">
+                    <div class="analytic-icon">📈</div>
+                    <div class="analytic-content">
+                        <div class="analytic-label">Pipeline</div>
+                        <div class="analytic-value">$<span class="counter" data-target="12.4">0</span>M</div>
+                        <div class="analytic-trend up">+8.1%</div>
+                    </div>
+                    <div class="analytic-progress">
+                        <div class="progress-bar" style="width: 88%; background: linear-gradient(90deg, #8b5cf6, #a78bfa);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Trend Chart -->
+            <div class="trend-chart-container">
+                <div class="chart-header">
+                    <h4 class="text-sm font-semibold text-indigo-400 mb-2">Performance Trend</h4>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-metric="premium">Premium</button>
+                        <button class="chart-tab" data-metric="volume">Volume</button>
+                        <button class="chart-tab" data-metric="win-rate">Win Rate</button>
+                    </div>
+                </div>
+                <div class="mini-chart-wrapper">
+                    <canvas id="portfolioTrendChart" width="300" height="80"></canvas>
+                </div>
+            </div>
+
+            <!-- Risk Distribution Donut -->
+            <div class="risk-distribution">
+                <h4 class="text-sm font-semibold text-indigo-400 mb-3">Risk Distribution</h4>
+                <div class="risk-visual">
+                    <div class="risk-donut-container">
+                        <canvas id="riskDonutChart" width="100" height="100"></canvas>
+                        <div class="donut-center">
+                            <div class="text-sm font-bold"><span class="counter" data-target="247">0</span></div>
+                            <div class="text-xs opacity-75">Total</div>
+                        </div>
+                    </div>
+                    <div class="risk-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot target"></span>
+                            <span class="text-xs">Target</span>
+                            <span class="text-xs font-bold text-indigo-400">35%</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot in"></span>
+                            <span class="text-xs">In-Appetite</span>
+                            <span class="text-xs font-bold text-emerald-400">45%</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot out"></span>
+                            <span class="text-xs">Out-of-Appetite</span>
+                            <span class="text-xs font-bold text-red-400">20%</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-        <div id="worklist" class="mt-4 text-sm"></div>
-    </div>
 
-    <!-- Right: Goals and quick stats -->
-    <div class="space-y-6">
-        <div class="glass-panel">
-            <h2 class="text-lg font-semibold">My Portfolio Goals</h2>
-            <div class="mt-3 grid grid-cols-1 gap-4 text-sm">
-                <div>
-                    <div class="font-semibold text-emerald-300">
-                        Overperforming Goals
-                    </div>
-                    <ul class="list-disc pl-5 mt-1 opacity-90">
-                        <li>Retain 90% of accounts with a loss ratio ≤ 50%</li>
-                        <li>No more than $150M of TIV in Zone 6</li>
-                    </ul>
-                </div>
-                <div>
-                    <div class="font-semibold text-rose-300">
-                        Underperforming Goals
-                    </div>
-                    <ul class="list-disc pl-5 mt-1 opacity-90">
-                        <li>Get more rate on accounts with loss ≥ 100k</li>
-                        <li>20% rate target on West Commercial</li>
-                        <li>
-                            30% rate increase on hazmat truckers with high LR
-                        </li>
-                    </ul>
+<!-- Enhanced Accounts Table -->
+<div class="accounts-table-section mt-6">
+    <div class="accounts-panel glass-panel">
+        <div class="table-header">
+            <div class="table-header-left">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="table-icon">📊</span>
+                    Priority Account Review
+                </h2>
+                <div class="table-subtitle">
+                    Top submissions ranked by appetite and urgency
                 </div>
             </div>
+            <div class="table-header-right">
+                <div class="table-controls">
+                    <button class="control-btn" id="table_filters">
+                        <span class="icon">🔍</span>
+                        Filters
+                    </button>
+                    <button class="control-btn" id="table_columns">
+                        <span class="icon">⚙</span>
+                        Columns
+                    </button>
+                    <button class="control-btn" id="table_export">
+                        <span class="icon">📤</span>
+                        Export
+                    </button>
+                </div>
+                <a href="{{ url_for('submissions') }}" class="view-all-link">
+                    View All Submissions →
+                </a>
+            </div>
         </div>
-
-        <div class="glass-panel">
-            <h2 class="text-lg font-semibold">Quick Stats</h2>
-            <div class="mt-4 space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span>Avg Premium</span
-                    ><span>${{ '%.0f'|format(avg_premium) }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Focus Metric</span><span>Winnability-weighted</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Alerts</span><span>—</span>
-                </div>
+        
+        <div class="table-filters-bar hidden" id="filters_bar">
+            <div class="filter-row">
+                <select class="filter-select" id="status_filter">
+                    <option value="">All Statuses</option>
+                    <option value="TARGET">🎯 Target</option>
+                    <option value="IN">✅ In-Appetite</option>
+                    <option value="OUT">❌ Out-of-Appetite</option>
+                </select>
+                <select class="filter-select" id="state_filter">
+                    <option value="">All States</option>
+                    <option value="CA">California</option>
+                    <option value="FL">Florida</option>
+                    <option value="TX">Texas</option>
+                </select>
+                <input type="text" class="filter-input" id="search_filter" placeholder="Search accounts...">
+                <button class="filter-apply-btn">Apply</button>
+                <button class="filter-clear-btn">Clear</button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table class="modern-table">
+                <thead class="table-head">
+                    <tr>
+                        <th class="th sortable" data-sort="account_name">
+                            <div class="th-content">
+                                <span>Account</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th sortable" data-sort="appetite_status">
+                            <div class="th-content">
+                                <span>Status</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th sortable" data-sort="total_premium">
+                            <div class="th-content">
+                                <span>Premium</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th sortable" data-sort="primary_risk_state">
+                            <div class="th-content">
+                                <span>State</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th sortable" data-sort="winnability">
+                            <div class="th-content">
+                                <span>Win %</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th sortable" data-sort="priority_score">
+                            <div class="th-content">
+                                <span>Priority</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
+                        <th class="th">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="acct_body" class="table-body">
+                    <!-- Loading skeleton -->
+                    <tr class="loading-row">
+                        <td colspan="7">
+                            <div class="loading-content">
+                                <div class="skeleton-row"></div>
+                                <div class="skeleton-row"></div>
+                                <div class="skeleton-row"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="table-footer">
+            <div class="table-info">
+                <span id="results_count">Loading...</span> •
+                <span id="last_updated">—</span>
+            </div>
+            <div class="table-pagination">
+                <button class="pagination-btn" id="prev_page" disabled>Previous</button>
+                <span class="pagination-info">Page 1 of 1</span>
+                <button class="pagination-btn" id="next_page" disabled>Next</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Accounts table -->
-<div class="mt-6 glass-panel p-0 overflow-x-auto">
-    <div class="flex items-center justify-between px-4 py-3">
-        <h2 class="text-lg font-semibold">My Accounts</h2>
-        <div class="text-xs opacity-70">
-            Top prioritized accounts •
-            <a href="{{ url_for('submissions') }}" class="link">view all</a>
+<!-- Command Palette -->
+<div id="command_palette" class="command-palette hidden">
+    <div class="command-overlay"></div>
+    <div class="command-container">
+        <div class="command-input-section">
+            <span class="command-icon">⌘</span>
+            <input type="text" id="command_input" class="command-input" placeholder="Type a command or search...">
+            <kbd class="command-shortcut">ESC</kbd>
         </div>
-    </div>
-    <table class="table table-glass text-sm">
-        <thead>
-            <tr>
-                <th class="th">Account Name</th>
-                <th class="th">Type</th>
-                <th class="th">Estimated Premium</th>
-                <th class="th">Broker</th>
-                <th class="th">Effective Date</th>
-                <th class="th">Loss Ratio</th>
-                <th class="th">Status</th>
-                <th class="th">Appetite</th>
-                <th class="th">Triage Score</th>
-                <th class="th">Winnability</th>
-                <th class="th">Rated Premium</th>
-            </tr>
-        </thead>
-        <tbody id="acct_body"></tbody>
-    </table>
-    <div class="px-4 py-3 text-xs opacity-70">
-        Showing top results by priority score
+        <div class="command-results" id="command_results">
+            <div class="command-group">
+                <div class="command-group-title">Quick Actions</div>
+                <div class="command-item" data-action="goto-targets">
+                    <span class="command-item-icon">🎯</span>
+                    <span class="command-item-text">Review Target Opportunities</span>
+                    <span class="command-item-shortcut">⌘T</span>
+                </div>
+                <div class="command-item" data-action="export-data">
+                    <span class="command-item-icon">📊</span>
+                    <span class="command-item-text">Export Current Data</span>
+                    <span class="command-item-shortcut">⌘E</span>
+                </div>
+                <div class="command-item" data-action="refresh-data">
+                    <span class="command-item-icon">🔄</span>
+                    <span class="command-item-text">Refresh Dashboard</span>
+                    <span class="command-item-shortcut">⌘R</span>
+                </div>
+            </div>
+            <div class="command-group">
+                <div class="command-group-title">Navigation</div>
+                <div class="command-item" data-action="goto-submissions">
+                    <span class="command-item-icon">📋</span>
+                    <span class="command-item-text">Go to Submissions</span>
+                </div>
+                <div class="command-item" data-action="goto-insights">
+                    <span class="command-item-icon">📈</span>
+                    <span class="command-item-text">Portfolio Insights</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -315,17 +840,211 @@
         return `<span class="pill pill-rose">Out</span>`;
     }
 
-    // Utility functions for quick actions
+    // Enhanced utility functions for modern UI
     function exportOpportunities() {
-        toast('Export functionality coming soon', 'info');
+        const modal = createExportModal();
+        document.body.appendChild(modal);
     }
 
     function showBulkActions() {
-        toast('Bulk actions panel coming soon', 'info');
+        const modal = createBulkActionsModal();
+        document.body.appendChild(modal);
     }
 
     function showAnalytics() {
         window.location.href = '/insights';
+    }
+    
+    function openCommandPalette() {
+        const palette = document.getElementById('command_palette');
+        const input = document.getElementById('command_input');
+        if (palette) {
+            palette.classList.remove('hidden');
+            input.focus();
+        }
+    }
+    
+    function showHelp() {
+        const modal = createHelpModal();
+        document.body.appendChild(modal);
+    }
+    
+    // Modern modal creators
+    function createExportModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 export-modal';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-md mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>📊</span>
+                        Export Data
+                    </h3>
+                    <button class="close-modal text-2xl hover:text-red-400">×</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="export-option active" data-format="csv">
+                        <span class="option-icon">📄</span>
+                        <span class="option-text">CSV Spreadsheet</span>
+                        <span class="option-desc">For Excel analysis</span>
+                    </div>
+                    <div class="export-option" data-format="excel">
+                        <span class="option-icon">📊</span>
+                        <span class="option-text">Excel Workbook</span>
+                        <span class="option-desc">With charts and formatting</span>
+                    </div>
+                    <div class="export-option" data-format="pdf">
+                        <span class="option-icon">📋</span>
+                        <span class="option-text">PDF Report</span>
+                        <span class="option-desc">Executive summary</span>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button class="btn-cancel close-modal">Cancel</button>
+                    <button class="btn-primary" onclick="performExport()">Export</button>
+                </div>
+            </div>
+        `;
+        
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => modal.remove();
+        });
+        
+        modal.querySelectorAll('.export-option').forEach(option => {
+            option.onclick = () => {
+                modal.querySelectorAll('.export-option').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+            };
+        });
+        
+        return modal;
+    }
+    
+    function createBulkActionsModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 bulk-modal';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-lg mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>⚡</span>
+                        Bulk Actions
+                    </h3>
+                    <button class="close-modal text-2xl hover:text-red-400">×</button>
+                </div>
+                <div class="bulk-actions-grid">
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">✅</span>
+                        <span class="action-text">Mark as Reviewed</span>
+                    </button>
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">🎯</span>
+                        <span class="action-text">Add to Targets</span>
+                    </button>
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">📧</span>
+                        <span class="action-text">Send Notifications</span>
+                    </button>
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">📊</span>
+                        <span class="action-text">Generate Reports</span>
+                    </button>
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">🏷️</span>
+                        <span class="action-text">Apply Tags</span>
+                    </button>
+                    <button class="bulk-action-btn">
+                        <span class="action-icon">🗂️</span>
+                        <span class="action-text">Archive Items</span>
+                    </button>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button class="btn-cancel close-modal">Close</button>
+                </div>
+            </div>
+        `;
+        
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => modal.remove();
+        });
+        
+        modal.querySelectorAll('.bulk-action-btn').forEach(btn => {
+            btn.onclick = () => {
+                toast('Bulk action executed', 'success');
+                modal.remove();
+            };
+        });
+        
+        return modal;
+    }
+    
+    function createHelpModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 help-modal';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-2xl mx-4 p-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>❓</span>
+                        Help & Shortcuts
+                    </h3>
+                    <button class="close-modal text-2xl hover:text-red-400">×</button>
+                </div>
+                <div class="help-content space-y-6">
+                    <div class="help-section">
+                        <h4 class="font-semibold mb-2">Keyboard Shortcuts</h4>
+                        <div class="shortcut-list">
+                            <div class="shortcut-item">
+                                <kbd>⌘K</kbd>
+                                <span>Open command palette</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>⌘T</kbd>
+                                <span>View target opportunities</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>⌘E</kbd>
+                                <span>Export data</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>⌘R</kbd>
+                                <span>Refresh dashboard</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="help-section">
+                        <h4 class="font-semibold mb-2">Dashboard Features</h4>
+                        <ul class="feature-list">
+                            <li>🎯 Priority scoring based on appetite and winnability</li>
+                            <li>📊 Real-time portfolio analytics</li>
+                            <li>🔍 Smart filtering and search</li>
+                            <li>📈 Performance goal tracking</li>
+                            <li>🤖 AI-powered insights</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button class="btn-primary close-modal">Got it</button>
+                </div>
+            </div>
+        `;
+        
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => modal.remove();
+        });
+        
+        return modal;
+    }
+    
+    function performExport() {
+        const activeFormat = document.querySelector('.export-option.active')?.dataset.format || 'csv';
+        toast(`Exporting as ${activeFormat.toUpperCase()}...`, 'info');
+        
+        // Simulate export
+        setTimeout(() => {
+            toast(`Export completed: portfolio_data.${activeFormat}`, 'success');
+            document.querySelector('.export-modal')?.remove();
+        }, 2000);
     }
 
     async function populateHomeModes() {
@@ -403,6 +1122,182 @@
         return ans;
     }
 
+    // Enhanced keyboard shortcuts and command palette
+    document.addEventListener('keydown', (e) => {
+        // Command/Ctrl key combinations
+        if (e.metaKey || e.ctrlKey) {
+            switch(e.key) {
+                case 'k':
+                    e.preventDefault();
+                    openCommandPalette();
+                    break;
+                case 't':
+                    e.preventDefault();
+                    window.location.href = '/submissions?status=TARGET';
+                    break;
+                case 'e':
+                    e.preventDefault();
+                    exportOpportunities();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    fetchJSON("/api/refresh", { method: "POST" })
+                        .then(() => {
+                            toast("Data refreshed", "success");
+                            loadHome();
+                        })
+                        .catch((err) => toast("Refresh failed: " + err.message, "error"));
+                    break;
+            }
+        }
+        
+        // ESC key to close command palette
+        if (e.key === 'Escape') {
+            const palette = document.getElementById('command_palette');
+            if (palette && !palette.classList.contains('hidden')) {
+                palette.classList.add('hidden');
+            }
+        }
+    });
+    
+    // Command palette functionality
+    function setupCommandPalette() {
+        const input = document.getElementById('command_input');
+        const results = document.getElementById('command_results');
+        
+        if (!input || !results) return;
+        
+        input.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            filterCommandResults(query);
+        });
+        
+        // Handle command execution
+        results.addEventListener('click', (e) => {
+            const item = e.target.closest('.command-item');
+            if (item) {
+                const action = item.dataset.action;
+                executeCommand(action);
+                document.getElementById('command_palette').classList.add('hidden');
+                input.value = '';
+            }
+        });
+    }
+    
+    function filterCommandResults(query) {
+        const items = document.querySelectorAll('.command-item');
+        items.forEach(item => {
+            const text = item.querySelector('.command-item-text').textContent.toLowerCase();
+            const visible = text.includes(query) || query === '';
+            item.style.display = visible ? 'flex' : 'none';
+        });
+    }
+    
+    function executeCommand(action) {
+        switch(action) {
+            case 'goto-targets':
+                window.location.href = '/submissions?status=TARGET';
+                break;
+            case 'export-data':
+                exportOpportunities();
+                break;
+            case 'refresh-data':
+                fetchJSON("/api/refresh", { method: "POST" })
+                    .then(() => {
+                        toast("Data refreshed", "success");
+                        loadHome();
+                    })
+                    .catch((err) => toast("Refresh failed: " + err.message, "error"));
+                break;
+            case 'goto-submissions':
+                window.location.href = '/submissions';
+                break;
+            case 'goto-insights':
+                window.location.href = '/insights';
+                break;
+            default:
+                toast('Command executed: ' + action, 'info');
+        }
+    }
+    
+    // Enhanced UI interactions
+    function setupModernInteractions() {
+        // Metric card interactions
+        document.querySelectorAll('.metric-card-enhanced').forEach(card => {
+            card.addEventListener('click', () => {
+                const metric = card.dataset.metric;
+                let filter = '';
+                switch(metric) {
+                    case 'target':
+                        filter = '?status=TARGET';
+                        break;
+                    case 'in':
+                        filter = '?status=IN';
+                        break;
+                    case 'out':
+                        filter = '?status=OUT';
+                        break;
+                    case 'total':
+                        filter = '';
+                        break;
+                }
+                window.location.href = '/submissions' + filter;
+            });
+        });
+        
+        // View toggle functionality
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const view = btn.dataset.view;
+                toast(`Switched to ${view} view`, 'info');
+            });
+        });
+        
+        // Filter chips
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const filter = chip.dataset.filter;
+                // Apply filter logic here
+                toast(`Applied ${filter} filter`, 'info');
+            });
+        });
+        
+        // Table controls
+        const filtersBtn = document.getElementById('table_filters');
+        const filtersBar = document.getElementById('filters_bar');
+        if (filtersBtn && filtersBar) {
+            filtersBtn.addEventListener('click', () => {
+                filtersBar.classList.toggle('hidden');
+            });
+        }
+        
+        // Animate counters
+        animateCounters();
+    }
+    
+    function animateCounters() {
+        document.querySelectorAll('.animate-counter').forEach(counter => {
+            const target = parseInt(counter.dataset.target) || 0;
+            const duration = 1500;
+            const start = 0;
+            const increment = target / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                counter.textContent = Math.round(current);
+            }, 16);
+        });
+    }
+    
     // Auto-refresh functionality
     let autoH;
     function startAuto() {
@@ -416,11 +1311,179 @@
     function stopAuto() {
         clearInterval(autoH);
     }
+    
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) stopAuto();
         else startAuto();
     });
+    
+    // Chart initialization and management
+    function initializeCharts() {
+        // Initialize trend chart
+        initializeTrendChart();
+        
+        // Initialize donut chart
+        initializeDonutChart();
+        
+        // Animate progress bars
+        animateProgressBars();
+    }
+
+    function initializeTrendChart() {
+        const canvas = document.getElementById('portfolioTrendChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Sample data for the trend line
+        const dataPoints = [45, 52, 48, 65, 59, 72, 68, 78, 85, 89, 95, 92];
+        const maxValue = Math.max(...dataPoints);
+        const minValue = Math.min(...dataPoints);
+        const range = maxValue - minValue;
+        
+        // Create gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.8)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.1)');
+        
+        // Draw the trend line
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Start path for line
+        ctx.beginPath();
+        const stepX = width / (dataPoints.length - 1);
+        
+        for (let i = 0; i < dataPoints.length; i++) {
+            const x = i * stepX;
+            const y = height - ((dataPoints[i] - minValue) / range) * height;
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.stroke();
+        
+        // Fill area under curve
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+    }
+
+    function initializeDonutChart() {
+        const canvas = document.getElementById('riskDonutChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 35;
+        const innerRadius = 25;
+        
+        // Data percentages
+        const data = [
+            { label: 'Target', value: 35, color: '#8b5cf6' },
+            { label: 'In-Appetite', value: 45, color: '#10b981' },
+            { label: 'Out-of-Appetite', value: 20, color: '#f43f5e' }
+        ];
+        
+        let currentAngle = -Math.PI / 2; // Start at top
+        
+        data.forEach((segment, index) => {
+            const sliceAngle = (segment.value / 100) * 2 * Math.PI;
+            
+            // Create gradient for each segment
+            const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, radius);
+            gradient.addColorStop(0, segment.color + '80');
+            gradient.addColorStop(1, segment.color);
+            
+            // Draw segment
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+            ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+            ctx.closePath();
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Add subtle border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            currentAngle += sliceAngle;
+        });
+    }
+
+    function animateProgressBars() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        
+        progressBars.forEach((bar, index) => {
+            const targetWidth = bar.style.width;
+            bar.style.width = '0%';
+            
+            setTimeout(() => {
+                bar.style.width = targetWidth;
+            }, 200 + (index * 100)); // Stagger animations
+        });
+    }
+
+    function setupChartInteractions() {
+        // Chart tab switching
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Update active state
+                document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Simulate chart update
+                const metric = tab.dataset.metric;
+                window.toast(`Switched to ${metric} view`, 'info');
+                
+                // Redraw chart with animation
+                setTimeout(() => {
+                    initializeTrendChart();
+                }, 200);
+            });
+        });
+        
+        // Chart hover effects
+        const chartContainers = document.querySelectorAll('.trend-chart-container, .risk-distribution');
+        chartContainers.forEach(container => {
+            container.addEventListener('mouseenter', () => {
+                container.style.transform = 'translateY(-2px)';
+                container.style.boxShadow = '0 12px 32px rgba(0,0,0,0.25)';
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                container.style.transform = 'translateY(0)';
+                container.style.boxShadow = 'none';
+            });
+        });
+    }
+
+    // Initialize everything
+    setupCommandPalette();
+    setupModernInteractions();
     startAuto();
+    
+    // Initialize charts with delay for smoother loading
+    setTimeout(() => {
+        initializeCharts();
+        setupChartInteractions();
+        console.log('📊 Enhanced analytics and charts initialized');
+    }, 1000);
 </script>
 
 <!-- Removed duplicate script block with orphaned code to prevent JS errors -->

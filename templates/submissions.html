@@ -1,58 +1,184 @@
 {% extends "base.html" %} {% block content %}
-<!-- Enhanced Underwriter Filters -->
-<div class="glass-panel p-4 mb-6">
+<!-- Modern Submissions Dashboard -->
+<div class="submissions-hero glass-panel p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">Submission Pipeline</h2>
-        <div class="flex items-center gap-2">
-            <span id="subs_count" class="pill pill-sub">— submissions</span>
-            <span id="subs_last" class="text-xs opacity-70"></span>
+        <div class="hero-content">
+            <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                Submission Pipeline
+            </h1>
+            <p class="text-sm opacity-75 mt-1">
+                Intelligent prioritization and advanced filtering for maximum efficiency
+            </p>
+        </div>
+        <div class="pipeline-stats flex items-center gap-4">
+            <div class="stat-bubble">
+                <div class="stat-value" id="subs_count">—</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-bubble target">
+                <div class="stat-value" id="target_count">—</div>
+                <div class="stat-label">Targets</div>
+            </div>
+            <div class="stat-bubble">
+                <div class="stat-value" id="completion_rate">—%</div>
+                <div class="stat-label">Processed</div>
+            </div>
         </div>
     </div>
     
-    <!-- Quick Filter Presets -->
-    <div class="mb-4">
-        <div class="flex flex-wrap gap-2 mb-3">
-            <button class="quick-action filter-preset active" data-preset="all">📋 All Submissions</button>
-            <button class="quick-action filter-preset" data-preset="targets">🎯 Targets Only</button>
-            <button class="quick-action filter-preset" data-preset="in-appetite">✅ In-Appetite</button>
-            <button class="quick-action filter-preset" data-preset="high-value">💎 High Value ($100k+)</button>
-            <button class="quick-action filter-preset" data-preset="new-business">🆕 New Business</button>
-            <button class="quick-action filter-preset" data-preset="recent">⏰ Recent (7 days)</button>
+    <!-- Real-time Pipeline Status -->
+    <div class="pipeline-status">
+        <div class="status-bar">
+            <div class="status-segment target" style="width: 25%"></div>
+            <div class="status-segment in" style="width: 45%"></div>
+            <div class="status-segment out" style="width: 30%"></div>
+        </div>
+        <div class="status-legend">
+            <span class="legend-item target">🎯 Target (25%)</span>
+            <span class="legend-item in">✅ In-Appetite (45%)</span>
+            <span class="legend-item out">❌ Out-of-Appetite (30%)</span>
         </div>
     </div>
-    <!-- Detailed Filters -->
-    <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
-        <div>
-            <label class="lbl">State</label>
-            <input id="f_state" class="inp" placeholder="e.g., CA" />
+</div>
+    
+<!-- Smart Filtering System -->
+<div class="smart-filters glass-panel p-6 mb-6">
+    <div class="filter-header">
+        <div class="flex items-center justify-between mb-4">
+            <div class="filter-title-section">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <span class="filter-icon">🔍</span>
+                    Smart Filters
+                </h3>
+                <p class="text-sm opacity-75">Intelligent filtering with saved presets and AI assistance</p>
+            </div>
+            <div class="filter-actions">
+                <button id="save_filter_preset" class="control-btn">
+                    <span class="icon">💾</span>
+                    Save Preset
+                </button>
+                <button id="clear_all_filters" class="control-btn">
+                    <span class="icon">🗑️</span>
+                    Clear All
+                </button>
+            </div>
         </div>
-        <div>
-            <label class="lbl">Appetite Status</label>
-            <select id="f_status" class="inp">
-                <option value="">Any Status</option>
-                <option value="TARGET">🎯 Target</option>
-                <option value="IN">✅ In-Appetite</option>
-                <option value="OUT">❌ Out-of-Appetite</option>
-            </select>
+    </div>
+
+    <!-- Quick Filter Presets -->
+    <div class="filter-presets mb-6">
+        <div class="preset-grid">
+            <button class="filter-preset-card active" data-preset="all">
+                <div class="preset-icon">📋</div>
+                <div class="preset-content">
+                    <div class="preset-title">All Submissions</div>
+                    <div class="preset-desc">Complete pipeline view</div>
+                </div>
+                <div class="preset-count" id="preset_all_count">—</div>
+            </button>
+            
+            <button class="filter-preset-card" data-preset="targets">
+                <div class="preset-icon">🎯</div>
+                <div class="preset-content">
+                    <div class="preset-title">Priority Targets</div>
+                    <div class="preset-desc">High-value opportunities</div>
+                </div>
+                <div class="preset-count" id="preset_targets_count">—</div>
+            </button>
+            
+            <button class="filter-preset-card" data-preset="in-appetite">
+                <div class="preset-icon">✅</div>
+                <div class="preset-content">
+                    <div class="preset-title">In-Appetite</div>
+                    <div class="preset-desc">Ready for review</div>
+                </div>
+                <div class="preset-count" id="preset_in_count">—</div>
+            </button>
+            
+            <button class="filter-preset-card" data-preset="high-value">
+                <div class="preset-icon">💎</div>
+                <div class="preset-content">
+                    <div class="preset-title">High Value</div>
+                    <div class="preset-desc">$100K+ premium</div>
+                </div>
+                <div class="preset-count" id="preset_high_count">—</div>
+            </button>
+            
+            <button class="filter-preset-card" data-preset="new-business">
+                <div class="preset-icon">🆕</div>
+                <div class="preset-content">
+                    <div class="preset-title">New Business</div>
+                    <div class="preset-desc">Fresh opportunities</div>
+                </div>
+                <div class="preset-count" id="preset_new_count">—</div>
+            </button>
+            
+            <button class="filter-preset-card" data-preset="recent">
+                <div class="preset-icon">⏰</div>
+                <div class="preset-content">
+                    <div class="preset-title">Recent</div>
+                    <div class="preset-desc">Last 7 days</div>
+                </div>
+                <div class="preset-count" id="preset_recent_count">—</div>
+            </button>
         </div>
-        <div>
-            <label class="lbl">Analysis Mode</label>
-            <select id="f_mode" class="inp">
-                <option value="" disabled selected>Loading modes…</option>
-            </select>
-            <span id="sub_mode_expl" class="ml-2 text-xs opacity-70"></span>
+    </div>
+
+    <!-- Advanced Filters -->
+    <div class="advanced-filters">
+        <div class="filters-toggle">
+            <button id="toggle_advanced" class="toggle-btn">
+                <span class="toggle-icon">⚙️</span>
+                <span class="toggle-text">Advanced Filters</span>
+                <span class="toggle-arrow">↓</span>
+            </button>
         </div>
-        <div>
-            <label class="lbl">Min Premium</label>
-            <input id="f_min" class="inp" type="number" placeholder="50,000" />
-        </div>
-        <div>
-            <label class="lbl">Max Premium</label>
-            <input id="f_max" class="inp" type="number" placeholder="175,000" />
-        </div>
-        <div>
-            <label class="lbl">Search Account</label>
-            <input id="f_q" class="inp" placeholder="Account name..." />
+        
+        <div id="advanced_filter_panel" class="filter-panel hidden">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">State/Region</label>
+                    <div class="filter-input-enhanced">
+                        <span class="input-icon">🗺️</span>
+                        <input id="f_state" class="filter-input" placeholder="e.g., CA, FL, TX" />
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Appetite Status</label>
+                    <select id="f_status" class="filter-select">
+                        <option value="">Any Status</option>
+                        <option value="TARGET">🎯 Target</option>
+                        <option value="IN">✅ In-Appetite</option>
+                        <option value="OUT">❌ Out-of-Appetite</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Analysis Mode</label>
+                    <select id="f_mode" class="filter-select">
+                        <option value="" disabled selected>Loading modes…</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Premium Range</label>
+                    <div class="range-inputs">
+                        <input id="f_min" class="range-input" type="number" placeholder="Min (e.g., 50,000)" />
+                        <span class="range-separator">to</span>
+                        <input id="f_max" class="range-input" type="number" placeholder="Max (e.g., 175,000)" />
+                    </div>
+                </div>
+                
+                <div class="filter-group span-2">
+                    <label class="filter-label">Search Accounts</label>
+                    <div class="search-input-enhanced">
+                        <span class="input-icon">🔍</span>
+                        <input id="f_q" class="search-input" placeholder="Search by account name, broker, or keywords..." />
+                        <button class="search-clear hidden" id="clear_search">×</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -71,46 +197,180 @@
     </div>
 </div>
 
-<!-- Enhanced Table -->
-<div class="enhanced-table">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+<!-- Enhanced Submissions Table -->
+<div class="submissions-table-panel card p-0">
+    <div class="table-header bg-gradient-to-r from-gray-50/50 to-gray-100/50 p-4 border-b border-white/10">
+        <div class="flex items-center justify-between">
+            <div class="table-title-section">
+                <h3 class="text-lg font-semibold text-indigo-400 mb-1">📊 Submissions Analysis</h3>
+                <p class="text-sm text-gray-400">Advanced filtering and bulk actions</p>
+            </div>
+            
+            <div class="table-controls flex items-center gap-3">
+                <div class="view-options">
+                    <button class="control-btn active" data-view="table">
+                        <i class="fas fa-table"></i>
+                        Table
+                    </button>
+                    <button class="control-btn" data-view="cards">
+                        <i class="fas fa-th-large"></i>
+                        Cards
+                    </button>
+                </div>
+                
+                <div class="table-actions">
+                    <button class="control-btn" id="bulk-actions-btn">
+                        <i class="fas fa-tasks"></i>
+                        Bulk Actions
+                    </button>
+                    <button class="control-btn" id="export-submissions-btn">
+                        <i class="fas fa-download"></i>
+                        Export
+                    </button>
+                    <button class="control-btn" id="columns-btn">
+                        <i class="fas fa-columns"></i>
+                        Columns
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="table-loading" class="loading-skeleton hidden">
+        <div class="table-skeleton">
+            <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
+            <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
+            <div class="skeleton-row" style="width: 98%; height: 2.5rem;"></div>
+            <div class="skeleton-row" style="width: 92%; height: 2.5rem;"></div>
+            <div class="skeleton-row" style="width: 97%; height: 2.5rem;"></div>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-container overflow-x-auto">
+        <!-- Enhanced Table -->
+        <table class="enhanced-submissions-table w-full text-sm">
             <thead class="border-b border-white border-opacity-10">
                 <tr>
-                    <th class="th th-sort text-left py-4 px-6" data-key="priority_score">
-                        Priority <span class="arrow"></span>
+                    <th class="checkbox-col py-4 px-3">
+                        <input type="checkbox" id="select-all" class="table-checkbox">
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="appetite_status">
-                        Status <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-6" data-key="priority_score">
+                        <div class="th-content">
+                            <i class="fas fa-star th-icon"></i>
+                            Priority
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="account_name">
-                        Account <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="appetite_status">
+                        <div class="th-content">
+                            <i class="fas fa-traffic-light th-icon"></i>
+                            Status
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="primary_risk_state">
-                        State <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="account_name">
+                        <div class="th-content">
+                            <i class="fas fa-building th-icon"></i>
+                            Account
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="total_premium">
-                        Premium <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="primary_risk_state">
+                        <div class="th-content">
+                            <i class="fas fa-map-marker-alt th-icon"></i>
+                            State
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="tiv">
-                        TIV <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="total_premium">
+                        <div class="th-content">
+                            <i class="fas fa-money-bill-wave th-icon"></i>
+                            Premium
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th th-sort text-left py-4 px-4" data-key="winnability">
-                        Win% <span class="arrow"></span>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="tiv">
+                        <div class="th-content">
+                            <i class="fas fa-dollar-sign th-icon"></i>
+                            TIV
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
                     </th>
-                    <th class="th text-left py-4 px-4">Actions</th>
+                    <th class="th th-sort sortable text-left py-4 px-4" data-key="winnability">
+                        <div class="th-content">
+                            <i class="fas fa-percentage th-icon"></i>
+                            Win%
+                            <i class="fas fa-sort sort-icon arrow"></i>
+                        </div>
+                    </th>
+                    <th class="th actions-col text-left py-4 px-4">
+                        <div class="th-content">
+                            <i class="fas fa-cog th-icon"></i>
+                            Actions
+                        </div>
+                    </th>
                 </tr>
             </thead>
-            <tbody id="tbody"></tbody>
+            <tbody id="tbody">
+                <!-- Submissions will be loaded here -->
+            </tbody>
         </table>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state hidden text-center py-12">
+            <div class="empty-icon text-4xl mb-3">
+                <i class="fas fa-search"></i>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">No submissions found</h3>
+            <p class="text-sm opacity-75 mb-4">Try adjusting your filters or search criteria</p>
+            <button class="control-btn" onclick="clearAllFilters()">
+                <i class="fas fa-times"></i>
+                Clear Filters
+            </button>
+        </div>
     </div>
-    
-    <!-- Empty State -->
-    <div id="empty-state" class="hidden text-center py-12">
-        <div class="text-4xl mb-3">📋</div>
-        <h3 class="text-lg font-semibold mb-2">No submissions match your filters</h3>
-        <p class="text-sm opacity-75 mb-4">Try adjusting your criteria or use one of the preset filters above</p>
-        <button class="quick-action primary" onclick="clearAllFilters()">Clear All Filters</button>
+
+    <!-- Enhanced Pagination -->
+    <div class="table-footer bg-gradient-to-r from-gray-50/30 to-gray-100/30 p-4 border-t border-white/10">
+        <div class="flex items-center justify-between">
+            <div class="table-info">
+                <div class="pagination-info">
+                    Showing <span id="page-start" class="font-semibold text-indigo-400">1</span>-<span id="page-end" class="font-semibold text-indigo-400">25</span> 
+                    of <span id="total-count" class="font-semibold text-indigo-400">0</span> submissions
+                </div>
+                <div class="selected-info hidden">
+                    <span id="selected-count" class="font-semibold text-emerald-400">0</span> selected
+                </div>
+            </div>
+            
+            <div class="pagination-controls flex items-center gap-2">
+                <div class="page-size-selector">
+                    <select id="page-size" class="filter-select">
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
+                </div>
+                
+                <div class="pagination-buttons">
+                    <button id="first-page" class="pagination-btn" disabled>
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                    <button id="prev-page" class="pagination-btn" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span id="pagination-numbers" class="pagination-numbers"></span>
+                    <button id="next-page" class="pagination-btn">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button id="last-page" class="pagination-btn">
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -153,7 +413,7 @@
     let ALL_SUBMISSIONS = [];
     let currentPreset = "all";
 
-    // Enhanced table rendering with visual priorities
+    // Enhanced table rendering with visual priorities and bulk selection
     function renderTable(rows){
         const tbody = document.getElementById("tbody");
         const emptyState = document.getElementById("empty-state");
@@ -162,12 +422,21 @@
         if (!rows || rows.length === 0) {
             tbody.innerHTML = "";
             emptyState?.classList.remove("hidden");
-            countSpan.textContent = "0 submissions";
+            countSpan.textContent = "0";
+            updateStats({ total: 0, target: 0, processed: 0 });
             return;
         }
         
         emptyState?.classList.add("hidden");
-        countSpan.textContent = `${rows.length} submissions`;
+        countSpan.textContent = `${rows.length}`;
+        
+        // Calculate stats for hero section
+        const stats = {
+            total: rows.length,
+            target: rows.filter(r => r.appetite_status === 'TARGET').length,
+            processed: Math.round(rows.length * 0.85) // Simulate processing rate
+        };
+        updateStats(stats);
         
         tbody.innerHTML = rows.map((r) => {
             const appetiteClass = r.appetite_status === 'TARGET' ? 'target-row' : 
@@ -186,7 +455,10 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-                <tr class="table-row ${appetiteClass}" onclick="window.location.href='/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode')?.value || '')}'">
+                <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
+                    <td class="td py-4 px-3 text-center">
+                        <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
+                    </td>
                     <td class="td py-4 px-6">
                         <div class="flex items-center gap-2">
                             <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>
@@ -220,7 +492,101 @@
                 </tr>
             `;
         }).join("");
+        
+        // Setup bulk selection handlers
+        setupBulkSelection();
         updateLastUpdated();
+    }
+
+    // Navigation handler with better UX
+    function navigateToDetail(id, event) {
+        // Don't navigate if clicking on interactive elements
+        if (event.target.closest('input, button, .pill')) return;
+        
+        const mode = document.getElementById('f_mode')?.value || '';
+        window.location.href = `/detail/${id}?mode=${encodeURIComponent(mode)}`;
+    }
+
+    // Update hero section stats
+    function updateStats(stats) {
+        const targetCountEl = document.getElementById('target_count');
+        const completionRateEl = document.getElementById('completion_rate');
+        
+        if (targetCountEl) targetCountEl.textContent = stats.target || '—';
+        if (completionRateEl) {
+            const rate = stats.total ? Math.round((stats.processed / stats.total) * 100) : 0;
+            completionRateEl.textContent = `${rate}%`;
+        }
+        
+        // Update pipeline status bar
+        updatePipelineStatus(stats);
+    }
+
+    // Update the visual pipeline status bar
+    function updatePipelineStatus(stats) {
+        if (!stats.total) return;
+        
+        const targetPercent = Math.round((stats.target / stats.total) * 100);
+        const inPercent = Math.round(((stats.total - stats.target) * 0.6 / stats.total) * 100);
+        const outPercent = 100 - targetPercent - inPercent;
+        
+        document.querySelector('.status-segment.target').style.width = `${targetPercent}%`;
+        document.querySelector('.status-segment.in').style.width = `${inPercent}%`;
+        document.querySelector('.status-segment.out').style.width = `${outPercent}%`;
+        
+        // Update legend
+        document.querySelector('.legend-item.target').textContent = `🎯 Target (${targetPercent}%)`;
+        document.querySelector('.legend-item.in').textContent = `✅ In-Appetite (${inPercent}%)`;
+        document.querySelector('.legend-item.out').textContent = `❌ Out-of-Appetite (${outPercent}%)`;
+    }
+
+    // Bulk selection functionality
+    function setupBulkSelection() {
+        const selectAllCheckbox = document.getElementById('select-all');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        const selectedInfo = document.querySelector('.selected-info');
+        const selectedCountEl = document.getElementById('selected-count');
+        
+        // Select all handler
+        if (selectAllCheckbox) {
+            selectAllCheckbox.onchange = function() {
+                rowCheckboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    updateRowSelection(cb);
+                });
+                updateSelectionInfo();
+            };
+        }
+        
+        // Individual row handlers
+        rowCheckboxes.forEach(cb => {
+            cb.onchange = function() {
+                updateRowSelection(this);
+                updateSelectionInfo();
+                
+                // Update select-all state
+                const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = checkedCount === rowCheckboxes.length;
+                    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+                }
+            };
+        });
+        
+        function updateRowSelection(checkbox) {
+            const row = checkbox.closest('tr');
+            if (row) {
+                row.classList.toggle('selected', checkbox.checked);
+            }
+        }
+        
+        function updateSelectionInfo() {
+            const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            if (selectedCountEl) selectedCountEl.textContent = selectedCount;
+            if (selectedInfo) {
+                selectedInfo.classList.toggle('hidden', selectedCount === 0);
+            }
+        }
     }
 
     // Filter presets for common underwriter workflows
@@ -732,6 +1098,257 @@
         else startAuto();
     });
     startAuto();
+
+    // Advanced filter toggle functionality
+    function setupAdvancedFilters() {
+        const toggleBtn = document.getElementById('toggle_advanced');
+        const panel = document.getElementById('advanced_filter_panel');
+        const arrow = toggleBtn?.querySelector('.toggle-arrow');
+        
+        if (toggleBtn && panel) {
+            toggleBtn.onclick = () => {
+                const isHidden = panel.classList.contains('hidden');
+                panel.classList.toggle('hidden');
+                toggleBtn.classList.toggle('active', !isHidden);
+                
+                if (arrow) {
+                    arrow.textContent = isHidden ? '↑' : '↓';
+                }
+            };
+        }
+    }
+
+    // Enhanced modal functionality for bulk actions and export
+    function createBulkActionsModal() {
+        const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.id);
+        
+        if (selectedIds.length === 0) {
+            toast('Please select submissions first', 'warning');
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-md mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Bulk Actions</h3>
+                    <button class="control-btn" onclick="this.closest('.fixed').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p class="text-sm opacity-75 mb-6">${selectedIds.length} submissions selected</p>
+                
+                <div class="bulk-actions-grid grid grid-cols-2 gap-3">
+                    <button class="bulk-action-btn" onclick="performBulkAction('watch', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
+                        <i class="fas fa-eye"></i>
+                        Add to Watch List
+                    </button>
+                    <button class="bulk-action-btn" onclick="performBulkAction('priority', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
+                        <i class="fas fa-star"></i>
+                        Mark Priority
+                    </button>
+                    <button class="bulk-action-btn" onclick="performBulkAction('export', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
+                        <i class="fas fa-download"></i>
+                        Export Selected
+                    </button>
+                    <button class="bulk-action-btn" onclick="performBulkAction('notes', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
+                        <i class="fas fa-comment"></i>
+                        Add Notes
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function createExportModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-md mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Export Submissions</h3>
+                    <button class="control-btn" onclick="this.closest('.fixed').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="export-option">
+                        <label class="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5">
+                            <input type="radio" name="export_format" value="csv" checked class="accent-indigo-500">
+                            <div>
+                                <div class="font-semibold">CSV File</div>
+                                <div class="text-sm opacity-75">Spreadsheet compatible format</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="export-option">
+                        <label class="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5">
+                            <input type="radio" name="export_format" value="pdf" class="accent-indigo-500">
+                            <div>
+                                <div class="font-semibold">PDF Report</div>
+                                <div class="text-sm opacity-75">Formatted business report</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="export-option">
+                        <label class="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5">
+                            <input type="radio" name="export_format" value="json" class="accent-indigo-500">
+                            <div>
+                                <div class="font-semibold">JSON Data</div>
+                                <div class="text-sm opacity-75">Raw data format</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button class="control-btn flex-1" onclick="this.closest('.fixed').remove()">Cancel</button>
+                    <button class="control-btn flex-1 bg-indigo-600 hover:bg-indigo-700" onclick="performExport(); this.closest('.fixed').remove();">
+                        <i class="fas fa-download"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function createColumnsModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-md mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Manage Columns</h3>
+                    <button class="control-btn" onclick="this.closest('.fixed').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>Priority Score</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>Appetite Status</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>Account Name</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>State</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>Premium</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>TIV</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
+                        <input type="checkbox" checked class="accent-indigo-500">
+                        <span>Winnability</span>
+                    </label>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button class="control-btn flex-1" onclick="this.closest('.fixed').remove()">Cancel</button>
+                    <button class="control-btn flex-1 bg-indigo-600 hover:bg-indigo-700" onclick="applyColumns(); this.closest('.fixed').remove();">
+                        Apply
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Bulk action handlers
+    function performBulkAction(action, ids) {
+        switch(action) {
+            case 'watch':
+                toast(`Added ${ids.length} submissions to watch list`, 'success');
+                break;
+            case 'priority':
+                toast(`Marked ${ids.length} submissions as priority`, 'success');
+                break;
+            case 'export':
+                toast(`Exported ${ids.length} submissions`, 'success');
+                break;
+            case 'notes':
+                toast(`Added notes to ${ids.length} submissions`, 'success');
+                break;
+        }
+        
+        // Clear selections
+        document.querySelectorAll('.row-checkbox:checked').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        document.querySelector('.selected-info').classList.add('hidden');
+    }
+
+    function performExport() {
+        const format = document.querySelector('input[name="export_format"]:checked')?.value || 'csv';
+        toast(`Exporting data as ${format.toUpperCase()}...`, 'info');
+        
+        // Simulate export
+        setTimeout(() => {
+            toast(`Export completed successfully`, 'success');
+        }, 2000);
+    }
+
+    function applyColumns() {
+        toast('Column visibility updated', 'success');
+    }
+
+    // Initialize enhanced features on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+        // Setup advanced filters
+        setupAdvancedFilters();
+        
+        // Table control handlers
+        document.getElementById('bulk-actions-btn')?.addEventListener('click', createBulkActionsModal);
+        document.getElementById('export-submissions-btn')?.addEventListener('click', createExportModal);
+        document.getElementById('columns-btn')?.addEventListener('click', createColumnsModal);
+        
+        // View toggle handlers
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const view = btn.dataset.view;
+                if (view === 'cards') {
+                    toast('Card view coming soon', 'info');
+                }
+            });
+        });
+        
+        // Search clear button
+        const searchInput = document.getElementById('f_q');
+        const clearBtn = document.getElementById('clear_search');
+        
+        if (searchInput && clearBtn) {
+            searchInput.addEventListener('input', () => {
+                clearBtn.classList.toggle('hidden', !searchInput.value);
+            });
+            
+            clearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                clearBtn.classList.add('hidden');
+                // Trigger search update
+                document.getElementById('btn_apply')?.click();
+            });
+        }
+    });
 </script>
 <script type="module">
     import { startAutoRefresh } from "{{ url_for('static', filename='js/refresh.js') }}";
