@@ -115,6 +115,39 @@
 </div>
 
 <script>
+    // Ensure utility functions are available (fallback if app.js hasn't loaded yet)
+    if (typeof window.fetchJSON === 'undefined') {
+        window.fetchJSON = async function(url, opts={}){
+            const res = await fetch(url, opts);
+            if(!res.ok){
+                let msg = `${res.status} ${res.statusText}`;
+                try { const j = await res.json(); if(j && j.error) msg = j.error; } catch {}
+                throw new Error(msg);
+            }
+            return res.json();
+        }
+    }
+    
+    if (typeof window.withLoading === 'undefined') {
+        window.withLoading = async function(el, fn){
+            try{ el?.classList?.add("is-loading"); return await fn(); } finally { el?.classList?.remove("is-loading"); }
+        }
+    }
+    
+    if (typeof window.toast === 'undefined') {
+        window.toast = function(msg, type = "info") {
+            const host = document.getElementById("toasts") || (function(){
+                const d = document.createElement("div");
+                d.id = "toasts"; d.className = "toasts"; document.body.appendChild(d); return d;
+            })();
+            const el = document.createElement("div");
+            el.className = `toast ${type}`;
+            el.textContent = msg;
+            host.appendChild(el);
+            setTimeout(()=>{ el.classList.add("out"); setTimeout(()=>host.removeChild(el), 200); }, 2800);
+        }
+    }
+    
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
     let ALL_SUBMISSIONS = [];
@@ -247,43 +280,8 @@
         }
     }
 
-    function explain(id) {
-        const mode = document.getElementById("f_mode")?.value || "";
-        const url = mode
-            ? `/api/explain/${id}?mode=${encodeURIComponent(mode)}`
-            : `/api/explain/${id}`;
-        fetch(url, { method: "POST" })
-            .then((r) => r.json())
-            .then((j) => {
-                if (j.ok) {
-                    showExplanationModal(j.explanation, id);
-                } else {
-                    toast("Failed to get explanation", "error");
-                }
-            })
-            .catch(() => toast("Failed to get explanation", "error"));
-    }
-
     function addToWatch(id) {
         toast(`Added submission ${id} to watch list`, 'success');
-    }
-
-    function showExplanationModal(explanation, id) {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        modal.innerHTML = `
-            <div class="glass-panel max-w-2xl mx-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">Appetite Explanation - ID ${id}</h3>
-                    <button class="quick-action" onclick="this.closest('.fixed').remove()">✕</button>
-                </div>
-                <div class="text-sm leading-relaxed">${explanation}</div>
-                <div class="mt-4 flex justify-end">
-                    <button class="quick-action primary" onclick="this.closest('.fixed').remove()">Got it</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
     }
 
     function clearAllFilters() {
@@ -438,7 +436,11 @@
             console.error('Failed to load modes:', error);
         }
     }
-</script>
+
+    function explain(id) {
+        const mode = document.getElementById('f_mode')?.value;
+        const url = mode && mode !== '' 
+            ? `/api/explain/${id}?mode=${encodeURIComponent(mode)}`
             : `/api/explain/${id}`;
         fetch(url, { method: "POST" })
             .then((r) => r.json())
@@ -518,15 +520,6 @@
         };
 
         document.getElementById("btn_clear").onclick = clearAllFilters;
-
-        document.getElementById("btn_refresh").onclick = () => {
-            fetchJSON("/api/refresh", { method: "POST" })
-                .then(() => {
-                    toast("Data refreshed", "success");
-                    applyPreset(currentPreset);
-                })
-                .catch((err) => toast("Refresh failed: " + err.message, "error"));
-        };
 
         document.getElementById("btn_export").onclick = () => {
             toast('Export functionality will be available soon', 'info');
@@ -625,14 +618,6 @@
                 document.getElementById("btn_apply").click();
             })
             .catch((err) => toast("NLQ failed: " + err.message, "error"));
-    };
-    document.getElementById("btn_refresh").onclick = () => {
-        fetchJSON("/api/refresh", { method: "POST" })
-            .then(() => {
-                toast("Data refreshed", "success");
-                document.getElementById("btn_apply").click();
-            })
-            .catch((err) => toast("Refresh failed: " + err.message, "error"));
     };
 
     async function populateModes() {
