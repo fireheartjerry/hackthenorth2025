@@ -70,8 +70,7 @@
     </div>
 </div>
 
-<!-- Chart.js + Advanced libs -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Advanced visualization libs -->
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
@@ -122,6 +121,8 @@
         );
         if (chartCard) {
             chartCard.appendChild(host.firstElementChild);
+            const div = chartCard.querySelector('.plotly-host');
+            if (div) Plotly.Plots.resize(div);
         }
         document.getElementById("fs_overlay").classList.add("hidden");
     }
@@ -201,11 +202,10 @@
       </div>
       <div class="flex items-end"><button class="btn btn-subtle act-apply">Apply</button></div>
     </div>
-    <div class="mt-3 chart-canvas-host"><canvas></canvas></div>
+    <div class="mt-3 chart-canvas-host"><div class="plotly-host"></div></div>
   `;
 
-        const canvas = card.querySelector("canvas");
-        const ctx = canvas.getContext("2d");
+        const plotDiv = card.querySelector(".plotly-host");
         const opts = {
             group: cfg.group || "primary_risk_state",
             metric: cfg.metric || "count",
@@ -220,7 +220,7 @@
         card.querySelector(".opt-series").value = opts.series_by;
         card.querySelector(".opt-type").value = opts.type;
 
-        let chart;
+
         let lastAgg;
 
         async function render() {
@@ -229,96 +229,65 @@
             Object.assign(params, opts.filters || {});
             const agg = await aggLoad(params);
             lastAgg = agg;
-            const colors = [
-                "#818cf8",
-                "#22c55e",
-                "#f43f5e",
-                "#f59e0b",
-                "#06b6d4",
-                "#e879f9",
-                "#a3e635",
-            ];
-            const datasets = agg.series.map((s, i) => ({
-                label: s.name,
-                data: s.data,
-                backgroundColor:
-                    opts.type === "line"
-                        ? "transparent"
-                        : colors[i % colors.length] + "AA",
-                borderColor: colors[i % colors.length],
-                borderWidth: 2,
-                tension: 0.25,
-                type: opts.type === "pie" ? undefined : opts.type,
-            }));
-            const data = { labels: agg.labels, datasets };
-            const config = {
-                type: opts.type === "pie" ? "pie" : "bar",
-                data,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: "#e2e8f0" } } },
-                    scales:
-                        opts.type === "pie"
-                            ? {}
-                            : {
-                                  x: {
-                                      ticks: { color: "#e2e8f0" },
-                                      grid: { color: "rgba(255,255,255,.08)" },
-                                  },
-                                  y: {
-                                      ticks: { color: "#e2e8f0" },
-                                      grid: { color: "rgba(255,255,255,.08)" },
-                                  },
-                              },
-                    onClick: async (_e, els) => {
-                        if (!els?.length) return;
-                        const i = els[0].index;
-                        const j = els[0].datasetIndex;
-                        const label = agg.labels[i];
-                        const seriesName = agg.series[j]?.name;
-                        const params = {
-                            group: opts.group,
-                            label,
-                            series_by: opts.series_by || "",
-                            series_val: opts.series_by ? seriesName : "",
-                        };
-                        const raw = await underlying(params);
-                        const rows = raw.data || [];
-                        const header = Object.keys(rows[0] || {});
-                        const head =
-                            "<thead><tr>" +
-                            header
-                                .map((h) => `<th class="th">${h}</th>`)
-                                .join("") +
-                            "</tr></thead>";
-                        const body =
-                            "<tbody>" +
-                            rows
-                                .map(
-                                    (r) =>
-                                        '<tr class="tr">' +
-                                        header
-                                            .map(
-                                                (h) =>
-                                                    `<td class="td">${
-                                                        r[h] ?? ""
-                                                    }</td>`
-                                            )
-                                            .join("") +
-                                        "</tr>"
-                                )
-                                .join("") +
-                            "</tbody>";
-                        window.__lastRawRows = rows;
-                        openDataModal(
-                            `<div class=\"overflow-x-auto glass-panel p-0\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
-                        );
-                    },
-                },
+            const colors = ["#818cf8", "#22c55e", "#f43f5e", "#f59e0b", "#06b6d4", "#e879f9", "#a3e635"];
+            const traces = agg.series.map((s, i) => {
+                const base = { name: s.name, marker: { color: colors[i % colors.length] } };
+                if (opts.type === "pie") {
+                    return { ...base, type: "pie", labels: agg.labels, values: s.data };
+                }
+                return { ...base, type: opts.type, x: agg.labels, y: s.data };
+            });
+            const layout = {
+                paper_bgcolor: "transparent",
+                plot_bgcolor: "transparent",
+                font: { color: "#e2e8f0" },
+                margin: { t: 30, r: 10, b: 40, l: 40 },
             };
-            chart?.destroy();
-            chart = new Chart(ctx, config);
+            if (opts.type !== "pie") {
+                layout.xaxis = { gridcolor: "rgba(255,255,255,.08)" };
+                layout.yaxis = { gridcolor: "rgba(255,255,255,.08)" };
+                if (opts.type === "bar" && agg.series.length > 1) layout.barmode = "stack";
+            }
+            await Plotly.react(plotDiv, traces, layout, { displayModeBar: false, responsive: true });
+            plotDiv.removeAllListeners?.("plotly_click");
+            plotDiv.on("plotly_click", async (ev) => {
+                if (!ev.points?.length) return;
+                const p = ev.points[0];
+                const i = p.pointIndex;
+                const j = p.curveNumber;
+                const label = agg.labels[i];
+                const seriesName = agg.series[j]?.name;
+                const params = {
+                    group: opts.group,
+                    label,
+                    series_by: opts.series_by || "",
+                    series_val: opts.series_by ? seriesName : "",
+                };
+                const raw = await underlying(params);
+                const rows = raw.data || [];
+                const header = Object.keys(rows[0] || {});
+                const head =
+                    "<thead><tr>" +
+                    header.map((h) => `<th class=\"th\">${h}</th>`).join("") +
+                    "</tr></thead>";
+                const body =
+                    "<tbody>" +
+                    rows
+                        .map(
+                            (r) =>
+                                '<tr class=\"tr\">' +
+                                header
+                                    .map((h) => `<td class=\"td\">${r[h] ?? ""}</td>`)
+                                    .join("") +
+                                "</tr>"
+                        )
+                        .join("") +
+                    "</tbody>";
+                window.__lastRawRows = rows;
+                openDataModal(
+                    `<div class=\\"overflow-x-auto glass-panel p-0\\"><table class=\\"w-full text-xs table-glass\\">${head}${body}</table></div>`
+                );
+            });
         }
 
         function toggleEdit() {
@@ -327,13 +296,12 @@
 
         // Actions
         card.querySelector(".act-full").onclick = () => {
-            // Move canvas container into fullscreen host
-            document
-                .querySelectorAll(".chart-card")
-                .forEach((c) => (c.dataset.active = "false"));
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
             card.dataset.active = "true";
             const node = card.querySelector(".chart-canvas-host");
             openFullscreen(node);
+            const div = document.getElementById("fs_host").querySelector(".plotly-host");
+            if (div) Plotly.Plots.resize(div);
         };
         card.querySelector(".act-edit").onclick = toggleEdit;
         card.querySelector(".act-apply").onclick = () => {
@@ -341,9 +309,7 @@
             opts.metric = card.querySelector(".opt-metric").value;
             opts.series_by = card.querySelector(".opt-series").value;
             opts.type = card.querySelector(".opt-type").value;
-            render().catch((e) =>
-                toast("Failed to render: " + e.message, "error")
-            );
+            render().catch((e) => toast("Failed to render: " + e.message, "error"));
         };
         card.querySelector(".act-data").onclick = () => {
             if (!lastAgg) {
@@ -351,27 +317,23 @@
                 return;
             }
             const csv = csvFromAgg(lastAgg);
-            const html = `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll(
-                "<",
-                "&lt;"
-            )}</pre></div>`;
+            const html = `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll("<","&lt;")}</pre></div>`;
             openDataModal(html);
         };
         card.querySelector(".act-share").onclick = () => {
             const state = encodeURIComponent(btoa(JSON.stringify(opts)));
-            const url =
-                location.origin + location.pathname + `?cfg_${id}=` + state;
-            const mail = `mailto:?subject=Portfolio%20Insights&body=${encodeURIComponent(
-                url
-            )}`;
+            const url = location.origin + location.pathname + `?cfg_${id}=` + state;
+            const mail = `mailto:?subject=Portfolio%20Insights&body=${encodeURIComponent(url)}`;
             copyToClipboard(url);
             window.open(mail, "_blank");
         };
-        card.querySelector(".act-dl-img").onclick = () => {
-            const a = document.createElement("a");
-            a.download = `${id}.png`;
-            a.href = canvas.toDataURL("image/png");
-            a.click();
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob(`${id}.png`, await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
         };
         card.querySelector(".act-dl-csv").onclick = () => {
             if (!lastAgg) {
@@ -657,6 +619,13 @@
                     }).toString()
             );
             const csv = csvFromAgg(agg);
+            window.__lastRawRows = (agg.labels || []).map((lab, i) => {
+                const row = { label: lab };
+                for (const s of agg.series || []) {
+                    row[s.name] = s.data[i];
+                }
+                return row;
+            });
             openDataModal(
                 `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll(
                     "<",
@@ -865,6 +834,7 @@
                     )
                     .join("") +
                 "</tbody>";
+            window.__lastRawRows = rows;
             openDataModal(
                 `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
             );
@@ -1027,6 +997,7 @@
                     )
                     .join("") +
                 "</tbody>";
+            window.__lastRawRows = rows;
             openDataModal(
                 `<div class=\"glass-panel p-0 overflow-auto\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`
             );
