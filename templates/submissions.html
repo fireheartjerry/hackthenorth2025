@@ -15,6 +15,10 @@
     </select>
   </div>
   <div>
+    <label class="lbl">Mode</label>
+    <select id="f_mode" class="inp"></select>
+  </div>
+  <div>
     <label class="lbl">Min Premium</label>
     <input id="f_min" class="inp" type="number" placeholder="50000"/>
   </div>
@@ -60,11 +64,11 @@ async function load(params={}){
   const qs = new URLSearchParams(params).toString()
   const tb = document.getElementById("tbody")
   await withLoading(tb, async ()=>{
-    const j = await fetchJSON("/api/classified?"+qs)
+    const j = await fetchJSON("/api/classified_mode?"+qs)
     tb.innerHTML = (j.data||[]).map(r=>`
       <tr class="tr">
         <td class="td">${r.id}</td>
-        <td class="td"><a class="link" href="/detail/${r.id}">${r.account_name||"-"}</a></td>
+        <td class="td"><a class="link" href="/detail/${r.id}?mode=${encodeURIComponent(document.getElementById('f_mode').value||'')}">${r.account_name||"-"}</a></td>
         <td class="td">${r.primary_risk_state||"-"}</td>
         <td class="td">${r.line_of_business||"-"}</td>
         <td class="td">$${Math.round(r.total_premium||0).toLocaleString()}</td>
@@ -83,7 +87,9 @@ function badge(s){
   return `<span class="pill pill-rose">Out</span>`
 }
 function explain(id){
-  fetch("/api/explain/"+id,{method:"POST"}).then(r=>r.json()).then(j=>{
+  const mode = document.getElementById('f_mode').value||''
+  const url = mode? `/api/explain/${id}?mode=${encodeURIComponent(mode)}` : `/api/explain/${id}`
+  fetch(url,{method:"POST"}).then(r=>r.json()).then(j=>{
     if(j.ok){ alert(j.explanation) } else { alert("Error") }
   })
 }
@@ -93,7 +99,8 @@ document.getElementById("btn_apply").onclick=()=>{
     status:document.getElementById("f_status").value||"",
     min_premium:document.getElementById("f_min").value||"",
     max_premium:document.getElementById("f_max").value||"",
-    q:document.getElementById("f_q").value||""
+    q:document.getElementById("f_q").value||"",
+    mode:document.getElementById("f_mode").value||""
   }
   load(params).catch(err=>toast("Failed to load: "+err.message, "error"))
 }
@@ -115,6 +122,24 @@ document.getElementById("btn_refresh").onclick=()=>{
    .then(()=>{ toast("Data refreshed","success"); document.getElementById("btn_apply").click() })
    .catch(err=>toast("Refresh failed: "+err.message, "error"))
 }
-load().catch(err=>toast("Initial load failed: "+err.message, "error"))
+
+async function populateModes(){
+  try{
+    const j = await fetchJSON('/api/modes')
+    const modes = j.modes||[]
+    const sel = document.getElementById('f_mode')
+    sel.innerHTML = modes.map(m=>`<option value="${m}">${m}</option>`).join('')
+    // default
+    sel.value = modes.includes('balanced_growth')? 'balanced_growth' : (modes[0]||'')
+  }catch(e){
+    console.error('Failed to load modes', e)
+  }
+}
+
+populateModes().then(()=>{
+  document.getElementById("btn_apply").click()
+}).catch(()=>{
+  load().catch(err=>toast("Initial load failed: "+err.message, "error"))
+})
 </script>
 {% endblock %}

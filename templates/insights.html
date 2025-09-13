@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Portfolio Insights</h1>
+    <div class="text-sm opacity-75">Configurable dashboards to interrogate your portfolio — fullscreen, edit, share, and download.</div>
+  </div>
+  <div class="flex items-center gap-2 text-xs">
+    <span class="chip">Role: {{ role }}</span>
+    <a href="?role=uw" class="pill pill-sub">UW</a>
+    <a href="?role=leader" class="pill pill-sub">Leader</a>
+    <a href="?role=admin" class="pill pill-sub">Admin</a>
+  </div>
+</div>
+
+<div class="glass-panel p-2">
+  <div class="flex gap-2 text-sm">
+    {% for t in tabs %}
+      {% set is_disabled = (t.protected and role not in ['leader','admin']) %}
+      <button class="pill {% if loop.first %}pill-indigo{% else %}pill-sub{% endif %} tabbtn" data-tab="{{ t.id }}" {% if is_disabled %}disabled title="Restricted to leaders/admins"{% endif %}>{{ t.title }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="tab_content" class="mt-4 space-y-6"></div>
+
+<!-- Fullscreen overlay -->
+<div id="fs_overlay" class="overlay hidden">
+  <div class="overlay-inner">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm opacity-80">Fullscreen</div>
+      <button class="pill pill-sub" onclick="closeFullscreen()">Close</button>
+    </div>
+    <div id="fs_host" class="h-[70vh]"></div>
+  </div>
+</div>
+
+<!-- Data modal -->
+<div id="data_modal" class="overlay hidden">
+  <div class="overlay-inner max-w-5xl">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <div class="text-sm opacity-80">Underlying Data</div>
+        <button id="dl_raw_csv" class="pill pill-sub">Download CSV</button>
+      </div>
+      <button class="pill pill-sub" onclick="closeDataModal()">Close</button>
+    </div>
+    <div id="data_table" class="overflow-auto max-h-[70vh]"></div>
+  </div>
+ </div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// --- Utilities ---
+function copyToClipboard(txt){
+  navigator.clipboard?.writeText(txt).then(()=>toast('Link copied','success')).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Link copied','success')
+  })
+}
+function downloadBlob(filename, content, mime='text/plain'){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:mime})); a.download=filename; a.click(); URL.revokeObjectURL(a.href)
+}
+function csvFromAgg(agg){
+  const {labels, series} = agg; if(!labels||!series||!series.length) return '';
+  const header = ['Label', ...series.map(s=>s.name)].join(',');
+  const rows = labels.map((lab,i)=> [lab, ...series.map(s=>s.data[i] ?? '')].join(','));
+  return [header, ...rows].join('\n');
+}
+
+// Fullscreen
+function openFullscreen(node){
+  const host=document.getElementById('fs_host'); host.innerHTML='';
+  host.appendChild(node);
+  document.getElementById('fs_overlay').classList.remove('hidden');
+}
+function closeFullscreen(){
+  const host=document.getElementById('fs_host');
+  const chartCard = document.querySelector('.chart-card[data-active="true"] .chart-canvas-host');
+  if(chartCard){ chartCard.appendChild(host.firstElementChild); }
+  document.getElementById('fs_overlay').classList.add('hidden');
+}
+
+// Data modal
+function openDataModal(html){
+  const el=document.getElementById('data_table'); el.innerHTML=html||'';
+  document.getElementById('data_modal').classList.remove('hidden');
+}
+function closeDataModal(){ document.getElementById('data_modal').classList.add('hidden'); }
+
+// API
+async function aggLoad(params){
+  const qs = new URLSearchParams(params).toString();
+  return fetchJSON('/api/aggregate?'+qs)
+}
+async function underlying(params){
+  const qs = new URLSearchParams(params).toString();
+  return fetchJSON('/api/underlying?'+qs)
+}
+
+// Chart component
+function createChartCard(id, title, cfg){
+  const card = document.createElement('div');
+  card.className='glass-panel chart-card';
+  card.dataset.chartId=id;
+  card.innerHTML = `
+    <div class="flex items-center justify-between">
+      <div class="text-lg font-semibold">${title}</div>
+      <div class="flex items-center gap-2 text-xs">
+        <button class="pill pill-sub act-full">Fullscreen</button>
+        <button class="pill pill-sub act-edit">Edit</button>
+        <button class="pill pill-sub act-data">Data</button>
+        <button class="pill pill-sub act-share">Share</button>
+        <button class="pill pill-sub act-dl-img">PNG</button>
+        <button class="pill pill-sub act-dl-csv">CSV</button>
+      </div>
+    </div>
+    <div class="mt-2 grid grid-cols-1 lg:grid-cols-5 gap-3 text-sm opts hidden">
+      <div>
+        <label class="lbl">Group</label>
+        <select class="inp opt-group">
+          <option value="primary_risk_state">Primary Risk State</option>
+          <option value="appetite_status">Appetite Status</option>
+          <option value="line_of_business">Line of Business</option>
+          <option value="renewal_or_new_business">Submission Type</option>
+          <option value="construction_type">Construction Type</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Metric</label>
+        <select class="inp opt-metric">
+          <option value="count">Count</option>
+          <option value="sum:total_premium">Sum Premium</option>
+          <option value="sum:tiv">Sum TIV</option>
+          <option value="avg:total_premium">Avg Premium</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Series By</label>
+        <select class="inp opt-series">
+          <option value="">(None)</option>
+          <option value="appetite_status">Appetite Status</option>
+          <option value="renewal_or_new_business">Submission Type</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Chart Type</label>
+        <select class="inp opt-type">
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+        </select>
+      </div>
+      <div class="flex items-end"><button class="btn btn-subtle act-apply">Apply</button></div>
+    </div>
+    <div class="mt-3 chart-canvas-host"><canvas></canvas></div>
+  `;
+
+  const canvas = card.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  const opts = {
+    group: cfg.group||'primary_risk_state',
+    metric: cfg.metric||'count',
+    series_by: cfg.series_by||'',
+    type: cfg.type||'bar',
+    filters: cfg.filters||{}
+  };
+
+  // init selects
+  card.querySelector('.opt-group').value = opts.group;
+  card.querySelector('.opt-metric').value = opts.metric;
+  card.querySelector('.opt-series').value = opts.series_by;
+  card.querySelector('.opt-type').value = opts.type;
+
+  let chart;
+  let lastAgg;
+
+  async function render(){
+    const params = { group: opts.group, metric: opts.metric };
+    if(opts.series_by) params.series_by = opts.series_by;
+    Object.assign(params, opts.filters||{});
+    const agg = await aggLoad(params);
+    lastAgg = agg;
+    const colors = ['#818cf8','#22c55e','#f43f5e','#f59e0b','#06b6d4','#e879f9','#a3e635'];
+    const datasets = agg.series.map((s,i)=>({
+      label: s.name,
+      data: s.data,
+      backgroundColor: opts.type==='line' ? 'transparent' : colors[i%colors.length]+'AA',
+      borderColor: colors[i%colors.length],
+      borderWidth: 2,
+      tension: .25,
+      type: opts.type==='pie'? undefined : opts.type,
+    }));
+    const data = { labels: agg.labels, datasets };
+    const config = {
+      type: opts.type==='pie'? 'pie' : 'bar',
+      data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#e2e8f0' } } },
+        scales: (opts.type==='pie')? {} : {
+          x: { ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(255,255,255,.08)' } },
+          y: { ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(255,255,255,.08)' } },
+        },
+        onClick: async (_e, els)=>{
+          if(!els?.length) return;
+          const i = els[0].index; const j = els[0].datasetIndex;
+          const label = agg.labels[i]; const seriesName = agg.series[j]?.name;
+          const params = { group: opts.group, label, series_by: opts.series_by||'', series_val: (opts.series_by? seriesName: '') };
+          const raw = await underlying(params);
+          const rows = raw.data||[];
+          const header = Object.keys(rows[0]||{});
+          const head = '<thead><tr>'+header.map(h=>`<th class="th">${h}</th>`).join('')+'</tr></thead>';
+          const body = '<tbody>'+rows.map(r=>'<tr class="tr">'+header.map(h=>`<td class="td">${r[h]??''}</td>`).join('')+'</tr>').join('')+'</tbody>';
+          window.__lastRawRows = rows;
+          openDataModal(`<div class=\"overflow-x-auto glass-panel p-0\"><table class=\"w-full text-xs table-glass\">${head}${body}</table></div>`)
+        }
+      }
+    };
+    chart?.destroy();
+    chart = new Chart(ctx, config);
+  }
+
+  function toggleEdit(){ card.querySelector('.opts').classList.toggle('hidden'); }
+
+  // Actions
+  card.querySelector('.act-full').onclick = ()=>{
+    // Move canvas container into fullscreen host
+    document.querySelectorAll('.chart-card').forEach(c=>c.dataset.active='false');
+    card.dataset.active='true';
+    const node = card.querySelector('.chart-canvas-host');
+    openFullscreen(node);
+  }
+  card.querySelector('.act-edit').onclick = toggleEdit;
+  card.querySelector('.act-apply').onclick = ()=>{
+    opts.group = card.querySelector('.opt-group').value;
+    opts.metric = card.querySelector('.opt-metric').value;
+    opts.series_by = card.querySelector('.opt-series').value;
+    opts.type = card.querySelector('.opt-type').value;
+    render().catch(e=>toast('Failed to render: '+e.message,'error'))
+  }
+  card.querySelector('.act-data').onclick = ()=>{
+    if(!lastAgg){ toast('Load chart first','error'); return; }
+    const csv = csvFromAgg(lastAgg);
+    const html = `<div class=\"glass-panel p-0 overflow-auto\"><pre class=\"p-4\">${csv.replaceAll('<','&lt;')}</pre></div>`;
+    openDataModal(html)
+  }
+  card.querySelector('.act-share').onclick = ()=>{
+    const state = encodeURIComponent(btoa(JSON.stringify(opts)));
+    const url = location.origin + location.pathname + `?cfg_${id}=`+state;
+    const mail = `mailto:?subject=Portfolio%20Insights&body=${encodeURIComponent(url)}`;
+    copyToClipboard(url);
+    window.open(mail, '_blank');
+  }
+  card.querySelector('.act-dl-img').onclick = ()=>{
+    const a=document.createElement('a'); a.download = `${id}.png`; a.href = canvas.toDataURL('image/png'); a.click();
+  }
+  card.querySelector('.act-dl-csv').onclick = ()=>{
+    if(!lastAgg){ toast('No data','error'); return; }
+    downloadBlob(`${id}.csv`, csvFromAgg(lastAgg), 'text/csv');
+  }
+
+  // Initial render
+  render().catch(e=>toast('Failed to load chart: '+e.message,'error'))
+  return card;
+}
+
+function loadTabs(){
+  const host = document.getElementById('tab_content');
+  const cfg1 = paramCfg('cfg_overview') || { group:'primary_risk_state', metric:'sum:total_premium', series_by:'appetite_status', type:'bar' };
+  const cfg2 = paramCfg('cfg_premium_by_state') || { group:'primary_risk_state', metric:'count', series_by:'', type:'pie' };
+  const cfg3 = paramCfg('cfg_status_mix') || { group:'appetite_status', metric:'sum:tiv', series_by:'renewal_or_new_business', type:'bar' };
+
+  function section(tab){
+    host.innerHTML='';
+    if(tab==='overview'){
+      host.appendChild(createChartCard('overview', 'Premium by State (stacked by Appetite)', cfg1));
+    } else if(tab==='premium_by_state'){
+      host.appendChild(createChartCard('premium_by_state', 'Distribution by State', cfg2));
+    } else if(tab==='status_mix'){
+      host.appendChild(createChartCard('status_mix', 'Status Mix vs Submission Type', cfg3));
+    } else if(tab==='tiv_bands'){
+      // Using same component; bands simulated via group construction_type if TIV bands not present
+      host.appendChild(createChartCard('tiv_bands', 'TIV by State (editable)', { group:'primary_risk_state', metric:'sum:tiv', type:'line' }));
+    }
+  }
+
+  const firstBtn = document.querySelector('.tabbtn:not([disabled])');
+  (document.querySelectorAll('.tabbtn')||[]).forEach(btn=>{
+    btn.onclick=()=>{
+      if(btn.disabled) return;
+      document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('pill-indigo'));
+      btn.classList.add('pill-indigo');
+      section(btn.dataset.tab);
+    }
+  })
+  firstBtn?.click();
+}
+
+function paramCfg(key){
+  const url = new URL(location.href); const v = url.searchParams.get(key);
+  if(!v) return null; try { return JSON.parse(atob(decodeURIComponent(v))); } catch { return null }
+}
+
+window.addEventListener('DOMContentLoaded', loadTabs)
+
+// Download underlying raw table as CSV when available
+document.addEventListener('click', (e)=>{
+  if(e.target && e.target.id==='dl_raw_csv'){
+    const rows = window.__lastRawRows||[]; if(!rows.length){ toast('No data','error'); return; }
+    const cols = Object.keys(rows[0]);
+    const csv = [cols.join(',')].concat(rows.map(r=>cols.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');
+    downloadBlob('underlying.csv', csv, 'text/csv');
+  }
+});
+</script>
+{% endblock %}

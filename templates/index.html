@@ -43,10 +43,10 @@
 async function loadHome(){
   const el = document.getElementById("worklist")
   await withLoading(el, async ()=>{
-    const j = await fetchJSON("/api/classified")
+    const j = await fetchJSON("/api/classified_mode?mode=balanced_growth")
     const rows = (j.data||[]).slice(0,8)
     el.innerHTML = rows.map(r=>`
-    <a href="/detail/${r.id}" class="row">
+    <a href="/detail/${r.id}?mode=balanced_growth" class="row">
       <div class="row-main">
         <div class="row-title">${r.account_name||"-"}</div>
         <div class="row-sub">${r.primary_risk_state||"-"} · ${r.line_of_business||"-"} · $${Math.round(r.total_premium||0).toLocaleString()}</div>

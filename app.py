@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, make_response
 import os, json, time, datetime as dt
 import requests
 import pandas as pd
@@ -9,6 +9,7 @@ from collections import Counter
 # Custom modules
 from utils_data import load_df
 from scoring import score_row
+from guidelines import classify_for_mode_row
 from modes import MODES
 
 load_dotenv()
@@ -328,6 +329,15 @@ def dfToDict(df):
     return records
 
 
+def get_role():
+    # Simple role access control: cookie or query param, defaults to 'uw'
+    role = request.cookies.get("role") or request.args.get("role") or "uw"
+    role = str(role).lower()
+    if role not in {"uw", "leader", "admin"}:
+        role = "uw"
+    return role
+
+
 @app.route("/")
 def home():
     df, _ = refreshCache()
@@ -380,8 +390,45 @@ def submissions():
     return render_template("submissions.html", rows=rows)
 
 
+@app.route("/insights")
+def insights():
+    # Portfolio Insights landing with simple role-based access for tabs
+    role = get_role()
+    tabs = [
+        {"id": "overview", "title": "Overview", "protected": False},
+        {"id": "premium_by_state", "title": "Premium by State", "protected": False},
+        {"id": "status_mix", "title": "Status Mix", "protected": False},
+        {"id": "tiv_bands", "title": "TIV Bands", "protected": True},
+    ]
+    resp = make_response(render_template("insights.html", role=role, tabs=tabs))
+    # Persist role if provided via query
+    role_q = request.args.get("role")
+    if role_q:
+        resp.set_cookie("role", role, max_age=7*24*3600, httponly=False, samesite="Lax")
+    return resp
+
+
 @app.route("/detail/<int:pid>")
 def detail(pid):
+    mode = request.args.get("mode")
+    if mode and mode in MODES:
+        try:
+            ddf = load_df("data.json")
+            dd = ddf[ddf["id"] == pid]
+            if dd.empty:
+                return render_template("detail.html", item=None)
+            scounts = Counter(ddf["primary_risk_state"].fillna("UNK"))
+            preset = MODES[mode]
+            r = dd.iloc[0].to_dict()
+            status, reasons, s, pscore = classify_for_mode_row(
+                r, preset["weights"], preset["filters"], scounts
+            )
+            r["appetite_status"] = status
+            r["appetite_reasons"] = reasons
+            r["priority_score"] = float(pscore)
+            return render_template("detail.html", item=r)
+        except Exception:
+            pass
     df, _ = refreshCache()
     d = df[df["id"] == pid]
     if d.empty:
@@ -447,6 +494,35 @@ def buildGuidelineSummary():
     return " ".join(t)
 
 
+def buildModeGuidelineSummary(mode_name: str):
+    p = MODES.get(mode_name)
+    if not p:
+        return "Mode not found; using default heuristic filters and weights."
+    f = p.get("filters", {})
+    parts = [f"Mode {mode_name} — Dynamic guideline summary:"]
+    if f.get("lob_in"):
+        parts.append(f"Allowed LOB: {', '.join(f['lob_in'])}.")
+    if f.get("new_business_only"):
+        parts.append("Only NEW_BUSINESS submissions.")
+    if "loss_ratio_max" in f:
+        parts.append(f"Loss ratio ≤ {f['loss_ratio_max']:.2f}.")
+    if "tiv_max" in f:
+        parts.append(f"TIV ≤ ${f['tiv_max']:,}.")
+    if "premium_range" in f:
+        lo, hi = f["premium_range"]
+        parts.append(f"Premium in ${lo:,}–${hi:,} targetable window.")
+    if "min_winnability" in f:
+        parts.append(f"Winnability ≥ {f['min_winnability']:.2f}.")
+    if "min_year" in f:
+        parts.append(f"Building year ≥ {int(f['min_year'])} (or missing).")
+    if f.get("good_construction_only"):
+        parts.append("Acceptable construction types only.")
+    parts.append(
+        "Weighted by premium, winnability, year, construction, TIV, freshness; premium sweet spot defined by mid band."
+    )
+    return " ".join(parts)
+
+
 def makePolicyDict(pid):
     df, _ = refreshCache()
     d = df[df["id"] == pid]
@@ -457,11 +533,28 @@ def makePolicyDict(pid):
 
 @app.route("/api/explain/<int:pid>", methods=["POST"])
 def apiExplain(pid):
-    item = makePolicyDict(pid)
-    if not item:
-        return jsonify({"ok": False, "error": "Not found"}), 404
-    base = buildGuidelineSummary()
-    rule_text = base
+    mode = request.args.get("mode")
+    if mode and mode in MODES:
+        ddf = load_df("data.json")
+        d = ddf[ddf["id"] == pid]
+        if d.empty:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        preset = MODES[mode]
+        scounts = Counter(ddf["primary_risk_state"].fillna("UNK"))
+        r = d.iloc[0].to_dict()
+        status, reasons, s, pscore = classify_for_mode_row(
+            r, preset["weights"], preset["filters"], scounts
+        )
+        r["appetite_status"] = status
+        r["appetite_reasons"] = reasons
+        r["priority_score"] = float(pscore)
+        item = r
+        rule_text = buildModeGuidelineSummary(mode)
+    else:
+        item = makePolicyDict(pid)
+        if not item:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        rule_text = buildGuidelineSummary()
     raw_reason = item.get("appetite_reasons", [])
     label = item.get("appetite_status", "IN")
     if not OPENAI_API_KEY:
@@ -609,17 +702,159 @@ def api_classified_mode():
 
     preset = MODES.get(mode, MODES["balanced_growth"])
     d = apply_hard_filters(df, preset["filters"])
-    # geo concentration
+
+    # Optional UI filters
+    state = request.args.get("state")
+    status_filter = request.args.get("status")
+    min_p = request.args.get("min_premium", type=float)
+    max_p = request.args.get("max_premium", type=float)
+    q = request.args.get("q")
+
+    if state:
+        d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
+    if min_p is not None:
+        d = d[d["total_premium"] >= min_p]
+    if max_p is not None:
+        d = d[d["total_premium"] <= max_p]
+    if q:
+        m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
+        d = d[m.fillna(False)]
+
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
 
-    rows = []
+    out_rows = []
     for r in d.to_dict(orient="records"):
-        s = score_row(r, preset["weights"], scounts)
-        r["mode_score"] = round(float(s), 4)
-        rows.append(r)
+        stat, reasons, s, pscore = classify_for_mode_row(
+            r, preset["weights"], preset["filters"], scounts
+        )
+        r["appetite_status"] = stat
+        r["appetite_reasons"] = reasons
+        r["priority_score"] = float(pscore)
+        r["mode_score"] = round(float(pscore), 4)
+        out_rows.append(r)
 
-    rows.sort(key=lambda x: x["mode_score"], reverse=True)
-    return jsonify({"count": len(rows), "data": rows})
+    if status_filter:
+        out_rows = [r for r in out_rows if r.get("appetite_status") == status_filter]
+
+    order = {"TARGET": 0, "IN": 1, "OUT": 2}
+    out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
+    out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
+    return jsonify({"count": len(out_rows), "data": out_rows})
+
+
+def _apply_common_filters(df):
+    d = df
+    state = request.args.get("state")
+    status = request.args.get("status")
+    lob = request.args.get("lob")
+    min_p = request.args.get("min_premium", type=float)
+    max_p = request.args.get("max_premium", type=float)
+    q = request.args.get("q")
+    if state:
+        d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
+    if status:
+        d = d[d["appetite_status"].astype(str).str.upper() == status.upper()]
+    if lob:
+        d = d[d["line_of_business"].astype(str).str.upper() == lob.upper()]
+    if min_p is not None:
+        d = d[d["total_premium"] >= min_p]
+    if max_p is not None:
+        d = d[d["total_premium"] <= max_p]
+    if q:
+        m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
+        d = d[m.fillna(False)]
+    return d
+
+
+@app.route("/api/aggregate")
+def api_aggregate():
+    """Generic aggregation endpoint for Portfolio Insights.
+    Params:
+      - group: column to group by (default primary_risk_state)
+      - metric: one of count | sum:total_premium | sum:tiv | avg:total_premium
+      - series_by: optional column to pivot series (e.g., appetite_status)
+      - common filters: state,status,lob,min_premium,max_premium,q
+    """
+    df, _ = refreshCache()
+    if df.empty:
+        return jsonify({"labels": [], "series": []})
+    group = request.args.get("group", "primary_risk_state")
+    metric = request.args.get("metric", "count")
+    series_by = request.args.get("series_by")
+    d = _apply_common_filters(df)
+
+    # Validate columns
+    cols = set(d.columns)
+    if group not in cols:
+        return jsonify({"error": f"Unknown group '{group}'"}), 400
+    if series_by and series_by not in cols:
+        return jsonify({"error": f"Unknown series_by '{series_by}'"}), 400
+
+    # Build aggregation
+    def agg_series(frame):
+        if metric == "count":
+            return frame.size
+        if metric.startswith("sum:"):
+            col = metric.split(":", 1)[1]
+            if col not in cols:
+                return 0
+            return frame[col].sum(min_count=1)
+        if metric.startswith("avg:"):
+            col = metric.split(":", 1)[1]
+            if col not in cols:
+                return 0
+            return frame[col].mean()
+        # default to count
+        return frame.size
+
+    if series_by:
+        piv = (
+            d.groupby([group, series_by])
+            .apply(lambda x: agg_series(x))
+            .unstack(fill_value=0)
+        )
+        piv = piv.sort_index()
+        labels = [str(x) for x in list(piv.index)]
+        series = []
+        for col in piv.columns:
+            series.append({
+                "name": str(col),
+                "data": [float(v) if v == v else 0.0 for v in list(piv[col].values)],
+            })
+    else:
+        agg = d.groupby(group).apply(lambda x: agg_series(x)).sort_values(ascending=False)
+        labels = [str(k) for k in list(agg.index)]
+        series = [{
+            "name": metric,
+            "data": [float(v) if v == v else 0.0 for v in list(agg.values)],
+        }]
+
+    return jsonify({
+        "labels": labels,
+        "series": series,
+        "meta": {"group": group, "metric": metric, "series_by": series_by},
+    })
+
+
+@app.route("/api/underlying")
+def api_underlying():
+    """Return underlying rows for a chart segment.
+       Accepts same filters plus optional label (value for the group) and series_val.
+    """
+    df, _ = refreshCache()
+    if df.empty:
+        return jsonify({"count": 0, "data": []})
+    group = request.args.get("group", "primary_risk_state")
+    label = request.args.get("label")
+    series_by = request.args.get("series_by")
+    series_val = request.args.get("series_val")
+    d = _apply_common_filters(df)
+    if label is not None and group in d.columns:
+        d = d[d[group].astype(str) == label]
+    if series_by and series_val is not None and series_by in d.columns:
+        d = d[d[series_by].astype(str) == series_val]
+    d = d.sort_values(["priority_score"], ascending=False)
+    return jsonify({"count": len(d), "data": dfToDict(d)})
 
 
 if __name__ == "__main__":
