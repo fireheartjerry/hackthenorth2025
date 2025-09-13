@@ -1,6 +1,1 @@
-Flask==3.1.2
-numpy==2.3.3
-openai==1.107.2
-pandas==2.3.2
-python-dotenv==1.1.1
-Requests==2.32.5
+Defaulting to user installation because normal site-packages is not writeable
