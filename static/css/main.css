@@ -221,6 +221,15 @@ body {
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* Footer */
+.site-footer {
+  margin-top: 2rem;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+.site-footer .nav-link { color: var(--text-subtle); }
+.site-footer .nav-link:hover { color: var(--indigo-2); }
+
 .quick-action:hover {
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -249,6 +258,15 @@ body {
   -webkit-backdrop-filter: blur(14px) saturate(120%);
   transition: all 0.2s ease;
 }
+
+/* US Map styles */
+.usmap-wrap { position: relative; }
+.usmap-wrap .map-legend { display:flex; align-items:center; gap:.5rem; margin-top:.5rem; }
+.usmap-wrap .legend-bar { width:160px; height:10px; border-radius:999px; border:1px solid rgba(255,255,255,.2); background: linear-gradient(90deg, rgba(255,255,255,0.08), #c7d2fe); }
+.us-state { transition: transform .05s ease, fill .15s ease; cursor: pointer; }
+.us-state:hover { filter: brightness(1.15); }
+.map-tooltip { position:absolute; pointer-events:none; background: rgba(11,16,32,.95); color:white; border:1px solid rgba(255,255,255,.12); border-radius: .5rem; padding:.5rem .6rem; box-shadow: 0 8px 24px rgba(0,0,0,.5); z-index:5; min-width: 160px; }
+.map-tooltip.hidden { display:none; }
 
 .metric-card:hover {
   transform: translateY(-1px);

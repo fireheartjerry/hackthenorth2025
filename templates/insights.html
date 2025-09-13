@@ -17,23 +17,7 @@
 
 <div class="glass-panel p-2">
     <div class="flex gap-2 text-sm">
-        {% for t in tabs %} {% set is_disabled = (t.protected and role not in
-        ['leader','admin']) %}
-        <button
-            class="pill {% if loop.first %}pill-indigo{% else %}pill-sub{% endif %} tabbtn"
-            data-tab="{{ t.id }}"
-            {%
-            if
-            is_disabled
-            %}disabled
-            title="Restricted to leaders/admins"
-            {%
-            endif
-            %}
-        >
-            {{ t.title }}
-        </button>
-        {% endfor %}
+    <button class="pill pill-indigo tabbtn" data-tab="portfolio">Portfolio Composition &amp; Appetite Fit</button>
     </div>
 </div>
 
@@ -352,69 +336,120 @@
 
     function loadTabs() {
         const host = document.getElementById("tab_content");
-        const cfg1 = paramCfg("cfg_overview") || {
-            group: "primary_risk_state",
-            metric: "sum:total_premium",
-            series_by: "appetite_status",
-            type: "bar",
-        };
-        const cfg2 = paramCfg("cfg_premium_by_state") || {
-            group: "primary_risk_state",
-            metric: "count",
-            series_by: "",
-            type: "pie",
-        };
-        const cfg3 = paramCfg("cfg_status_mix") || {
-            group: "appetite_status",
-            metric: "sum:tiv",
-            series_by: "renewal_or_new_business",
-            type: "bar",
-        };
-
         function section(tab) {
             host.innerHTML = "";
-            if (tab === "overview") {
-                host.appendChild(
-                    createChartCard(
-                        "overview",
-                        "Premium by State (stacked by Appetite)",
-                        cfg1
-                    )
-                );
-            } else if (tab === "premium_by_state") {
-                host.appendChild(
-                    createChartCard(
-                        "premium_by_state",
-                        "Distribution by State",
-                        cfg2
-                    )
-                );
-            } else if (tab === "status_mix") {
-                host.appendChild(
-                    createChartCard(
-                        "status_mix",
-                        "Status Mix vs Submission Type",
-                        cfg3
-                    )
-                );
-            } else if (tab === "tiv_bands") {
-                // Using same component; bands simulated via group construction_type if TIV bands not present
-                host.appendChild(
-                    createChartCard("tiv_bands", "TIV by State (editable)", {
-                        group: "primary_risk_state",
-                        metric: "sum:tiv",
-                        type: "line",
-                    })
-                );
-            } else if (tab === "geo") {
-                host.appendChild(createGeoCard());
-            } else if (tab === "scatter3d") {
-                host.appendChild(createScatter3DCard());
-            } else if (tab === "flows") {
-                host.appendChild(createSankeyCard());
-            }
-        }
+            // --- Appetite Breakdown Pie ---
+            const appetiteCard = document.createElement("div");
+            appetiteCard.className = "glass-panel chart-card mb-6";
+            appetiteCard.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-lg font-semibold">Appetite Breakdown</div>
+                    <div class="text-xs opacity-80">% of submissions In, Out, Borderline appetite</div>
+                </div>
+                <div class="mt-2" id="appetite_pie" style="height:320px;"></div>
+            `;
+            host.appendChild(appetiteCard);
+            // --- Line of Business Mix ---
+            const lobCard = document.createElement("div");
+            lobCard.className = "glass-panel chart-card mb-6";
+            lobCard.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-lg font-semibold">Line of Business Mix</div>
+                    <div class="text-xs opacity-80">Stacked bar chart of premium by LOB</div>
+                </div>
+                <div class="mt-2" id="lob_bar" style="height:320px;"></div>
+            `;
+            host.appendChild(lobCard);
+            // --- Construction Type Distribution ---
+            const constrCard = document.createElement("div");
+            constrCard.className = "glass-panel chart-card mb-6";
+            constrCard.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-lg font-semibold">Construction Type Distribution</div>
+                    <div class="text-xs opacity-80">Submission count by construction type</div>
+                </div>
+                <div class="mt-2" id="constr_bar" style="height:320px;"></div>
+            `;
+            host.appendChild(constrCard);
 
+            // --- Hardcoded Data ---
+            const appetiteData = [
+                { name: "In Appetite", value: 120 },
+                { name: "Out of Appetite", value: 60 },
+                { name: "Borderline", value: 20 },
+            ];
+            const lobData = {
+                categories: ["Property", "GL", "Workers Comp", "Cyber"],
+                premium: {
+                    Property: [100000, 120000, 90000],
+                    GL: [40000, 35000, 30000],
+                    "Workers Comp": [25000, 27000, 22000],
+                    Cyber: [15000, 18000, 12000],
+                },
+                years: ["2023", "2024", "2025"],
+            };
+            const constrData = [
+                { name: "Frame", value: 55 },
+                { name: "JM", value: 80 },
+                { name: "Non-Combustible", value: 40 },
+                { name: "Steel", value: 30 },
+                { name: "Masonry", value: 25 },
+                { name: "Fire Resistive", value: 15 },
+            ];
+
+            // --- Appetite Pie ---
+            const pie = echarts.init(document.getElementById("appetite_pie"));
+            pie.setOption({
+                backgroundColor: "transparent",
+                tooltip: { trigger: "item" },
+                legend: { top: "bottom", textStyle: { color: "#e2e8f0" } },
+                series: [{
+                    name: "Appetite",
+                    type: "pie",
+                    radius: [60, 120],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: true,
+                        formatter: "{b}: {d}%",
+                        color: "#e2e8f0"
+                    },
+                    data: appetiteData,
+                }],
+                color: ["#22c55e", "#f43f5e", "#f59e0b"],
+            });
+
+            // --- LOB Stacked Bar ---
+            const lobBar = echarts.init(document.getElementById("lob_bar"));
+            lobBar.setOption({
+                backgroundColor: "transparent",
+                tooltip: { trigger: "axis" },
+                legend: { data: lobData.categories, textStyle: { color: "#e2e8f0" } },
+                xAxis: { type: "category", data: lobData.years, axisLabel: { color: "#e2e8f0" } },
+                yAxis: { type: "value", axisLabel: { color: "#e2e8f0" } },
+                series: lobData.categories.map(cat => ({
+                    name: cat,
+                    type: "bar",
+                    stack: "total",
+                    data: lobData.premium[cat],
+                })),
+                color: ["#818cf8", "#22c55e", "#f59e0b", "#06b6d4"],
+            });
+
+            // --- Construction Type Bar ---
+            const constrBar = echarts.init(document.getElementById("constr_bar"));
+            constrBar.setOption({
+                backgroundColor: "transparent",
+                tooltip: { trigger: "axis" },
+                xAxis: { type: "category", data: constrData.map(d => d.name), axisLabel: { color: "#e2e8f0" } },
+                yAxis: { type: "value", axisLabel: { color: "#e2e8f0" } },
+                series: [{
+                    name: "Count",
+                    type: "bar",
+                    data: constrData.map(d => d.value),
+                }],
+                color: ["#818cf8"],
+            });
+        }
         const firstBtn = document.querySelector(".tabbtn:not([disabled])");
         (document.querySelectorAll(".tabbtn") || []).forEach((btn) => {
             btn.onclick = () => {

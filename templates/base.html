@@ -57,8 +57,8 @@
                             <span class="ml-1 opacity-70">▾</span>
                         </button>
                         <div id="vibe_menu" class="absolute right-0 mt-2 w-[280px] glass hidden shadow-xl" role="menu" aria-label="Select vibe">
-                            <div class="p-2 text-xs opacity-80">Choose your vibe</div>
-                            <div id="vibe_list" class="p-2 pt-0 grid grid-cols-5 gap-2"></div>
+                            <div class="p-2 text-xs opacity-80 text-center">Choose your vibe</div>
+                            <div id="vibe_list" class="p-2 pt-0 grid grid-cols-5 gap-2 justify-items-center"></div>
                             <div class="p-2 border-t border-white/10">
                                 <label class="lbl">Saturation</label>
                                 <input id="vibe_sat" type="range" min="100" max="180" value="120" class="w-full"/>
@@ -87,6 +87,21 @@
         <main class="flex-grow mx-auto max-w-7xl px-4 py-8 overflow-y-auto">
             {% block content %}{% endblock %}
         </main>
+        <!-- Site-wide footer -->
+        <footer class="site-footer glass">
+            <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="logo">R</div>
+                    <div class="text-sm opacity-90">RiskOps • Underwriting Dashboard</div>
+                </div>
+                <nav class="flex items-center gap-4 text-xs">
+                    <a href="{{ url_for('home') }}" class="nav-link">Overview</a>
+                    <a href="{{ url_for('submissions') }}" class="nav-link">Submissions</a>
+                    <a href="{{ url_for('insights') }}" class="nav-link">Insights</a>
+                </nav>
+                <div class="text-xs opacity-70">© <span id="footer_year"></span> • Built for Hack the North</div>
+            </div>
+        </footer>
         <div id="toasts" class="toasts"></div>
         <!-- Global Persona Modal (available on all pages) -->
         <div id="persona_modal" class="overlay hidden">

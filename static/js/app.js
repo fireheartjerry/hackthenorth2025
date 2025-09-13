@@ -338,3 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
   
   console.log('🚀 Enhanced UX features loaded');
 });
+
+// Footer year helper
+(()=>{
+  try{
+    const y = new Date().getFullYear();
+    const el = document.getElementById('footer_year');
+    if (el) el.textContent = String(y);
+  }catch(_){/* noop */}
+})();
