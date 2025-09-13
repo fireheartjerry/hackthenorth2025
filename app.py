@@ -847,15 +847,7 @@ def api_classified_mode():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
 
-    # Score and rank using existing weights (map per kind)
-    weights_map = {
-        "unicorn": MODES.get("unicorn_hunting", MODES["balanced_growth"]) ["weights"],
-        "balanced": MODES.get("balanced_growth", MODES["balanced_growth"]) ["weights"],
-        "loose": MODES.get("loose_fits", MODES["balanced_growth"]) ["weights"],
-        "turnaround": MODES.get("turnaround_bets", MODES["balanced_growth"]) ["weights"],
-    }
-    weights = weights_map.get(kind, MODES["balanced_growth"]["weights"])
-
+    # Score and rank using existing mode weights
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
@@ -867,7 +859,7 @@ def api_classified_mode():
         r["priority_score"] = float(pscore)
         r["mode_score"] = round(float(pscore), 4)
         r["appetite_explanation"] = generate_explanation(r, qs)
-        out_rows.append(sanitize_row(r))
+        rows.append(sanitize_row(r))
 
     # Filter by status if requested
     if status_filter:
@@ -911,9 +903,14 @@ def api_classified_mode():
         "mode_score",
     }
 
+    if sort_by in valid_keys:
+        rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
+    else:
+        rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
+
     return jsonify({
-        "count": len(out_rows),
-        "data": out_rows,
+        "count": len(rows),
+        "data": rows,
         "mode": mode,
         "mode_explanation": mode_expl.get(mode, ""),
     })
