@@ -727,7 +727,54 @@ def apply_hard_filters(df, f):
         d = d[(d["building_year"]>=f["min_year"]) | (d["building_year"].isna())]
     if f.get("good_construction_only"):
         d = d[d["is_good_construction"]==True]
+    if "fresh_days_max" in f:
+        d = d[d["fresh_days"]<=f["fresh_days_max"]]
     return d
+
+
+def sanitize_row(row):
+    out = {}
+    for k, v in row.items():
+        if isinstance(v, (np.integer, np.int64, np.int32)):
+            out[k] = int(v)
+        elif isinstance(v, (np.floating, np.float64, np.float32)):
+            out[k] = float(v)
+        elif isinstance(v, (pd.Timestamp, dt.datetime)):
+            out[k] = None if pd.isna(v) else v.isoformat()
+        elif v is None:
+            out[k] = None
+        elif isinstance(v, float) and np.isnan(v):
+            out[k] = None
+        else:
+            out[k] = v
+    return out
+
+
+def generate_explanation(r, qs):
+    parts = []
+    prem = r.get("total_premium")
+    if prem is not None and not (isinstance(prem, float) and np.isnan(prem)):
+        if prem >= qs["premium"].loc[0.9]:
+            parts.append(f"premium ${prem:,.0f} is in top 10%")
+        elif prem >= qs["premium"].loc[0.5]:
+            parts.append(f"premium ${prem:,.0f} above median")
+    tiv = r.get("tiv")
+    if tiv is not None and not (isinstance(tiv, float) and np.isnan(tiv)):
+        if tiv <= 150_000_000:
+            parts.append(f"TIV ${tiv:,.0f} ≤ cap")
+    win = r.get("winnability")
+    if win is not None and not (isinstance(win, float) and np.isnan(win)):
+        med_win = qs["winnability"].loc[0.5]
+        if win >= med_win:
+            parts.append(f"winnability {win:.2f} ≥ median")
+    if not parts:
+        return "No clear reasons available."
+    prefix = (
+        "In Appetite because "
+        if r.get("appetite_status") != "OUT"
+        else "Out of Appetite because "
+    )
+    return prefix + ", ".join(parts) + "."
 
 
 @app.route("/api/classified_mode")
@@ -742,122 +789,46 @@ def api_classified_mode():
     if df.empty:
         return jsonify({"count": 0, "data": []})
 
-    # Preserve custom/persona behavior using preset path
-    legacy_presets = {"unicorn_hunting", "balanced_growth", "loose_fits", "turnaround_bets"}
-    map_kind = {
-        "unicorn_hunting": "unicorn",
-        "balanced_growth": "balanced",
-        "loose_fits": "loose",
-        "turnaround_bets": "turnaround",
-        "unicorn": "unicorn",
-        "balanced": "balanced",
-        "loose": "loose",
-        "turnaround": "turnaround",
+    preset = MODES.get(mode, MODES["balanced_growth"])
+
+    qs = {
+        "premium": df["total_premium"].quantile([0.99, 0.9, 0.8, 0.5, 0.4, 0.2]),
+        "winnability": df["winnability"].quantile([0.99, 0.8, 0.5, 0.4]),
+        "loss_ratio": df["loss_ratio"].quantile([0.4, 0.7, 0.9]),
+        "fresh_days": df["fresh_days"].quantile([0.5]),
     }
+    mode_filters = {
+        "unicorn_hunting": {
+            "premium_range": [qs["premium"].loc[0.99], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.99],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.4],
+        },
+        "balanced_growth": {
+            "premium_range": [qs["premium"].loc[0.8], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.8],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.7],
+        },
+        "loose_fits": {
+            "premium_range": [qs["premium"].loc[0.2], df["total_premium"].max()],
+            "min_winnability": qs["winnability"].loc[0.4],
+            "loss_ratio_max": qs["loss_ratio"].loc[0.9],
+        },
+        "turnaround_bets": {
+            "premium_range": [df["total_premium"].min(), qs["premium"].loc[0.4]],
+            "min_winnability": qs["winnability"].loc[0.4],
+            "loss_ratio_max": 1.0,
+            "fresh_days_max": qs["fresh_days"].loc[0.5],
+        },
+    }
+    filters = mode_filters.get(mode, mode_filters["balanced_growth"])
+    d = apply_hard_filters(df, filters)
 
-    kind = map_kind.get(mode)
-
-    # If no percentile kind and either mode == custom with preset defined, or unknown mode, fall back to preset behavior
-    if kind is None and (mode == "custom" and mode in MODES or mode not in legacy_presets):
-        preset = MODES.get(mode, MODES["balanced_growth"])
-        d = apply_hard_filters(df, preset["filters"])
-        # Optional UI filters
-        state = request.args.get("state")
-        status_filter = request.args.get("status")
-        min_p = request.args.get("min_premium", type=float)
-        max_p = request.args.get("max_premium", type=float)
-        q = request.args.get("q")
-        if state:
-            d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
-        if min_p is not None:
-            d = d[d["total_premium"] >= min_p]
-        if max_p is not None:
-            d = d[d["total_premium"] <= max_p]
-        if q:
-            m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
-            d = d[m.fillna(False)]
-
-        scounts = Counter(d["primary_risk_state"].fillna("UNK"))
-        out_rows = []
-        for r in d.to_dict(orient="records"):
-            stat, reasons, s, pscore = classify_for_mode_row(
-                r, preset["weights"], preset["filters"], scounts
-            )
-            r["appetite_status"] = stat
-            r["appetite_reasons"] = reasons
-            r["priority_score"] = float(pscore)
-            r["mode_score"] = round(float(pscore), 4)
-            out_rows.append(r)
-
-        if status_filter:
-            out_rows = [r for r in out_rows if r.get("appetite_status") == status_filter]
-
-        # Sorting
-        sort_by = request.args.get("sort_by")
-        sort_dir = (request.args.get("sort_dir") or "desc").lower()
-        reverse = sort_dir != "asc"
-
-        def sort_key(row, key):
-            if key == "appetite_status":
-                if reverse:
-                    order_map = {"TARGET": 0, "IN": 1, "OUT": 2}
-                else:
-                    order_map = {"OUT": 0, "IN": 1, "TARGET": 2}
-                return order_map.get(str(row.get("appetite_status") or ""), 99)
-            v = row.get(key)
-            if isinstance(v, str):
-                return v.lower()
-            try:
-                if v is None:
-                    return float("-inf") if reverse else float("inf")
-                import math
-                if isinstance(v, float) and math.isnan(v):
-                    return float("-inf") if reverse else float("inf")
-            except Exception:
-                pass
-            return v
-
-        if sort_by:
-            valid_keys = {
-                "id",
-                "account_name",
-                "primary_risk_state",
-                "line_of_business",
-                "total_premium",
-                "tiv",
-                "winnability",
-                "appetite_status",
-                "priority_score",
-            }
-            if sort_by in valid_keys:
-                out_rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
-            else:
-                order = {"TARGET": 0, "IN": 1, "OUT": 2}
-                out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
-                out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
-        else:
-            order = {"TARGET": 0, "IN": 1, "OUT": 2}
-            out_rows.sort(key=lambda x: order.get(x.get("appetite_status"), 3))
-            out_rows.sort(key=lambda x: x.get("priority_score", 0.0), reverse=True)
-
-        # Sanitize JSON
-        rows_builtin = df_records_to_builtin(pd.DataFrame(out_rows))
-        return jsonify({"count": len(rows_builtin), "data": rows_builtin})
-
-    # Percentile-driven path
-    # overrides e.g. ?top_pct=1&max_lr_pct=60
-    ov_keys = ["top_pct", "max_lr_pct", "min_win_pct", "max_tiv_pct", "fresh_pct"]
-    overrides = {}
-    for k in ov_keys:
-        v = request.args.get(k)
-        if v is not None:
-            try:
-                overrides[k] = int(v)
-            except Exception:
-                pass
-
-    filt, summary = build_percentile_filters(df, kind=kind, overrides=overrides)
-    d = apply_hard_filters(df, filt)
+    mode_expl = {
+        "unicorn_hunting": "You're in Unicorn Mode — top 1% premiums & winnability",
+        "balanced_growth": "You're in Balanced Mode — top 20% premiums, LR ≤ 70th percentile",
+        "loose_fits": "You're in Loose Mode — wide net up to 80th percentile",
+        "turnaround_bets": "You're in Turnaround Mode — smaller premiums but fresh",
+    }
 
     # Optional UI filters
     state = request.args.get("state")
@@ -888,13 +859,15 @@ def api_classified_mode():
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
-        # get mode classification + score using flexible filters
-        stat, reasons, s, pscore = classify_for_mode_row(r, weights, filt, scounts)
+        stat, reasons, s, pscore = classify_for_mode_row(
+            r, preset["weights"], filters, scounts
+        )
         r["appetite_status"] = stat
         r["appetite_reasons"] = reasons
         r["priority_score"] = float(pscore)
-        r["mode_score"] = float(round(s, 6))
-        rows.append(r)
+        r["mode_score"] = round(float(pscore), 4)
+        r["appetite_explanation"] = generate_explanation(r, qs)
+        out_rows.append(sanitize_row(r))
 
     # Filter by status if requested
     if status_filter:
@@ -938,26 +911,12 @@ def api_classified_mode():
         "mode_score",
     }
 
-    if sort_by and sort_by in valid_keys:
-        rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
-    else:
-        # Default: rank by mode_score desc
-        rows.sort(key=lambda x: x.get("mode_score", 0.0), reverse=True)
-
-    # Keep top N percent only when using default ranking (no custom sort)
-    # This prevents slicing from hiding rows when user applies a different sort.
-    apply_top_slice = not sort_by or sort_by in {"priority_score", "mode_score"} and reverse
-    if apply_top_slice:
-        top_pct = overrides.get("top_pct") if overrides else None
-        if top_pct is None:
-            top_pct = {"unicorn": 1, "balanced": 20, "loose": 80, "turnaround": 40}.get(kind, 20)
-        if rows:
-            k = max(1, int(len(rows) * (float(top_pct) / 100.0)))
-            rows = rows[:k]
-
-    # Sanitize JSON
-    rows_builtin = df_records_to_builtin(pd.DataFrame(rows))
-    return jsonify({"count": len(rows_builtin), "data": rows_builtin, "filters": to_builtin(filt)})
+    return jsonify({
+        "count": len(out_rows),
+        "data": out_rows,
+        "mode": mode,
+        "mode_explanation": mode_expl.get(mode, ""),
+    })
 
 
 @app.route("/api/persona/seed", methods=["POST"])

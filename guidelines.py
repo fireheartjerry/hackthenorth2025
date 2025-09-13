@@ -105,6 +105,13 @@ def reasons_for_filters(r: Dict, filters: Dict) -> List[str]:
         elif int(yr) < int(filters["min_year"]):
             reasons.append(f"Oldest building {int(yr)} before {int(filters['min_year'])}")
 
+    if "fresh_days_max" in filters:
+        fresh = _safe_float(r.get("fresh_days"))
+        if np.isnan(fresh) or fresh > float(filters["fresh_days_max"]):
+            reasons.append(
+                f"Freshness {fresh:.0f} days exceeds max {float(filters['fresh_days_max']):.0f}"
+            )
+
     if filters.get("good_construction_only"):
         if not r.get("is_good_construction"):
             reasons.append("Construction type not in acceptable set")
