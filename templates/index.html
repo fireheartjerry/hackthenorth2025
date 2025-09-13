@@ -99,18 +99,12 @@
       window.addEventListener('storage', (e) => {
         if(e.key === 'USER_NAME') greet();
       });
-<<<<<<< HEAD
-      
-      // Global update function for other scripts to call
-      window.updateDashboardMetrics = updateQuickStats;
-=======
       document.getElementById('btn_persona')?.addEventListener('click', (e)=>{
         e.preventDefault();
         if(typeof _openPersona !== 'undefined') _openPersona();
       });
       greet(); vibe();
       window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
     })();
   </script>
 </div>
@@ -246,9 +240,9 @@
 </div>
 
 <!-- Modern Workload Management -->
-<div class="workload-section grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-    <!-- Left: Prioritized Submissions -->
-    <div class="lg:col-span-2">
+<div class="workload-section mb-6">
+    <!-- Prioritized Submissions - Full Width -->
+    <div class="w-full">
         <div class="workload-panel glass-panel">
             <div class="panel-header">
                 <div class="flex items-center gap-3">
@@ -322,219 +316,6 @@
                 <div class="stat">
                     <span class="stat-label">Avg Review Time</span>
                     <span class="stat-value" id="avg_time">—min</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right: Enhanced Sidebar -->
-    <div class="sidebar-content space-y-6">
-        <!-- Performance Dashboard -->
-        <div class="performance-panel glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <span class="performance-icon">🎯</span>
-                    Performance Goals
-                </h3>
-                <button class="expand-btn" data-target="goals">
-                    <span class="expand-icon">↗</span>
-                </button>
-            </div>
-            
-            <div class="goals-grid">
-                <div class="goal-card overperforming">
-                    <div class="goal-header">
-                        <div class="goal-status success">
-                            <span class="status-icon">✓</span>
-                            <span class="status-text">On Track</span>
-                        </div>
-                        <div class="goal-progress">128%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">Account Retention</h4>
-                        <p class="goal-desc">Retain 90% of accounts with LR ≤ 50%</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill" style="width: 128%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="goal-card on-track">
-                    <div class="goal-header">
-                        <div class="goal-status warning">
-                            <span class="status-icon">⚠</span>
-                            <span class="status-text">Watch</span>
-                        </div>
-                        <div class="goal-progress">92%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">TIV Exposure</h4>
-                        <p class="goal-desc">Keep Zone 6 TIV under $150M</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill warning" style="width: 92%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="goal-card underperforming">
-                    <div class="goal-header">
-                        <div class="goal-status danger">
-                            <span class="status-icon">!</span>
-                            <span class="status-text">Action Needed</span>
-                        </div>
-                        <div class="goal-progress">67%</div>
-                    </div>
-                    <div class="goal-content">
-                        <h4 class="goal-title">Rate Increases</h4>
-                        <p class="goal-desc">20% rate target on West Commercial</p>
-                        <div class="goal-bar">
-                            <div class="goal-fill danger" style="width: 67%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Smart Insights -->
-        <div class="insights-panel glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <span class="insights-icon">🧠</span>
-                    Smart Insights
-                </h3>
-                <div class="insight-badge">AI-Powered</div>
-            </div>
-            
-            <div class="insights-list">
-                <div class="insight-item trending">
-                    <div class="insight-icon trend-up">📈</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Premium Surge</div>
-                        <div class="insight-desc">CA submissions up 23% this week</div>
-                        <div class="insight-action">Review targets →</div>
-                    </div>
-                </div>
-                
-                <div class="insight-item alert">
-                    <div class="insight-icon trend-down">⚠️</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Risk Alert</div>
-                        <div class="insight-desc">Higher loss ratios in construction</div>
-                        <div class="insight-action">Investigate →</div>
-                    </div>
-                </div>
-                
-                <div class="insight-item opportunity">
-                    <div class="insight-icon trend-neutral">💡</div>
-                    <div class="insight-content">
-                        <div class="insight-title">Market Opportunity</div>
-                        <div class="insight-desc">Underwriting capacity in FL</div>
-                        <div class="insight-action">Explore →</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Quick Analytics -->
-        <div class="analytics-enhanced glass-panel">
-            <div class="panel-header-simple">
-                <h3 class="text-lg font-bold">📊 Portfolio Analytics</h3>
-                <button class="view-all-btn" onclick="window.location.href='/insights'">
-                    View All →
-                </button>
-            </div>
-            
-            <!-- Enhanced Analytics with Animation -->
-            <div class="analytics-grid enhanced">
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">💰</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Avg Premium</div>
-                        <div class="analytic-value">$<span class="counter" data-target="{{ (avg_premium/1000)|round }}">0</span>K</div>
-                        <div class="analytic-trend up">+5.2%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 82%; background: linear-gradient(90deg, #10b981, #34d399);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">🎯</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Win Rate</div>
-                        <div class="analytic-value"><span class="counter" data-target="72.4">0</span>%</div>
-                        <div class="analytic-trend up">+1.8%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 72%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">⏱️</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Cycle Time</div>
-                        <div class="analytic-value"><span class="counter" data-target="3.2">0</span>d</div>
-                        <div class="analytic-trend down">-0.5d</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 68%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
-                    </div>
-                </div>
-                <div class="analytic-item enhanced">
-                    <div class="analytic-icon">📈</div>
-                    <div class="analytic-content">
-                        <div class="analytic-label">Pipeline</div>
-                        <div class="analytic-value">$<span class="counter" data-target="12.4">0</span>M</div>
-                        <div class="analytic-trend up">+8.1%</div>
-                    </div>
-                    <div class="analytic-progress">
-                        <div class="progress-bar" style="width: 88%; background: linear-gradient(90deg, #8b5cf6, #a78bfa);"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Interactive Trend Chart -->
-            <div class="trend-chart-container">
-                <div class="chart-header">
-                    <h4 class="text-sm font-semibold text-indigo-400 mb-2">Performance Trend</h4>
-                    <div class="chart-tabs">
-                        <button class="chart-tab active" data-metric="premium">Premium</button>
-                        <button class="chart-tab" data-metric="volume">Volume</button>
-                        <button class="chart-tab" data-metric="win-rate">Win Rate</button>
-                    </div>
-                </div>
-                <div class="mini-chart-wrapper">
-                    <canvas id="portfolioTrendChart" width="300" height="80"></canvas>
-                </div>
-            </div>
-
-            <!-- Risk Distribution Donut -->
-            <div class="risk-distribution">
-                <h4 class="text-sm font-semibold text-indigo-400 mb-3">Risk Distribution</h4>
-                <div class="risk-visual">
-                    <div class="risk-donut-container">
-                        <canvas id="riskDonutChart" width="100" height="100"></canvas>
-                        <div class="donut-center">
-                            <div class="text-sm font-bold"><span class="counter" data-target="247">0</span></div>
-                            <div class="text-xs opacity-75">Total</div>
-                        </div>
-                    </div>
-                    <div class="risk-legend">
-                        <div class="legend-item">
-                            <span class="legend-dot target"></span>
-                            <span class="text-xs">Target</span>
-                            <span class="text-xs font-bold text-indigo-400">35%</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-dot in"></span>
-                            <span class="text-xs">In-Appetite</span>
-                            <span class="text-xs font-bold text-emerald-400">45%</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-dot out"></span>
-                            <span class="text-xs">Out-of-Appetite</span>
-                            <span class="text-xs font-bold text-red-400">20%</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -643,9 +424,11 @@
                     <tr class="loading-row">
                         <td colspan="7">
                             <div class="loading-content">
-                                <div class="skeleton-row"></div>
-                                <div class="skeleton-row"></div>
-                                <div class="skeleton-row"></div>
+                                <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
+                                <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 98%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 92%; height: 2.5rem;"></div>
+                                <div class="skeleton-row" style="width: 97%; height: 2.5rem;"></div>
                             </div>
                         </td>
                     </tr>
@@ -826,6 +609,27 @@
                 const sel = document.getElementById('home_mode');
                 if (sel) sel.value = 'balanced_growth';
                 loadHome();
+                toast('Switched to Balanced Growth mode', 'success');
+            });
+            
+            document.getElementById('btn_relax')?.addEventListener('click', () => {
+                // Relax filters by expanding the search criteria
+                toast('Relaxing filter criteria...', 'info');
+                
+                // Store current mode as fallback
+                const currentMode = getActiveMode();
+                localStorage.setItem('LAST_STRICT_MODE', currentMode);
+                
+                // Switch to a more permissive mode
+                setActiveMode('loose_fits');
+                const sel = document.getElementById('home_mode');
+                if (sel) sel.value = 'loose_fits';
+                
+                loadHome().then(() => {
+                    toast('Filters relaxed - showing broader results', 'success');
+                }).catch(() => {
+                    toast('Could not relax filters', 'error');
+                });
             });
             return;
         }
@@ -1045,6 +849,89 @@
         return modal;
     }
     
+    function createWorkloadSettingsModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 workload-settings-modal';
+        modal.innerHTML = `
+            <div class="glass-panel max-w-lg mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>⚙️</span>
+                        Workload Settings
+                    </h3>
+                    <button class="close-modal text-2xl hover:text-red-400">×</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="setting-group">
+                        <label class="setting-label">Items per page</label>
+                        <select class="setting-select" id="items_per_page">
+                            <option value="5">5 items</option>
+                            <option value="10" selected>10 items</option>
+                            <option value="15">15 items</option>
+                            <option value="20">20 items</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label">Auto-refresh interval</label>
+                        <select class="setting-select" id="refresh_interval">
+                            <option value="30">30 seconds</option>
+                            <option value="45" selected>45 seconds</option>
+                            <option value="60">1 minute</option>
+                            <option value="120">2 minutes</option>
+                            <option value="0">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="show_priorities" checked class="setting-checkbox">
+                            <span>Show priority scores</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="compact_view" class="setting-checkbox">
+                            <span>Compact view</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button class="btn-cancel close-modal">Cancel</button>
+                    <button class="btn-primary" onclick="applyWorkloadSettings()">Apply</button>
+                </div>
+            </div>
+        `;
+        
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => modal.remove();
+        });
+        
+        // Load current settings
+        document.getElementById('items_per_page').value = localStorage.getItem('workload_items_per_page') || '10';
+        document.getElementById('refresh_interval').value = localStorage.getItem('workload_refresh_interval') || '45';
+        document.getElementById('show_priorities').checked = localStorage.getItem('workload_show_priorities') !== 'false';
+        document.getElementById('compact_view').checked = localStorage.getItem('workload_compact_view') === 'true';
+        
+        return modal;
+    }
+    
+    function applyWorkloadSettings() {
+        const itemsPerPage = document.getElementById('items_per_page').value;
+        const refreshInterval = document.getElementById('refresh_interval').value;
+        const showPriorities = document.getElementById('show_priorities').checked;
+        const compactView = document.getElementById('compact_view').checked;
+        
+        localStorage.setItem('workload_items_per_page', itemsPerPage);
+        localStorage.setItem('workload_refresh_interval', refreshInterval);
+        localStorage.setItem('workload_show_priorities', showPriorities);
+        localStorage.setItem('workload_compact_view', compactView);
+        
+        toast('Workload settings saved', 'success');
+        document.querySelector('.workload-settings-modal')?.remove();
+        
+        // Reload workload with new settings
+        loadHome();
+    }
+    
     function performExport() {
         const activeFormat = document.querySelector('.export-option.active')?.dataset.format || 'csv';
         toast(`Exporting as ${activeFormat.toUpperCase()}...`, 'info');
@@ -1085,15 +972,12 @@
         };
     }
 
-    const refreshBtn2 = document.getElementById("btn_refresh_home_2");
-    if (refreshBtn2) {
-        refreshBtn2.onclick = () => {
-            fetchJSON("/api/refresh", { method: "POST" })
-                .then(() => {
-                    toast("Data refreshed", "success");
-                    loadHome();
-                })
-                .catch((err) => toast("Refresh failed: " + err.message, "error"));
+    // Workload settings button
+    const workloadSettingsBtn = document.getElementById("workload_settings");
+    if (workloadSettingsBtn) {
+        workloadSettingsBtn.onclick = () => {
+            const modal = createWorkloadSettingsModal();
+            document.body.appendChild(modal);
         };
     }
 

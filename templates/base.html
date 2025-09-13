@@ -4,15 +4,42 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>RiskOps Dashboard</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
         <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Font Awesome for icons used across the app -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'sans': ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        },
+                        fontWeight: {
+                            'extra-light': '200',
+                            'light': '300',
+                            'normal': '400',
+                            'medium': '500',
+                            'semibold': '600',
+                            'bold': '700',
+                            'extrabold': '800'
+                        }
+                    }
+                }
+            }
+        </script>
         <link
             href="{{ url_for('static', filename='css/main.css') }}"
             rel="stylesheet"
         />
     </head>
-    <body class="bg-slate-950 text-slate-100">
+    <body class="bg-slate-950 text-slate-100 font-extra-light">
         <!-- Ambient background scene -->
         <div class="ambient-bg" aria-hidden="true"></div>
+
+        
 
         <header class="navbar glass flex-shrink-0">
             <div
@@ -84,7 +111,7 @@
                 </nav>
             </div>
         </header>
-        <main class="flex-grow mx-auto max-w-7xl px-4 py-8 overflow-y-auto">
+        <main id="page_main" class="flex-grow {% if full_width %}px-0{% else %}mx-auto max-w-7xl{% endif %} py-8 overflow-y-auto">
             {% block content %}{% endblock %}
         </main>
         <!-- Site-wide footer -->
@@ -614,6 +641,8 @@
         </div>
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/shortcuts.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
         <script>
             // Global mode helpers
             function getActiveMode(){ return localStorage.getItem('ACTIVE_MODE') || 'balanced_growth'; }
@@ -1248,6 +1277,55 @@
                 applyName();
                 // Keep greeting fresh hourly
                 setInterval(applyName, 60*60*1000);
+
+                // Scroll UI: progress + footer reveal near bottom without covering content
+                (function(){
+                  const main = document.getElementById('page_main');
+                  const progressEl = document.querySelector('.scroll-progress');
+                  const footer = document.querySelector('.site-footer');
+                  const scroller = main || document.documentElement;
+                  function footerHeight(){ return footer ? footer.offsetHeight : 0; }
+                  function applyBottomPadding(){
+                    const pad = footerHeight() + 16; // breathing room
+                    if (main) main.style.paddingBottom = pad + 'px';
+                    else document.body.style.paddingBottom = pad + 'px';
+                    try{ document.documentElement.style.setProperty('--footer-gap', pad + 'px'); }catch(e){}
+                  }
+                  function getScrollbarWidth(){
+                    try{ return Math.max(0, window.innerWidth - document.documentElement.clientWidth); }catch(e){ return 0; }
+                  }
+                  function update(){
+                    const top = main ? main.scrollTop : (window.pageYOffset || document.documentElement.scrollTop);
+                    const max = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
+                    const pct = Math.min(1, Math.max(0, top / max));
+                    if (progressEl) progressEl.style.width = (pct*100).toFixed(2) + '%';
+                    // Sync scrollbar width var so footer doesn't sit under it
+                    const sbw = getScrollbarWidth();
+                    try{ document.documentElement.style.setProperty('--sbw', sbw + 'px'); }catch(e){}
+                    // Reveal footer when within its height of bottom
+                    if (footer){
+                      const dist = max - top; // px from bottom
+                      const threshold = footerHeight() + 24;
+                      const show = (dist <= threshold && max > 4);
+                      footer.classList.toggle('is-visible', show);
+                      if (show){
+                        try { document.documentElement.style.setProperty('--footer-gross', footerHeight() + 'px'); } catch(e){}
+                        if (main) main.classList.add('footer-visible');
+                      } else {
+                        try { document.documentElement.style.setProperty('--footer-gross', '0px'); } catch(e){}
+                        if (main) main.classList.remove('footer-visible');
+                      }
+                    }
+                  }
+                  // Initial padding to prevent overlaying content
+                  applyBottomPadding();
+                  // Events
+                  (main || window).addEventListener('scroll', update, { passive: true });
+                  window.addEventListener('resize', ()=>{ applyBottomPadding(); update(); }, { passive: true });
+                  // In case fonts load and change layout
+                  setTimeout(()=>{ applyBottomPadding(); update(); }, 150);
+                  update();
+                })();
             })();
         </script>
     </body>

@@ -1,4 +1,38 @@
 // Enhanced UX helpers with modern features
+
+// AI Summary Widget Functions
+function showAiSummary(activity) {
+    const widget = document.getElementById("ai_summary_widget");
+    const content = document.getElementById("ai_summary_content");
+    const lastUsed = document.getElementById("ai_last_used");
+    
+    if (widget && content) {
+        content.innerHTML = activity;
+        if (lastUsed) lastUsed.textContent = new Date().toLocaleTimeString();
+        widget.classList.remove("hidden");
+        
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+            if (widget && !widget.classList.contains("hidden")) {
+                widget.classList.add("hidden");
+            }
+        }, 15000);
+    }
+}
+
+// Initialize AI Summary Widget
+function initAiSummaryWidget() {
+    const closeBtn = document.getElementById("ai_summary_close");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            const widget = document.getElementById("ai_summary_widget");
+            if (widget) widget.classList.add("hidden");
+        });
+    }
+}
+
+// Call init on DOM load
+document.addEventListener('DOMContentLoaded', initAiSummaryWidget);
 window.toast = function(msg, type = "info") {
   const host = document.getElementById("toasts") || (function(){
     const d = document.createElement("div");

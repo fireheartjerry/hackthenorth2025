@@ -195,42 +195,71 @@
             <button id="btn_export" class="quick-action">📊 Export</button>
         </div>
     </div>
+    
+    <!-- AI Summary Widget -->
+    <div id="ai_summary_widget" class="hidden mt-4 p-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg border border-purple-400/30">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white text-sm">🤖</span>
+                </div>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-purple-300">Gemini AI Activity</h4>
+                    <button id="ai_summary_close" class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="text-xs">✕</span>
+                    </button>
+                </div>
+                <div id="ai_summary_content" class="text-xs text-slate-300 space-y-1">
+                    <!-- AI activity will be populated here -->
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20">
+                    <div class="text-xs text-purple-400/80">
+                        <span id="ai_model_info">Powered by Gemini Flash 2.0</span>
+                    </div>
+                    <div class="text-xs text-purple-400/60" id="ai_last_used">
+                        <!-- Last used timestamp -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<<<<<<< HEAD
 <!-- Enhanced Submissions Table -->
 <div class="submissions-table-panel card p-0">
-    <div class="table-header bg-gradient-to-r from-gray-50/50 to-gray-100/50 p-4 border-b border-white/10">
+    <div class="table-header glass-panel-dark p-6 border-b border-white/20">
         <div class="flex items-center justify-between">
             <div class="table-title-section">
-                <h3 class="text-lg font-semibold text-indigo-400 mb-1">📊 Submissions Analysis</h3>
-                <p class="text-sm text-gray-400">Advanced filtering and bulk actions</p>
+                <h3 class="text-xl font-light text-white mb-2">📊 Submissions Analysis</h3>
+                <p class="text-sm text-gray-300 font-light">Advanced filtering and bulk actions</p>
             </div>
             
-            <div class="table-controls flex items-center gap-3">
-                <div class="view-options">
-                    <button class="control-btn active" data-view="table">
-                        <i class="fas fa-table"></i>
-                        Table
+            <div class="table-controls flex items-center gap-4">
+                <div class="view-options flex gap-2">
+                    <button class="glass-btn-small active" data-view="table">
+                        <i class="fa-solid fa-table text-sm"></i>
+                        <span>Table</span>
                     </button>
-                    <button class="control-btn" data-view="cards">
-                        <i class="fas fa-th-large"></i>
-                        Cards
+                    <button class="glass-btn-small" data-view="cards">
+                        <i class="fa-solid fa-th-large text-sm"></i>
+                        <span>Cards</span>
                     </button>
                 </div>
                 
-                <div class="table-actions">
-                    <button class="control-btn" id="bulk-actions-btn">
-                        <i class="fas fa-tasks"></i>
-                        Bulk Actions
+                <div class="table-actions flex gap-2">
+                    <button class="glass-btn-small" id="bulk-actions-btn">
+                        <i class="fa-solid fa-tasks text-sm"></i>
+                        <span>Bulk Actions</span>
                     </button>
-                    <button class="control-btn" id="export-submissions-btn">
-                        <i class="fas fa-download"></i>
-                        Export
+                    <button class="glass-btn-small" id="export-submissions-btn">
+                        <i class="fa-solid fa-download text-sm"></i>
+                        <span>Export</span>
                     </button>
-                    <button class="control-btn" id="columns-btn">
-                        <i class="fas fa-columns"></i>
-                        Columns
+                    <button class="glass-btn-small" id="columns-btn">
+                        <i class="fa-solid fa-columns text-sm"></i>
+                        <span>Columns</span>
                     </button>
                 </div>
             </div>
@@ -251,31 +280,8 @@
     <!-- Table Container -->
     <div class="table-container overflow-x-auto">
         <!-- Enhanced Table -->
-        <table class="enhanced-submissions-table w-full text-sm">
-=======
-<!-- US Submissions Map -->
-<div class="glass-panel p-4 mb-6">
-    <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">US Submissions Map</h2>
-        <div class="text-xs opacity-70">Click a state to filter</div>
-    </div>
-    <div id="us_map_wrap" class="usmap-wrap relative">
-        <svg id="us_map" viewBox="0 0 975 610" class="w-full h-auto block"></svg>
-        <div id="us_map_tooltip" class="map-tooltip hidden"></div>
-        <div class="map-legend">
-            <span class="text-xs opacity-70 mr-2">Fewer</span>
-            <div class="legend-bar" aria-hidden="true"></div>
-            <span class="text-xs opacity-70 ml-2">More</span>
-        </div>
-    </div>
-    <div class="text-xs opacity-70 mt-2" id="us_map_summary"></div>
-</div>
-
-<!-- Enhanced Table -->
-<div class="enhanced-table">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
+        <div class="overflow-x-auto">
+            <table class="enhanced-submissions-table w-full text-sm">
             <thead class="border-b border-white border-opacity-10">
                 <tr>
                     <th class="checkbox-col py-4 px-3">
@@ -283,56 +289,56 @@
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-6" data-key="priority_score">
                         <div class="th-content">
-                            <i class="fas fa-star th-icon"></i>
+                            <i class="fa-solid fa-star th-icon"></i>
                             Priority
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="appetite_status">
                         <div class="th-content">
-                            <i class="fas fa-traffic-light th-icon"></i>
+                            <i class="fa-solid fa-traffic-light th-icon"></i>
                             Status
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="account_name">
                         <div class="th-content">
-                            <i class="fas fa-building th-icon"></i>
+                            <i class="fa-solid fa-building th-icon"></i>
                             Account
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="primary_risk_state">
                         <div class="th-content">
-                            <i class="fas fa-map-marker-alt th-icon"></i>
+                            <i class="fa-solid fa-map-marker-alt th-icon"></i>
                             State
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="total_premium">
                         <div class="th-content">
-                            <i class="fas fa-money-bill-wave th-icon"></i>
+                            <i class="fa-solid fa-money-bill-wave th-icon"></i>
                             Premium
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="tiv">
                         <div class="th-content">
-                            <i class="fas fa-dollar-sign th-icon"></i>
+                            <i class="fa-solid fa-dollar-sign th-icon"></i>
                             TIV
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th th-sort sortable text-left py-4 px-4" data-key="winnability">
                         <div class="th-content">
-                            <i class="fas fa-percentage th-icon"></i>
+                            <i class="fa-solid fa-percentage th-icon"></i>
                             Win%
-                            <i class="fas fa-sort sort-icon arrow"></i>
+                            <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
                     <th class="th actions-col text-left py-4 px-4">
                         <div class="th-content">
-                            <i class="fas fa-cog th-icon"></i>
+                            <i class="fa-solid fa-cog th-icon"></i>
                             Actions
                         </div>
                     </th>
@@ -346,12 +352,12 @@
         <!-- Empty State -->
         <div id="empty-state" class="empty-state hidden text-center py-12">
             <div class="empty-icon text-4xl mb-3">
-                <i class="fas fa-search"></i>
+                <i class="fa-solid fa-search"></i>
             </div>
             <h3 class="text-lg font-semibold mb-2">No submissions found</h3>
             <p class="text-sm opacity-75 mb-4">Try adjusting your filters or search criteria</p>
             <button class="control-btn" onclick="clearAllFilters()">
-                <i class="fas fa-times"></i>
+                <i class="fa-solid fa-xmark"></i>
                 Clear Filters
             </button>
         </div>
@@ -372,26 +378,30 @@
             
             <div class="pagination-controls flex items-center gap-2">
                 <div class="page-size-selector">
-                    <select id="page-size" class="filter-select">
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                        <option value="100">100 per page</option>
-                    </select>
+                    <span class="page-size-label">Rows</span>
+                    <div class="page-size-select-wrap">
+                        <select id="page-size" class="page-size-select" aria-label="Rows per page">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down select-caret" aria-hidden="true"></i>
+                    </div>
                 </div>
                 
                 <div class="pagination-buttons">
                     <button id="first-page" class="pagination-btn" disabled>
-                        <i class="fas fa-angle-double-left"></i>
+                        <i class="fa-solid fa-angles-left"></i>
                     </button>
                     <button id="prev-page" class="pagination-btn" disabled>
-                        <i class="fas fa-chevron-left"></i>
+                        <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <span id="pagination-numbers" class="pagination-numbers"></span>
                     <button id="next-page" class="pagination-btn">
-                        <i class="fas fa-chevron-right"></i>
+                        <i class="fa-solid fa-chevron-right"></i>
                     </button>
                     <button id="last-page" class="pagination-btn">
-                        <i class="fas fa-angle-double-right"></i>
+                        <i class="fa-solid fa-angles-right"></i>
                     </button>
                 </div>
             </div>
@@ -492,14 +502,10 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-<<<<<<< HEAD
                 <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
                     <td class="td py-4 px-3 text-center">
                         <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
                     </td>
-=======
-                <tr class="table-row ${appetiteClass}" onclick="if(${r.id || 'null'}) window.location.href='/detail/${r.id || ''}?mode=${encodeURIComponent(document.getElementById('f_mode')?.value || '')}'">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
                     <td class="td py-4 px-6">
                         <div class="flex items-center gap-2">
                             <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>
@@ -773,21 +779,34 @@
                 fetch("/api/nlq", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query }),
+                    body: JSON.stringify({ q: query }),
                 })
                 .then((r) => r.json())
                 .then((j) => {
-                    if (j.ok) {
+                    // Show AI summary
+                    const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
+                    const summary = j.ai_summary || "Processed query";
+                    const activity = `
+                        <div><strong>Query:</strong> "${query}"</div>
+                        <div><strong>AI Status:</strong> ${aiUsed}</div>
+                        <div><strong>Action:</strong> ${summary}</div>
+                        ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
+                    `;
+                    if (window.showAiSummary) {
+                        window.showAiSummary(activity);
+                    }
+                    
+                    if (j.filters) {
                         // Apply the AI-generated filters
-                        Object.entries(j.filters || {}).forEach(([key, value]) => {
+                        Object.entries(j.filters).forEach(([key, value]) => {
                             const element = document.getElementById(`f_${key}`);
-                            if (element) element.value = value;
+                            if (element && value) element.value = value;
                         });
                         const applyBtn = document.getElementById("btn_apply");
                         if (applyBtn) applyBtn.click();
                         toast("AI filters applied", "success");
                     } else {
-                        toast("AI query failed: " + (j.error || "Unknown error"), "error");
+                        toast("No filters generated from query", "warning");
                     }
                 })
                 .catch(() => toast("AI query failed", "error"));
@@ -1197,7 +1216,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Bulk Actions</h3>
                     <button class="control-btn" onclick="this.closest('.fixed').remove()">
-                        <i class="fas fa-times"></i>
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
                 <p class="text-sm opacity-75 mb-6">${selectedIds.length} submissions selected</p>
@@ -1212,11 +1231,11 @@
                         Mark Priority
                     </button>
                     <button class="bulk-action-btn" onclick="performBulkAction('export', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
-                        <i class="fas fa-download"></i>
+                        <i class="fa-solid fa-download"></i>
                         Export Selected
                     </button>
                     <button class="bulk-action-btn" onclick="performBulkAction('notes', ${JSON.stringify(selectedIds)}); this.closest('.fixed').remove();">
-                        <i class="fas fa-comment"></i>
+                        <i class="fa-solid fa-comment"></i>
                         Add Notes
                     </button>
                 </div>
@@ -1233,7 +1252,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Export Submissions</h3>
                     <button class="control-btn" onclick="this.closest('.fixed').remove()">
-                        <i class="fas fa-times"></i>
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
                 
@@ -1272,7 +1291,7 @@
                 <div class="flex gap-3 mt-6">
                     <button class="control-btn flex-1" onclick="this.closest('.fixed').remove()">Cancel</button>
                     <button class="control-btn flex-1 bg-indigo-600 hover:bg-indigo-700" onclick="performExport(); this.closest('.fixed').remove();">
-                        <i class="fas fa-download"></i>
+                        <i class="fa-solid fa-download"></i>
                         Export
                     </button>
                 </div>
@@ -1289,7 +1308,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Manage Columns</h3>
                     <button class="control-btn" onclick="this.closest('.fixed').remove()">
-                        <i class="fas fa-times"></i>
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
                 
@@ -1382,6 +1401,36 @@
         document.getElementById('export-submissions-btn')?.addEventListener('click', createExportModal);
         document.getElementById('columns-btn')?.addEventListener('click', createColumnsModal);
         
+        // Save filter preset functionality
+        document.getElementById('save_filter_preset')?.addEventListener('click', () => {
+            const presetName = prompt('Enter a name for this filter preset:');
+            if (presetName && presetName.trim()) {
+                const filters = {
+                    state: document.getElementById('f_state')?.value || '',
+                    status: document.getElementById('f_status')?.value || '',
+                    mode: document.getElementById('f_mode')?.value || '',
+                    min_premium: document.getElementById('f_min')?.value || '',
+                    max_premium: document.getElementById('f_max')?.value || '',
+                    search: document.getElementById('f_q')?.value || ''
+                };
+                
+                const savedPresets = JSON.parse(localStorage.getItem('filterPresets') || '{}');
+                savedPresets[presetName.trim()] = filters;
+                localStorage.setItem('filterPresets', JSON.stringify(savedPresets));
+                
+                toast(`Filter preset "${presetName}" saved successfully`, 'success');
+                updateFilterPresets();
+            }
+        });
+        
+        // Clear all filters functionality
+        document.getElementById('clear_all_filters')?.addEventListener('click', () => {
+            if (confirm('Clear all current filters?')) {
+                clearAllFilters();
+                toast('All filters cleared', 'success');
+            }
+        });
+        
         // View toggle handlers
         document.querySelectorAll('[data-view]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1412,184 +1461,13 @@
             });
         }
     });
+    
+    function updateFilterPresets() {
+        // This would update the filter presets display
+        console.log('Filter presets updated');
+    }
 </script>
-<!-- D3 + TopoJSON for the US map -->
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script>
-    (function(){
-        const ABBR_TO_FIPS = {
-            AL:"01", AK:"02", AZ:"04", AR:"05", CA:"06", CO:"08", CT:"09", DE:"10", DC:"11",
-            FL:"12", GA:"13", HI:"15", ID:"16", IL:"17", IN:"18", IA:"19", KS:"20", KY:"21",
-            LA:"22", ME:"23", MD:"24", MA:"25", MI:"26", MN:"27", MS:"28", MO:"29", MT:"30",
-            NE:"31", NV:"32", NH:"33", NJ:"34", NM:"35", NY:"36", NC:"37", ND:"38", OH:"39",
-            OK:"40", OR:"41", PA:"42", RI:"44", SC:"45", SD:"46", TN:"47", TX:"48", UT:"49",
-            VT:"50", VA:"51", WA:"53", WV:"54", WI:"55", WY:"56", PR:"72"
-        };
-        const FIPS_TO_ABBR = Object.fromEntries(Object.entries(ABBR_TO_FIPS).map(([k,v])=>[v,k]));
-        const STATE_NAMES = {
-            AL:'Alabama', AK:'Alaska', AZ:'Arizona', AR:'Arkansas', CA:'California', CO:'Colorado', CT:'Connecticut', DE:'Delaware', DC:'District of Columbia',
-            FL:'Florida', GA:'Georgia', HI:'Hawaii', ID:'Idaho', IL:'Illinois', IN:'Indiana', IA:'Iowa', KS:'Kansas', KY:'Kentucky',
-            LA:'Louisiana', ME:'Maine', MD:'Maryland', MA:'Massachusetts', MI:'Michigan', MN:'Minnesota', MS:'Mississippi', MO:'Missouri', MT:'Montana',
-            NE:'Nebraska', NV:'Nevada', NH:'New Hampshire', NJ:'New Jersey', NM:'New Mexico', NY:'New York', NC:'North Carolina', ND:'North Dakota', OH:'Ohio',
-            OK:'Oklahoma', OR:'Oregon', PA:'Pennsylvania', RI:'Rhode Island', SC:'South Carolina', SD:'South Dakota', TN:'Tennessee', TX:'Texas', UT:'Utah',
-            VT:'Vermont', VA:'Virginia', WA:'Washington', WV:'West Virginia', WI:'Wisconsin', WY:'Wyoming', PR:'Puerto Rico'
-        };
 
-        let US_TOPO = null, STATES = null, PATH = null, PROJ = null;
-        const svg = document.getElementById('us_map');
-        const wrap = document.getElementById('us_map_wrap');
-        const tooltip = document.getElementById('us_map_tooltip');
-        const summary = document.getElementById('us_map_summary');
-
-        async function ensureTopo(){
-            if (US_TOPO) return;
-            const url = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
-            US_TOPO = await fetch(url).then(r=>r.json()).catch(()=>null);
-            if (!US_TOPO) return;
-            STATES = topojson.feature(US_TOPO, US_TOPO.objects.states).features;
-            PROJ = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
-            PATH = d3.geoPath(PROJ);
-        }
-
-        function buildParams(){
-            const p = new URLSearchParams();
-            const status = document.getElementById('f_status')?.value?.trim();
-            const minp = document.getElementById('f_min')?.value?.trim();
-            const maxp = document.getElementById('f_max')?.value?.trim();
-            const q = document.getElementById('f_q')?.value?.trim();
-            if (status) p.set('status', status);
-            if (minp) p.set('min_premium', minp);
-            if (maxp) p.set('max_premium', maxp);
-            if (q) p.set('q', q);
-            p.set('group', 'primary_risk_state');
-            p.set('metric', 'count');
-            p.set('series_by', 'appetite_status');
-            return p.toString();
-        }
-
-        async function fetchAgg(){
-            const qs = buildParams();
-            const res = await fetch(`/api/aggregate?${qs}`);
-            if(!res.ok) throw new Error(`${res.status}`);
-            return res.json();
-        }
-
-        function makeScale(counts){
-            const vals = Object.values(counts);
-            const max = Math.max(1, ...vals);
-            return d3.scaleSequential().domain([0, max]).interpolator(d3.interpolatePuBu);
-        }
-
-        function hideTip(){ tooltip.classList.add('hidden'); }
-        function showTip(html, x, y){
-            tooltip.innerHTML = html;
-            tooltip.style.left = (x + 12) + 'px';
-            tooltip.style.top = (y + 12) + 'px';
-            tooltip.classList.remove('hidden');
-        }
-
-        function renderStates(counts, breakdown){
-            if (!svg || !STATES || !PATH) return;
-            const d3svg = d3.select(svg);
-            d3svg.selectAll('*').remove();
-
-            // Draw states
-            const scale = makeScale(counts);
-            d3svg.append('g')
-                .selectAll('path')
-                .data(STATES)
-                .join('path')
-                .attr('d', PATH)
-                .attr('class', 'us-state')
-                .attr('fill', d => {
-                    const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
-                    const c = counts[abbr] || 0;
-                    return c ? scale(c) : 'rgba(255,255,255,0.06)';
-                })
-                .attr('stroke', 'rgba(255,255,255,0.12)')
-                .attr('stroke-width', 0.6)
-                .on('mousemove', (event, d) => {
-                    const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
-                    const name = STATE_NAMES[abbr] || abbr || 'Unknown';
-                    const c = counts[abbr] || 0;
-                    const b = breakdown[abbr] || {};
-                    const tgt = b['TARGET'] || 0, inn = b['IN'] || 0, out = b['OUT'] || 0;
-                    const html = `<div class=\"text-xs\"><div class=\"font-semibold\">${name} (${abbr || '-'})</div><div class=\"opacity-80\">${c} submissions</div><div class=\"mt-1\"><span class=\"pill pill-indigo\">🎯 ${tgt}</span> <span class=\"pill pill-emerald\">✅ ${inn}</span> <span class=\"pill pill-rose\">❌ ${out}</span></div></div>`;
-                    const box = (wrap || svg).getBoundingClientRect();
-                    showTip(html, event.clientX - box.left, event.clientY - box.top);
-                })
-                .on('mouseleave', hideTip)
-                .on('click', (event, d) => {
-                    const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
-                    const inp = document.getElementById('f_state');
-                    if (inp){ inp.value = abbr || ''; }
-                    document.getElementById('btn_apply')?.click();
-                });
-
-            // State borders overlay for clarity
-            const mesh = topojson.mesh(US_TOPO, US_TOPO.objects.states, (a,b)=>a!==b);
-            d3svg.append('path')
-                .attr('fill','none')
-                .attr('stroke','rgba(255,255,255,0.22)')
-                .attr('stroke-width',1)
-                .attr('d', PATH(mesh));
-        }
-
-        function updateLegend(max){
-            const wrap = document.querySelector('#us_map_wrap .legend-bar');
-            const sum = document.getElementById('us_map_summary');
-            if (wrap) {
-                // CSS handles gradient; nothing dynamic needed
-            }
-            if (sum) sum.textContent = `Max state volume: ${max}`;
-        }
-
-        async function renderUSMap(){
-            await ensureTopo();
-            if (!US_TOPO) return;
-            const j = await fetchAgg();
-            const labels = j.labels || [];
-            const series = j.series || [];
-            // Build breakdown and totals by state abbr
-            const breakdown = {};
-            const totals = {};
-            labels.forEach((abbr, i) => {
-                if (!/^[A-Z]{2}$/.test(abbr)) return;
-                const row = {};
-                let total = 0;
-                for (const s of series){
-                    const v = Number(s.data?.[i] || 0);
-                    row[s.name] = v;
-                    total += v;
-                }
-                breakdown[abbr] = row;
-                totals[abbr] = total;
-            });
-            const max = Math.max(1, ...Object.values(totals));
-            renderStates(totals, breakdown);
-            updateLegend(max);
-        }
-
-        // Initial render and bind to filter changes
-        document.addEventListener('DOMContentLoaded', () => {
-            renderUSMap().catch(e=>console.error('Map render failed', e));
-            const ids = ['f_state','f_status','f_min','f_max','f_q'];
-            ids.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('change', ()=> renderUSMap());
-                el.addEventListener('input', ()=> renderUSMap());
-            });
-            document.querySelectorAll('.filter-preset').forEach(btn=>{
-                btn.addEventListener('click', ()=> setTimeout(()=>renderUSMap(), 50));
-            });
-        });
-
-        // Expose for manual refresh if needed
-        window.refreshUSMap = renderUSMap;
-    })();
-</script>
 <script type="module">
     import { startAutoRefresh } from "{{ url_for('static', filename='js/refresh.js') }}";
     function endpointBuilder(){
@@ -1625,7 +1503,7 @@
       hashSelector,
       onUpdate: (json, changed) => {
         const rows = json?.data || [];
-        if (changed) { window.renderTable?.(rows); window.refreshUSMap?.(); }
+        if (changed) { window.renderTable?.(rows); }
         const el = document.getElementById('subs_last');
         if (el) {
           const d = new Date();

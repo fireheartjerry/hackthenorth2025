@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 scores_debug.txt
 .vscode/
+.idea

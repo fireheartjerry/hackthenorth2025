@@ -1,0 +1,76 @@
+  display: none;
+}
+
+/* ===== ENHANCED SUBMISSIONS TABLE ===== */
+
+/* Table Panel */
+.submissions-table-panel {
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: between;
+}
+
+.table-title-section h3 {
+  color: var(--indigo);
+}
+
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.view-options {
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.view-options .control-btn {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.view-options .control-btn:last-child {
+  border-right: none;
+}
+
+.view-options .control-btn.active {
+  background: var(--indigo);
+  color: white;
+}
+
+/* Enhanced Table */
+.enhanced-submissions-table {
+  background: transparent;
+}
+
+.enhanced-submissions-table thead {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+
+.checkbox-col {
+  width: 50px;
+  text-align: center;
+}
+
+.table-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--indigo);
+  cursor: pointer;
+}
+
+.th-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;

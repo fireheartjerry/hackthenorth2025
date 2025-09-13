@@ -179,6 +179,36 @@
         </div>
       </div>
     </div>
+    
+    <!-- AI Summary Widget for Detail Page -->
+    <div id="ai_summary_widget" class="hidden glass-panel">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white text-sm">🤖</span>
+                </div>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-purple-300">Gemini AI Activity</h4>
+                    <button id="ai_summary_close" class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="text-xs">✕</span>
+                    </button>
+                </div>
+                <div id="ai_summary_content" class="text-xs text-slate-300 space-y-1">
+                    <!-- AI activity will be populated here -->
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20">
+                    <div class="text-xs text-purple-400/80">
+                        <span id="ai_model_info">Powered by Gemini Flash 2.0</span>
+                    </div>
+                    <div class="text-xs text-purple-400/60" id="ai_last_used">
+                        <!-- Last used timestamp -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- AI Insights -->
     <div class="glass-panel">
@@ -246,20 +276,118 @@
     });
   };
 
+  // Watch functionality
+  document.getElementById('btn_watch').onclick = () => {
+    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+    const submissionId = {{ item.id }};
+    
+    if (watchList.includes(submissionId)) {
+      const index = watchList.indexOf(submissionId);
+      watchList.splice(index, 1);
+      localStorage.setItem('watchList', JSON.stringify(watchList));
+      document.getElementById('btn_watch').innerHTML = '👀 Watch';
+      toast('Removed from watch list', 'success');
+    } else {
+      watchList.push(submissionId);
+      localStorage.setItem('watchList', JSON.stringify(watchList));
+      document.getElementById('btn_watch').innerHTML = '✅ Watching';
+      toast('Added to watch list', 'success');
+    }
+  };
+
+  // Add note functionality
+  document.getElementById('btn_note').onclick = () => {
+    const note = prompt('Add a note for this submission:', localStorage.getItem(`note_{{ item.id }}`) || '');
+    if (note !== null) {
+      if (note.trim()) {
+        localStorage.setItem(`note_{{ item.id }}`, note);
+        toast('Note saved', 'success');
+      } else {
+        localStorage.removeItem(`note_{{ item.id }}`);
+        toast('Note removed', 'success');
+      }
+    }
+  };
+
+  // Find similar risks
+  document.getElementById('btn_similar').onclick = () => {
+    const state = '{{ item.primary_risk_state }}';
+    const lob = '{{ item.line_of_business }}';
+    const premium = {{ item.total_premium or 0 }};
+    const url = `/submissions?state=${state}&min_premium=${Math.round(premium * 0.8)}&max_premium=${Math.round(premium * 1.2)}&q=${encodeURIComponent(lob)}`;
+    window.location.href = url;
+  };
+
+  // Compare to portfolio
+  document.getElementById('btn_compare').onclick = () => {
+    window.location.href = '/insights';
+  };
+
+  // Refer to specialist
+  document.getElementById('btn_refer').onclick = () => {
+    const specialists = ['Risk Assessment Team', 'Senior Underwriter', 'Construction Expert', 'Catastrophe Specialist'];
+    const specialist = specialists[Math.floor(Math.random() * specialists.length)];
+    if (confirm(`Refer this submission to ${specialist}?`)) {
+      toast(`Referred to ${specialist}`, 'success');
+    }
+  };
+
+  // Approve submission
+  document.getElementById('btn_approve').onclick = () => {
+    if (confirm('Recommend this submission for approval?')) {
+      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+      recommendations[{{ item.id }}] = { status: 'approved', timestamp: new Date().toISOString() };
+      localStorage.setItem('recommendations', JSON.stringify(recommendations));
+      toast('Submission recommended for approval', 'success');
+    }
+  };
+
+  // Decline submission
+  document.getElementById('btn_decline').onclick = () => {
+    if (confirm('Recommend this submission for decline?')) {
+      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+      recommendations[{{ item.id }}] = { status: 'declined', timestamp: new Date().toISOString() };
+      localStorage.setItem('recommendations', JSON.stringify(recommendations));
+      toast('Submission recommended for decline', 'warning');
+    }
+  };
+
   // AI rationale with loading state
   document.getElementById('btn_explain').onclick = async () => {
-    const box = document.getElementById('ai_text');
-    box.textContent = 'Generating…';
+    const box = document.getElementById('ai_insights');
+    const originalContent = box.innerHTML;
+    box.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full"></div> Generating explanation...</div>';
+    
     try {
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
       const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
       const j = await fetchJSON(url, { method: 'POST' });
-      box.textContent = j.explanation || '—';
+      box.innerHTML = `<div class="text-sm">${j.explanation || 'No explanation available'}</div>`;
+      
+      // Show AI summary
+      const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
+      const activity = `
+          <div><strong>Action:</strong> Generated explanation for submission {{ item.id }}</div>
+          <div><strong>AI Status:</strong> ${aiUsed}</div>
+          <div><strong>Result:</strong> ${j.explanation ? 'Explanation provided' : 'No explanation available'}</div>
+          ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
+      `;
+      if (window.showAiSummary) {
+          window.showAiSummary(activity);
+      }
     } catch(e){
-      box.textContent = 'Failed to generate explanation';
+      box.innerHTML = `<div class="text-sm text-red-400">Failed to generate explanation: ${e.message}</div>`;
     }
   };
+
+  // Initialize watch button state
+  (() => {
+    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+    if (watchList.includes({{ item.id }})) {
+      document.getElementById('btn_watch').innerHTML = '✅ Watching';
+    }
+  })();
 </script>
 
 {% endif %}
