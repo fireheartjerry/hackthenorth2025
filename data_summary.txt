@@ -1,0 +1,111 @@
+DATA SUMMARY
+================================================================================
+Total Records: 300
+
+Fields Present:
+- id
+- tiv
+- created_at
+- loss_value
+- winnability
+- account_name
+- total_premium
+- effective_date
+- expiration_date
+- oldest_building
+- line_of_business
+- construction_type
+- primary_risk_state
+- renewal_or_new_business
+
+Field Analysis:
+================================================================================
+
+id:
+  type: int64
+  min: 10.0
+  max: 1017.0
+  mean: 763.0
+  null_count: 0
+
+tiv:
+  type: int64
+  min: 567496.0
+  max: 99908143.0
+  mean: 51365900.70666666
+  null_count: 0
+
+created_at:
+  type: object
+  unique_values: 45 unique values
+  null_count: 3
+  top_values: {'2025-07-15T00:00:00.000Z': 35, '2025-08-15T00:00:00.000Z': 26, '2025-07-11T00:00:00.000Z': 21, '2025-07-17T00:00:00.000Z': 19, '2025-07-30T00:00:00.000Z': 18}
+
+loss_value:
+  type: object
+  unique_values: 300 unique values
+  null_count: 0
+  top_values: {'8793541.41': 1, '2585536.95': 1, '410515.64': 1, '7542886.10': 1, '5889434.20': 1}
+
+winnability:
+  type: float64
+  min: 0.0
+  max: 86.0
+  mean: 13.881933333333333
+  null_count: 0
+
+account_name:
+  type: object
+  unique_values: 68 unique values
+  null_count: 0
+  top_values: {'BrandonBStartEndorsement': 37, 'BrandonB1': 13, 'BrandonB9': 12, 'bbtest8': 11, 'BrandonBGreenTextAug15': 9}
+
+total_premium:
+  type: float64
+  min: 4435.65
+  max: 9074916.01
+  mean: 2842706.6982333334
+  null_count: 0
+
+effective_date:
+  type: object
+  unique_values: 20 unique values
+  null_count: 0
+  top_values: {'2025-07-01T00:00:00.000Z': 157, '2025-08-01T00:00:00.000Z': 46, '2025-06-01T00:00:00.000Z': 18, '2024-12-12T00:00:00.000Z': 16, '2025-05-01T00:00:00.000Z': 13}
+
+expiration_date:
+  type: object
+  unique_values: 32 unique values
+  null_count: 0
+  top_values: {'2025-11-01T00:00:00.000Z': 44, '2025-10-01T00:00:00.000Z': 44, '2025-09-01T00:00:00.000Z': 43, '2025-12-01T00:00:00.000Z': 27, '2026-07-01T00:00:00.000Z': 22}
+
+oldest_building:
+  type: int64
+  min: 1900.0
+  max: 2025.0
+  mean: 1961.8266666666666
+  null_count: 0
+
+line_of_business:
+  type: object
+  unique_values: ['GENERAL LIABILITY', 'INLAND MARINE', 'AUTO', 'COMMERCIAL PROPERTY', 'CYBER', 'UMBRELLA', 'HABITATIONAL', 'WORKERS COMPENSATION']
+  null_count: 0
+  top_values: {'UMBRELLA': 46, 'CYBER': 43, 'AUTO': 37, 'GENERAL LIABILITY': 36, 'HABITATIONAL': 36}
+
+construction_type:
+  type: object
+  unique_values: ['Frame', 'Fire Resistive', 'Joisted Masonry', 'Non-Combustible', 'Masonry Non-Combustible']
+  null_count: 0
+  top_values: {'Frame': 67, 'Non-Combustible': 65, 'Joisted Masonry': 60, 'Masonry Non-Combustible': 58, 'Fire Resistive': 50}
+
+primary_risk_state:
+  type: object
+  unique_values: ['CA', 'AK', 'TX', 'CE', 'MI', 'NV', 'AL', 'CO']
+  null_count: 0
+  top_values: {'CA': 283, 'TX': 6, 'NV': 3, 'AK': 2, 'AL': 2}
+
+renewal_or_new_business:
+  type: object
+  unique_values: ['RENEWAL', 'NEW_BUSINESS']
+  null_count: 3
+  top_values: {'NEW_BUSINESS': 295, 'RENEWAL': 2}

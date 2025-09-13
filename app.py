@@ -4,6 +4,12 @@ import requests
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
+from collections import Counter
+
+# Custom modules
+from utils_data import load_df
+from scoring import score_row
+from modes import MODES
 
 load_dotenv()
 
@@ -565,6 +571,55 @@ def apiNlq():
                 "note": "Heuristic fallback",
             }
         )
+
+
+@app.route("/api/modes")
+def api_modes():
+    return jsonify({"modes": list(MODES.keys())})
+
+
+def apply_hard_filters(df, f):
+    d = df.copy()
+    if "lob_in" in f:
+        d = d[d["line_of_business"].str.upper().isin([x.upper() for x in f["lob_in"]])]
+    if f.get("new_business_only"):
+        d = d[d["renewal_or_new_business"].str.upper()=="NEW_BUSINESS"]
+    if "loss_ratio_max" in f:
+        d = d[(d["loss_ratio"].notna()) & (d["loss_ratio"]<=f["loss_ratio_max"])]
+    if "tiv_max" in f:
+        d = d[d["tiv"]<=f["tiv_max"]]
+    if "premium_range" in f:
+        lo, hi = f["premium_range"]
+        d = d[(d["total_premium"]>=lo) & (d["total_premium"]<=hi)]
+    if "min_winnability" in f:
+        d = d[d["winnability"]>=f["min_winnability"]]
+    if "min_year" in f:
+        d = d[(d["building_year"]>=f["min_year"]) | (d["building_year"].isna())]
+    if f.get("good_construction_only"):
+        d = d[d["is_good_construction"]==True]
+    return d
+
+
+@app.route("/api/classified_mode")
+def api_classified_mode():
+    mode = request.args.get("mode", "balanced_growth")
+    df = load_df("data.json")
+    if df.empty:
+        return jsonify({"count": 0, "data": []})
+
+    preset = MODES.get(mode, MODES["balanced_growth"])
+    d = apply_hard_filters(df, preset["filters"])
+    # geo concentration
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+
+    rows = []
+    for r in d.to_dict(orient="records"):
+        s = score_row(r, preset["weights"], scounts)
+        r["mode_score"] = round(float(s), 4)
+        rows.append(r)
+
+    rows.sort(key=lambda x: x["mode_score"], reverse=True)
+    return jsonify({"count": len(rows), "data": rows})
 
 
 if __name__ == "__main__":
