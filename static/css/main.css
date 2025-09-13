@@ -449,7 +449,7 @@
 /* Overlay / modal */
 .overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter: blur(8px);display:flex;align-items:center;justify-content:center;z-index:40}
 .overlay.hidden{display:none}
-.overlay-inner{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border:1px solid var(--glass-border);border-radius:1rem;padding:1rem;box-shadow:0 30px 60px rgba(0,0,0,.5);width:95%;max-width:1200px}
+.overlay-inner{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border:1px solid var(--glass-border);border-radius:1rem;padding:1rem;box-shadow:0 30px 60px rgba(0,0,0,.5);width:95%;max-width:1200px;max-height:90vh;overflow-y:auto}
 
 /* Charts */
 .chart-card .opts select{min-width: 12rem}
