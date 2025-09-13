@@ -422,63 +422,9 @@
     });
     startAuto();
 </script>
-            );
-            document.getElementById("mode_expl").textContent =
-                j.mode_explanation || "";
-            if ((j.count || 0) === 0) {
-                const fb = "balanced_growth";
-                toast("Mode empty — switched to Balanced", "error");
-                setActiveMode(fb);
-                if (sel) sel.value = fb;
-                const jj = await fetchJSON(
-                    `/api/classified_mode?mode=${encodeURIComponent(fb)}`
-                );
-                document.getElementById("mode_expl").textContent =
-                    jj.mode_explanation || "";
-                const h2 = JSON.stringify(jj.data);
-                lastHash = h2;
-                renderWorklistRows(jj.data || [], fb);
-                return;
-            }
-            if ((j.count || 0) > 0) {
-                localStorage.setItem("LAST_NON_EMPTY_MODE", mode);
-            }
-            const newHash = JSON.stringify(j.data || []);
-            if (newHash !== lastHash) {
-                lastHash = newHash;
-                renderWorklistRows(j.data || [], mode);
-                toast(`Updated ${j.count} results — ${mode}`, "success");
-            }
-        });
-        const topState = Object.keys(stateCounts).reduce((a, b) => stateCounts[a] > stateCounts[b] ? a : b, '—');
-        
-        const avgWinnability = data.length ? 
-            data.reduce((sum, item) => sum + (item.winnability || 0), 0) / data.length : 0;
-            
-        const inAppetite = data.filter(item => item.appetite_status === 'IN' || item.appetite_status === 'TARGET').length;
-        const conversionRate = data.length ? (inAppetite / data.length * 100) : 0;
-        
-        document.getElementById('avg-premium-targets').textContent = 
-            avgPremiumTargets > 0 ? `$${Math.round(avgPremiumTargets).toLocaleString()}` : '—';
-        document.getElementById('top-state').textContent = topState;
-        document.getElementById('avg-winnability').textContent = 
-            avgWinnability > 0 ? `${(avgWinnability * (avgWinnability > 1 ? 1 : 100)).toFixed(0)}%` : '—';
-        document.getElementById('conversion-rate').textContent = `${conversionRate.toFixed(1)}%`;
-    }
 
-    // Quick action functions
-    function exportOpportunities() {
-        toast('Export functionality will be available soon', 'info');
-    }
-
-    function showBulkActions() {
-        toast('Bulk actions panel will be available soon', 'info');
-    }
-
-    function showAnalytics() {
-        window.location.href = '/insights';
-    }
-    
+<script>
+    // Orphaned JavaScript code cleanup - moved all code into proper script structure
     // Enhanced data loading and initialization
     async function loadHome() {
         try {
@@ -496,21 +442,6 @@
         } catch (error) {
             toast('Failed to load opportunities: ' + error.message, 'error');
         }
-    }
-
-    function updateModeChip(){
-        const mode = getActiveMode();
-        const chip = document.getElementById('mode_chip');
-        if(chip) chip.innerHTML = `Mode: ${prettyMode(mode)}`;
-    }
-    
-    function updateLastUpdated(elId){
-        const el = document.getElementById(elId);
-        if(!el) return;
-        const d = new Date();
-        const hh = d.getHours().toString().padStart(2,'0');
-        const mm = d.getMinutes().toString().padStart(2,'0');
-        el.textContent = `Last updated ${hh}:${mm}`;
     }
 
     // Event handlers
@@ -565,39 +496,6 @@
         }
     }
     };
-
-    async function populateHomeModes() {
-        const wrap = document.getElementById('home_mode_wrap');
-        try {
-            const j = await fetchJSON("/api/modes");
-            const modes = (j.modes || []).filter(Boolean);
-            const sel = document.getElementById("home_mode");
-            if (!sel) return;
-            if (!modes.length) {
-                wrap?.classList?.add('hidden');
-                sel.innerHTML = '<option value="" disabled selected>No modes available</option>';
-                return;
-            }
-            wrap?.classList?.remove('hidden');
-            sel.innerHTML = modes
-                .map((m) => `<option value="${m}">${m.replace(/_/g,' ')}</option>`)
-                .join("");
-            const active = getActiveMode();
-            sel.value = modes.includes(active)
-                ? active
-                : (modes.includes("balanced_growth") ? "balanced_growth" : (modes[0] || ""));
-            setActiveMode(sel.value);
-            sel.onchange = () => {
-                setActiveMode(sel.value);
-                updateModeChip();
-                try { window._worklistRefreshCtl?.triggerNow(); } catch {}
-                loadHome().catch((err) => toast("Load failed: " + err.message, "error"));
-            };
-        } catch (e) {
-            console.warn("Failed to load modes", e);
-            wrap?.classList?.add('hidden');
-        }
-    }
 
     // Persona modal wiring
     const modal = document.getElementById("persona_modal");
