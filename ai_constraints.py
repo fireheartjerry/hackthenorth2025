@@ -2,7 +2,7 @@ import os
 import json
 from typing import Dict
 
-import google.generativeai as genai
+import requests
 
 
 ALLOWED_FILTERS = {
@@ -93,13 +93,10 @@ def _sanitize(d: Dict) -> Dict:
 
 def propose_with_gemini(summary_json: dict, seed_rules: dict, goal_text: str) -> dict:
     api_key = os.environ.get("GEMINI_API_KEY")
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
     if not api_key:
         # No Gemini available: return seed as proposal
         return _sanitize(seed_rules)
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name)
 
     guard = (
         "Return JSON ONLY with keys 'filters' and 'weights'. "
@@ -117,16 +114,37 @@ def propose_with_gemini(summary_json: dict, seed_rules: dict, goal_text: str) ->
         "Adjust the seed to meet the goal and dataset context, but keep it realistic."
     )
 
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+    )
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ],
+        "generationConfig": {"temperature": 0.2},
+    }
+
+    text = None
     try:
-        resp = model.generate_content(prompt)
-        text = resp.text or ""
+        resp = requests.post(url, json=payload, timeout=20)
+        resp.raise_for_status()
+        j = resp.json()
+        cands = (j.get("candidates") or [])
+        if cands:
+            parts = ((cands[0] or {}).get("content") or {}).get("parts") or []
+            if parts and isinstance(parts[0], dict):
+                text = parts[0].get("text")
     except Exception:
         return _sanitize(seed_rules)
 
     if not text:
         return _sanitize(seed_rules)
 
-    s = text.strip()
+    s = str(text).strip()
     if s.startswith("```"):
         s = s.strip("`\n ")
         if s.lower().startswith("json"):
