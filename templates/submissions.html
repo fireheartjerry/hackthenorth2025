@@ -197,62 +197,6 @@
     </div>
 </div>
 
-<<<<<<< HEAD
-<!-- Enhanced Submissions Table -->
-<div class="submissions-table-panel card p-0">
-    <div class="table-header bg-gradient-to-r from-gray-50/50 to-gray-100/50 p-4 border-b border-white/10">
-        <div class="flex items-center justify-between">
-            <div class="table-title-section">
-                <h3 class="text-lg font-semibold text-indigo-400 mb-1">📊 Submissions Analysis</h3>
-                <p class="text-sm text-gray-400">Advanced filtering and bulk actions</p>
-            </div>
-            
-            <div class="table-controls flex items-center gap-3">
-                <div class="view-options">
-                    <button class="control-btn active" data-view="table">
-                        <i class="fas fa-table"></i>
-                        Table
-                    </button>
-                    <button class="control-btn" data-view="cards">
-                        <i class="fas fa-th-large"></i>
-                        Cards
-                    </button>
-                </div>
-                
-                <div class="table-actions">
-                    <button class="control-btn" id="bulk-actions-btn">
-                        <i class="fas fa-tasks"></i>
-                        Bulk Actions
-                    </button>
-                    <button class="control-btn" id="export-submissions-btn">
-                        <i class="fas fa-download"></i>
-                        Export
-                    </button>
-                    <button class="control-btn" id="columns-btn">
-                        <i class="fas fa-columns"></i>
-                        Columns
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Loading State -->
-    <div id="table-loading" class="loading-skeleton hidden">
-        <div class="table-skeleton">
-            <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
-            <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
-            <div class="skeleton-row" style="width: 98%; height: 2.5rem;"></div>
-            <div class="skeleton-row" style="width: 92%; height: 2.5rem;"></div>
-            <div class="skeleton-row" style="width: 97%; height: 2.5rem;"></div>
-        </div>
-    </div>
-
-    <!-- Table Container -->
-    <div class="table-container overflow-x-auto">
-        <!-- Enhanced Table -->
-        <table class="enhanced-submissions-table w-full text-sm">
-=======
 <!-- US Submissions Map -->
 <div class="glass-panel p-4 mb-6">
     <div class="flex items-center justify-between mb-3">
@@ -275,7 +219,6 @@
 <div class="enhanced-table">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
             <thead class="border-b border-white border-opacity-10">
                 <tr>
                     <th class="checkbox-col py-4 px-3">
@@ -492,14 +435,7 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-<<<<<<< HEAD
-                <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
-                    <td class="td py-4 px-3 text-center">
-                        <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
-                    </td>
-=======
                 <tr class="table-row ${appetiteClass}" onclick="if(${r.id || 'null'}) window.location.href='/detail/${r.id || ''}?mode=${encodeURIComponent(document.getElementById('f_mode')?.value || '')}'">
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
                     <td class="td py-4 px-6">
                         <div class="flex items-center gap-2">
                             <span class="priority-score ${priorityClass}">${Number(r.priority_score || 0).toFixed(1)}</span>

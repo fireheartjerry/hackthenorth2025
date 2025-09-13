@@ -99,18 +99,12 @@
       window.addEventListener('storage', (e) => {
         if(e.key === 'USER_NAME') greet();
       });
-<<<<<<< HEAD
-      
-      // Global update function for other scripts to call
-      window.updateDashboardMetrics = updateQuickStats;
-=======
       document.getElementById('btn_persona')?.addEventListener('click', (e)=>{
         e.preventDefault();
         if(typeof _openPersona !== 'undefined') _openPersona();
       });
       greet(); vibe();
       window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
->>>>>>> 0bfacca6864fd9ed7c6bcb07cb2bac5de27b9aeb
     })();
   </script>
 </div>
