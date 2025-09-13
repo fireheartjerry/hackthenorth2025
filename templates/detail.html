@@ -246,20 +246,106 @@
     });
   };
 
+  // Watch functionality
+  document.getElementById('btn_watch').onclick = () => {
+    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+    const submissionId = {{ item.id }};
+    
+    if (watchList.includes(submissionId)) {
+      const index = watchList.indexOf(submissionId);
+      watchList.splice(index, 1);
+      localStorage.setItem('watchList', JSON.stringify(watchList));
+      document.getElementById('btn_watch').innerHTML = '👀 Watch';
+      toast('Removed from watch list', 'success');
+    } else {
+      watchList.push(submissionId);
+      localStorage.setItem('watchList', JSON.stringify(watchList));
+      document.getElementById('btn_watch').innerHTML = '✅ Watching';
+      toast('Added to watch list', 'success');
+    }
+  };
+
+  // Add note functionality
+  document.getElementById('btn_note').onclick = () => {
+    const note = prompt('Add a note for this submission:', localStorage.getItem(`note_{{ item.id }}`) || '');
+    if (note !== null) {
+      if (note.trim()) {
+        localStorage.setItem(`note_{{ item.id }}`, note);
+        toast('Note saved', 'success');
+      } else {
+        localStorage.removeItem(`note_{{ item.id }}`);
+        toast('Note removed', 'success');
+      }
+    }
+  };
+
+  // Find similar risks
+  document.getElementById('btn_similar').onclick = () => {
+    const state = '{{ item.primary_risk_state }}';
+    const lob = '{{ item.line_of_business }}';
+    const premium = {{ item.total_premium or 0 }};
+    const url = `/submissions?state=${state}&min_premium=${Math.round(premium * 0.8)}&max_premium=${Math.round(premium * 1.2)}&q=${encodeURIComponent(lob)}`;
+    window.location.href = url;
+  };
+
+  // Compare to portfolio
+  document.getElementById('btn_compare').onclick = () => {
+    window.location.href = '/insights';
+  };
+
+  // Refer to specialist
+  document.getElementById('btn_refer').onclick = () => {
+    const specialists = ['Risk Assessment Team', 'Senior Underwriter', 'Construction Expert', 'Catastrophe Specialist'];
+    const specialist = specialists[Math.floor(Math.random() * specialists.length)];
+    if (confirm(`Refer this submission to ${specialist}?`)) {
+      toast(`Referred to ${specialist}`, 'success');
+    }
+  };
+
+  // Approve submission
+  document.getElementById('btn_approve').onclick = () => {
+    if (confirm('Recommend this submission for approval?')) {
+      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+      recommendations[{{ item.id }}] = { status: 'approved', timestamp: new Date().toISOString() };
+      localStorage.setItem('recommendations', JSON.stringify(recommendations));
+      toast('Submission recommended for approval', 'success');
+    }
+  };
+
+  // Decline submission
+  document.getElementById('btn_decline').onclick = () => {
+    if (confirm('Recommend this submission for decline?')) {
+      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+      recommendations[{{ item.id }}] = { status: 'declined', timestamp: new Date().toISOString() };
+      localStorage.setItem('recommendations', JSON.stringify(recommendations));
+      toast('Submission recommended for decline', 'warning');
+    }
+  };
+
   // AI rationale with loading state
   document.getElementById('btn_explain').onclick = async () => {
-    const box = document.getElementById('ai_text');
-    box.textContent = 'Generating…';
+    const box = document.getElementById('ai_insights');
+    const originalContent = box.innerHTML;
+    box.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full"></div> Generating explanation...</div>';
+    
     try {
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
       const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
       const j = await fetchJSON(url, { method: 'POST' });
-      box.textContent = j.explanation || '—';
+      box.innerHTML = `<div class="text-sm">${j.explanation || 'No explanation available'}</div>`;
     } catch(e){
-      box.textContent = 'Failed to generate explanation';
+      box.innerHTML = `<div class="text-sm text-red-400">Failed to generate explanation: ${e.message}</div>`;
     }
   };
+
+  // Initialize watch button state
+  (() => {
+    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+    if (watchList.includes({{ item.id }})) {
+      document.getElementById('btn_watch').innerHTML = '✅ Watching';
+    }
+  })();
 </script>
 
 {% endif %}

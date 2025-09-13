@@ -1057,7 +1057,7 @@ def api_aggregate():
     # Build aggregation
     def agg_series(frame):
         if metric == "count":
-            return frame.size
+            return frame.size5
         if metric.startswith("sum:"):
             col = metric.split(":", 1)[1]
             if col not in cols:
