@@ -1,65 +1,122 @@
 {% extends "base.html" %}
 {% block content %}
 {% if not item %}
-<div class="text-sm opacity-80">Not found.</div>
-{% else %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 glass-panel">
+  <div class="glass-panel">
     <div class="flex items-center justify-between">
-      <div>
-        <div class="text-xl font-semibold">{{ item.account_name }}</div>
-        <div class="text-xs opacity-70">ID {{ item.id }}</div>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="pill {% if item.appetite_status=='TARGET' %}pill-indigo{% elif item.appetite_status=='IN' %}pill-emerald{% else %}pill-rose{% endif %}">
-          {{ item.appetite_status }}
-        </span>
-        <span class="chip">Score {{ '%.2f'|format(item.priority_score or 0) }}</span>
+      <div class="text-sm opacity-80">Submission not found.</div>
+      <a href="{{ url_for('submissions') }}" class="pill pill-sub">Back to list</a>
+    </div>
+  </div>
+{% else %}
+
+<!-- Header / actions -->
+<div class="glass-panel">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <div class="text-2xl font-semibold tracking-tight">{{ item.account_name or '-' }}</div>
+      <div class="text-xs opacity-70">ID {{ item.id }} • <span id="mode_label">Mode: default</span></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="pill {% if item.appetite_status=='TARGET' %}pill-indigo{% elif item.appetite_status=='IN' %}pill-emerald{% else %}pill-rose{% endif %}">{{ item.appetite_status or 'IN' }}</span>
+      <span class="chip">Priority {{ '%.2f'|format(item.priority_score or 0) }}</span>
+      <button id="btn_refresh" class="pill pill-sub hover-glow">Refresh data</button>
+      <a href="{{ url_for('submissions') }}" class="pill pill-sub hover-glow">Back</a>
+      <button id="btn_copy" class="pill pill-sub hover-glow">Copy link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Left: Snapshot + Reasons -->
+  <div class="lg:col-span-2 space-y-6">
+    <div class="glass-panel">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div class="kv"><span>State</span><b>{{ item.primary_risk_state or '-' }}</b></div>
+        <div class="kv"><span>LOB</span><b>{{ item.line_of_business or '-' }}</b></div>
+        <div class="kv"><span>Submission</span><b>{{ item.renewal_or_new_business or '-' }}</b></div>
+        <div class="kv"><span>Premium</span><b>${{ '%.0f'|format(item.total_premium or 0) }}</b></div>
+        <div class="kv"><span>TIV</span><b>${{ '%.0f'|format(item.tiv or 0) }}</b></div>
+        <div class="kv">
+          <span>Winnability</span>
+          <b>
+            {% if item.winnability is number %}
+              {% if item.winnability>1 %}{{ '%.0f'|format(item.winnability) }}%{% else %}{{ '%.0f'|format((item.winnability or 0)*100) }}%{% endif %}
+            {% else %}-{% endif %}
+          </b>
+        </div>
+        <div class="kv"><span>Construction</span><b>{{ item.construction_type or '-' }}</b></div>
+        <div class="kv"><span>Oldest Building</span><b>{{ item.oldest_building or '-' }}</b></div>
+        <div class="kv"><span>Loss Value</span><b>${{ '%.0f'|format(item.loss_value or 0) }}</b></div>
+        <div class="kv"><span>Effective</span><b>{{ item.effective_date or '-' }}</b></div>
+        <div class="kv"><span>Expiration</span><b>{{ item.expiration_date or '-' }}</b></div>
+        <div class="kv"><span>Created</span><b>{{ item.created_at or '-' }}</b></div>
       </div>
     </div>
-    <div class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-      <div class="kv"><span>State</span><b>{{ item.primary_risk_state }}</b></div>
-      <div class="kv"><span>LOB</span><b>{{ item.line_of_business }}</b></div>
-      <div class="kv"><span>Premium</span><b>${{ '%.0f'|format(item.total_premium or 0) }}</b></div>
-      <div class="kv"><span>TIV</span><b>${{ '%.0f'|format(item.tiv or 0) }}</b></div>
-      <div class="kv"><span>Winnability</span><b>
-        {% if item.winnability is number %}
-          {% if item.winnability>1 %}{{ '%.0f'|format(item.winnability) }}%{% else %}{{ '%.0f'|format((item.winnability or 0)*100) }}%{% endif %}
-        {% else %}-{% endif %}
-      </b></div>
-      <div class="kv"><span>Oldest Building</span><b>{{ item.oldest_building }}</b></div>
-      <div class="kv"><span>Construction</span><b>{{ item.construction_type }}</b></div>
-      <div class="kv"><span>Effective</span><b>{{ item.effective_date or '-' }}</b></div>
-      <div class="kv"><span>Expiration</span><b>{{ item.expiration_date or '-' }}</b></div>
-    </div>
-    <div class="mt-6">
-      <div class="text-sm opacity-70">Reasons</div>
+
+    <div class="glass-panel">
+      <div class="text-sm opacity-70">Underwriting Fit — Reasons</div>
       <div class="mt-2 text-sm">
         {% if item.appetite_reasons and item.appetite_reasons|length>0 %}
           <ul class="list-disc pl-6">
-            {% for r in item.appetite_reasons %}<li>{{ r }}</li>{% endfor %}
+            {% for r in item.appetite_reasons %}
+              <li>{{ r }}</li>
+            {% endfor %}
           </ul>
         {% else %}
-          <div class="opacity-80">Meets appetite</div>
+          <div class="opacity-80">Meets appetite and target criteria</div>
         {% endif %}
       </div>
     </div>
   </div>
+
+  <!-- Right: AI rationale -->
   <div class="glass-panel">
     <div class="text-lg font-semibold">AI Rationale</div>
     <button id="btn_explain" class="btn mt-3 w-full hover-glow">Explain this submission</button>
     <div id="ai_text" class="mt-3 text-sm opacity-90"></div>
   </div>
 </div>
+
 <script>
-document.getElementById("btn_explain").onclick=()=>{
-  const params = new URLSearchParams(window.location.search)
-  const mode = params.get('mode')
-  const url = mode? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`
-  fetch(url,{method:"POST"}).then(r=>r.json()).then(j=>{
-    document.getElementById("ai_text").innerText = j.ok? j.explanation : "Error"
-  })
-}
+  // Fill mode label from URL
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const el = document.getElementById('mode_label');
+    el.textContent = 'Mode: ' + (mode || 'default');
+  })();
+
+  // Copy link
+  document.getElementById('btn_copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); toast('Link copied', 'success'); }
+    catch { toast('Copy failed', 'error'); }
+  };
+
+  // Manual refresh to get latest data
+  document.getElementById('btn_refresh').onclick = async () => {
+    await withLoading(document.getElementById('btn_refresh'), async () => {
+      try{ await fetchJSON('/api/refresh', { method: 'POST' }); toast('Data refreshed', 'success'); location.reload(); }
+      catch(e){ toast('Refresh failed: ' + e.message, 'error'); }
+    });
+  };
+
+  // AI rationale with loading state
+  document.getElementById('btn_explain').onclick = async () => {
+    const box = document.getElementById('ai_text');
+    box.textContent = 'Generating…';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
+      const j = await fetchJSON(url, { method: 'POST' });
+      box.textContent = j.explanation || '—';
+    } catch(e){
+      box.textContent = 'Failed to generate explanation';
+    }
+  };
 </script>
+
 {% endif %}
 {% endblock %}
+
