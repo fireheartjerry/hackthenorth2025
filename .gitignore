@@ -1,4 +1,5 @@
 .venv/
-__pychache__/
+__pycache__/
 *.pyc
 scores_debug.txt
+.vscode/
