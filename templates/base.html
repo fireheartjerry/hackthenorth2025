@@ -148,7 +148,18 @@
                         <span id="progress_text" class="text-xs opacity-70">Step 1 of 8</span>
                     </div>
                     <div class="w-full bg-white/10 rounded-full h-2">
-                        <div id="progress_bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500 ease-out" style="width: 12.5%"></div>
+                        <div id="progress_bar" class="h-2 rounded-full">
+                            <div class="progress-steps">
+                                <div class="progress-step active" data-step="1"></div>
+                                <div class="progress-step" data-step="2"></div>
+                                <div class="progress-step" data-step="3"></div>
+                                <div class="progress-step" data-step="4"></div>
+                                <div class="progress-step" data-step="5"></div>
+                                <div class="progress-step" data-step="6"></div>
+                                <div class="progress-step" data-step="7"></div>
+                                <div class="progress-step" data-step="8"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -792,9 +803,21 @@
                 }
 
                 function updateProgressBar() {
-                    const progress = (currentStep / totalSteps) * 100;
-                    document.getElementById('progress_bar').style.width = `${progress}%`;
+                    // Update progress text
                     document.getElementById('progress_text').textContent = `Step ${currentStep} of ${totalSteps}`;
+                    
+                    // Update step indicators
+                    const progressSteps = document.querySelectorAll('.progress-step');
+                    progressSteps.forEach((step, index) => {
+                        const stepNumber = index + 1;
+                        step.classList.remove('completed', 'active');
+                        
+                        if (stepNumber < currentStep) {
+                            step.classList.add('completed');
+                        } else if (stepNumber === currentStep) {
+                            step.classList.add('active');
+                        }
+                    });
                 }
 
                 function updateNavigation() {

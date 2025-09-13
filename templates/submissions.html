@@ -1,16 +1,16 @@
 {% extends "base.html" %} {% block content %}
 <!-- Modern Submissions Dashboard -->
-<div class="submissions-hero glass-panel p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
+<div class="submissions-hero glass-panel p-8 mb-8">
+    <div class="flex items-center justify-between mb-6">
         <div class="hero-content">
             <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 Submission Pipeline
             </h1>
-            <p class="text-sm opacity-75 mt-1">
+            <p class="text-sm opacity-75 mt-2">
                 Intelligent prioritization and advanced filtering for maximum efficiency
             </p>
         </div>
-        <div class="pipeline-stats flex items-center gap-4">
+        <div class="pipeline-stats flex items-center gap-6">
             <div class="stat-bubble">
                 <div class="stat-value" id="subs_count">—</div>
                 <div class="stat-label">Total</div>
@@ -27,13 +27,13 @@
     </div>
     
     <!-- Real-time Pipeline Status -->
-    <div class="pipeline-status">
+    <div class="pipeline-status mt-8">
         <div class="status-bar">
             <div class="status-segment target" style="width: 25%"></div>
             <div class="status-segment in" style="width: 45%"></div>
             <div class="status-segment out" style="width: 30%"></div>
         </div>
-        <div class="status-legend">
+        <div class="status-legend mt-3">
             <span class="legend-item target">🎯 Target (25%)</span>
             <span class="legend-item in">✅ In-Appetite (45%)</span>
             <span class="legend-item out">❌ Out-of-Appetite (30%)</span>
@@ -42,33 +42,36 @@
 </div>
     
 <!-- Smart Filtering System -->
-<div class="smart-filters glass-panel p-6 mb-6">
-    <div class="filter-header">
-        <div class="flex items-center justify-between mb-4">
+<div class="smart-filters glass-panel p-8 mb-8">
+    <!-- Filter Header -->
+    <div class="filter-header mb-8">
+        <div class="flex items-center justify-between">
             <div class="filter-title-section">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <span class="filter-icon">🔍</span>
-                    Smart Filters
+                <h3 class="text-xl font-bold flex items-center gap-4">
+                    <span class="filter-icon text-2xl">🔍</span>
+                    <div>
+                        <div>Smart Filters</div>
+                        <p class="text-sm opacity-75 font-normal mt-1">Intelligent filtering with saved presets and AI assistance</p>
+                    </div>
                 </h3>
-                <p class="text-sm opacity-75">Intelligent filtering with saved presets and AI assistance</p>
             </div>
-            <div class="filter-actions">
-                <button id="save_filter_preset" class="control-btn">
-                    <span class="icon">💾</span>
-                    Save Preset
+            <div class="filter-actions flex gap-4">
+                <button id="save_filter_preset" class="control-btn glass-btn-small">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <span>Save Preset</span>
                 </button>
-                <button id="clear_all_filters" class="control-btn">
-                    <span class="icon">🗑️</span>
-                    Clear All
+                <button id="clear_all_filters" class="control-btn glass-btn-small">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Clear All</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Quick Filter Presets -->
-    <div class="filter-presets mb-6">
-        <div class="preset-grid">
-            <button class="filter-preset-card active" data-preset="all">
+    <!-- Quick Filter Presets - Improved Layout -->
+    <div class="filter-presets mb-10">
+        <div class="preset-row-1 grid grid-cols-3 gap-6 mb-6">
+            <button class="filter-preset-card active enhanced" data-preset="all">
                 <div class="preset-icon">📋</div>
                 <div class="preset-content">
                     <div class="preset-title">All Submissions</div>
@@ -77,7 +80,7 @@
                 <div class="preset-count" id="preset_all_count">—</div>
             </button>
             
-            <button class="filter-preset-card" data-preset="targets">
+            <button class="filter-preset-card enhanced" data-preset="targets">
                 <div class="preset-icon">🎯</div>
                 <div class="preset-content">
                     <div class="preset-title">Priority Targets</div>
@@ -86,7 +89,7 @@
                 <div class="preset-count" id="preset_targets_count">—</div>
             </button>
             
-            <button class="filter-preset-card" data-preset="in-appetite">
+            <button class="filter-preset-card enhanced" data-preset="in-appetite">
                 <div class="preset-icon">✅</div>
                 <div class="preset-content">
                     <div class="preset-title">In-Appetite</div>
@@ -94,8 +97,10 @@
                 </div>
                 <div class="preset-count" id="preset_in_count">—</div>
             </button>
-            
-            <button class="filter-preset-card" data-preset="high-value">
+        </div>
+        
+        <div class="preset-row-2 grid grid-cols-3 gap-6">
+            <button class="filter-preset-card enhanced" data-preset="high-value">
                 <div class="preset-icon">💎</div>
                 <div class="preset-content">
                     <div class="preset-title">High Value</div>
@@ -104,7 +109,7 @@
                 <div class="preset-count" id="preset_high_count">—</div>
             </button>
             
-            <button class="filter-preset-card" data-preset="new-business">
+            <button class="filter-preset-card enhanced" data-preset="new-business">
                 <div class="preset-icon">🆕</div>
                 <div class="preset-content">
                     <div class="preset-title">New Business</div>
@@ -113,7 +118,7 @@
                 <div class="preset-count" id="preset_new_count">—</div>
             </button>
             
-            <button class="filter-preset-card" data-preset="recent">
+            <button class="filter-preset-card enhanced" data-preset="recent">
                 <div class="preset-icon">⏰</div>
                 <div class="preset-content">
                     <div class="preset-title">Recent</div>
@@ -124,75 +129,122 @@
         </div>
     </div>
 
-    <!-- Advanced Filters -->
-    <div class="advanced-filters">
-        <div class="filters-toggle">
-            <button id="toggle_advanced" class="toggle-btn">
-                <span class="toggle-icon">⚙️</span>
+    <!-- Advanced Filters - Improved Layout -->
+    <div class="advanced-filters mb-10">
+        <div class="filters-toggle mb-6">
+            <button id="toggle_advanced" class="toggle-btn glass-btn-small">
+                <i class="fa-solid fa-sliders toggle-icon"></i>
                 <span class="toggle-text">Advanced Filters</span>
-                <span class="toggle-arrow">↓</span>
+                <i class="fa-solid fa-chevron-down toggle-arrow"></i>
             </button>
         </div>
         
         <div id="advanced_filter_panel" class="filter-panel hidden">
-            <div class="filter-grid">
-                <div class="filter-group">
-                    <label class="filter-label">State/Region</label>
-                    <div class="filter-input-enhanced">
-                        <span class="input-icon">🗺️</span>
-                        <input id="f_state" class="filter-input" placeholder="e.g., CA, FL, TX" />
+            <div class="filter-grid-enhanced">
+                <!-- Top Row - Core Filters -->
+                <div class="filter-row flex gap-8 mb-8">
+                    <div class="filter-group flex-1">
+                        <label class="filter-label">
+                            <i class="fa-solid fa-map-location-dot text-indigo-400 mr-2"></i>
+                            State/Region
+                        </label>
+                        <div class="filter-input-enhanced">
+                            <input id="f_state" class="filter-input" placeholder="e.g., CA, FL, TX" />
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group flex-1">
+                        <label class="filter-label">
+                            <i class="fa-solid fa-target text-emerald-400 mr-2"></i>
+                            Appetite Status
+                        </label>
+                        <select id="f_status" class="filter-select">
+                            <option value="">Any Status</option>
+                            <option value="TARGET">🎯 Target</option>
+                            <option value="IN">✅ In-Appetite</option>
+                            <option value="OUT">❌ Out-of-Appetite</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group flex-1">
+                        <label class="filter-label">
+                            <i class="fa-solid fa-chart-line text-purple-400 mr-2"></i>
+                            Analysis Mode
+                        </label>
+                        <select id="f_mode" class="filter-select">
+                            <option value="" disabled selected>Loading modes…</option>
+                        </select>
                     </div>
                 </div>
                 
-                <div class="filter-group">
-                    <label class="filter-label">Appetite Status</label>
-                    <select id="f_status" class="filter-select">
-                        <option value="">Any Status</option>
-                        <option value="TARGET">🎯 Target</option>
-                        <option value="IN">✅ In-Appetite</option>
-                        <option value="OUT">❌ Out-of-Appetite</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Analysis Mode</label>
-                    <select id="f_mode" class="filter-select">
-                        <option value="" disabled selected>Loading modes…</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Premium Range</label>
-                    <div class="range-inputs">
-                        <input id="f_min" class="range-input" type="number" placeholder="Min (e.g., 50,000)" />
-                        <span class="range-separator">to</span>
-                        <input id="f_max" class="range-input" type="number" placeholder="Max (e.g., 175,000)" />
+                <!-- Bottom Row - Range and Search -->
+                <div class="filter-row flex gap-8">
+                    <div class="filter-group flex-1">
+                        <label class="filter-label">
+                            <i class="fa-solid fa-dollar-sign text-emerald-400 mr-2"></i>
+                            Premium Range
+                        </label>
+                        <div class="range-inputs flex items-center gap-4">
+                            <input id="f_min" class="range-input flex-1" type="number" placeholder="Min (e.g., 50,000)" />
+                            <span class="range-separator text-gray-400">to</span>
+                            <input id="f_max" class="range-input flex-1" type="number" placeholder="Max (e.g., 175,000)" />
+                        </div>
                     </div>
-                </div>
-                
-                <div class="filter-group span-2">
-                    <label class="filter-label">Search Accounts</label>
-                    <div class="search-input-enhanced">
-                        <span class="input-icon">🔍</span>
-                        <input id="f_q" class="search-input" placeholder="Search by account name, broker, or keywords..." />
-                        <button class="search-clear hidden" id="clear_search">×</button>
+                    
+                    <div class="filter-group flex-2">
+                        <label class="filter-label">
+                            <i class="fa-solid fa-magnifying-glass text-indigo-400 mr-2"></i>
+                            Search Accounts
+                        </label>
+                        <div class="search-input-enhanced">
+                            <input id="f_q" class="search-input" placeholder="Search by account name, broker, or keywords..." />
+                            <button class="search-clear hidden" id="clear_search">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="flex items-center justify-between mt-4">
-        <div class="flex items-center gap-2">
-            <button id="btn_apply" class="quick-action primary">Apply Filters</button>
-            <button id="btn_clear" class="quick-action">Clear All</button>
-            <button id="btn_save_filter" class="quick-action">💾 Save Filter</button>
+    <!-- Action Bar - Reorganized -->
+    <div class="filter-actions-bar">
+        <!-- Primary Actions -->
+        <div class="primary-actions flex items-center gap-4">
+            <button id="btn_apply" class="glass-btn-small primary-action">
+                <i class="fa-solid fa-filter"></i>
+                <span>Apply Filters</span>
+            </button>
+            <button id="btn_clear" class="glass-btn-small secondary-action">
+                <i class="fa-solid fa-eraser"></i>
+                <span>Clear All</span>
+            </button>
+            <div class="action-separator"></div>
+            <button id="btn_save_filter" class="glass-btn-small">
+                <i class="fa-solid fa-bookmark"></i>
+                <span>Save Filter</span>
+            </button>
         </div>
-        <div class="flex items-center gap-2">
-            <input id="nlq" class="inp w-72" placeholder="Ask: 'Show targets in CA over $100k premium'" />
-            <button id="btn_nlq" class="quick-action">Ask AI</button>
-            <button id="btn_refresh" class="quick-action">🔄 Refresh</button>
-            <button id="btn_export" class="quick-action">📊 Export</button>
+        
+        <!-- AI Assistant -->
+        <div class="ai-assistant flex items-center gap-4">
+            <div class="ai-input-group">
+                <input id="nlq" class="ai-input" placeholder="Ask AI: 'Show targets in CA over $100k premium'" />
+                <button id="btn_nlq" class="ai-ask-btn">
+                    <i class="fa-solid fa-sparkles"></i>
+                    <span>Ask AI</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Utility Actions -->
+        <div class="utility-actions flex items-center gap-3">
+            <button id="btn_refresh" class="glass-btn-small utility-action" title="Refresh Data">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+            <button id="btn_export" class="glass-btn-small utility-action" title="Export Results">
+                <i class="fa-solid fa-download"></i>
+            </button>
         </div>
     </div>
     
@@ -228,16 +280,38 @@
 </div>
 
 <!-- Enhanced Submissions Table -->
-<div class="submissions-table-panel card p-0">
-    <div class="table-header glass-panel-dark p-6 border-b border-white/20">
-        <div class="flex items-center justify-between">
-            <div class="table-title-section">
+<div class="submissions-table-panel card p-0 mt-8">
+    <div class="table-header glass-panel-dark p-8 border-b border-white/20">
+        <div class="flex items-start justify-between gap-8">
+            <div class="table-title-section flex-1">
                 <h3 class="text-xl font-light text-white mb-2">📊 Submissions Analysis</h3>
-                <p class="text-sm text-gray-300 font-light">Advanced filtering and bulk actions</p>
+                <p class="text-sm text-gray-300 font-light mb-5">Prioritized, in‑appetite opportunities with clear rationale</p>
+                <div class="table-stats flex flex-wrap items-center gap-3">
+                    <span class="stat-chip">
+                        <span class="dot any"></span>
+                        Total
+                        <b id="stat_total">—</b>
+                    </span>
+                    <span class="stat-chip target">
+                        <span class="dot target"></span>
+                        Target
+                        <b id="stat_target">—</b>
+                    </span>
+                    <span class="stat-chip in">
+                        <span class="dot in"></span>
+                        In
+                        <b id="stat_in">—</b>
+                    </span>
+                    <span class="stat-chip out">
+                        <span class="dot out"></span>
+                        Out
+                        <b id="stat_out">—</b>
+                    </span>
+                </div>
             </div>
             
-            <div class="table-controls flex items-center gap-4">
-                <div class="view-options flex gap-2">
+            <div class="table-controls flex flex-col items-end gap-4">
+                <div class="view-options flex gap-3">
                     <button class="glass-btn-small active" data-view="table">
                         <i class="fa-solid fa-table text-sm"></i>
                         <span>Table</span>
@@ -248,7 +322,7 @@
                     </button>
                 </div>
                 
-                <div class="table-actions flex gap-2">
+                <div class="table-actions flex gap-3">
                     <button class="glass-btn-small" id="bulk-actions-btn">
                         <i class="fa-solid fa-tasks text-sm"></i>
                         <span>Bulk Actions</span>
@@ -261,6 +335,18 @@
                         <i class="fa-solid fa-columns text-sm"></i>
                         <span>Columns</span>
                     </button>
+                </div>
+
+                <div class="page-size-selector mt-2">
+                    <span class="page-size-label">Rows</span>
+                    <div class="page-size-select-wrap">
+                        <select id="page-size-top" class="page-size-select" aria-label="Rows per page (top)">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down select-caret" aria-hidden="true"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -284,59 +370,59 @@
             <table class="enhanced-submissions-table w-full text-sm">
             <thead class="border-b border-white border-opacity-10">
                 <tr>
-                    <th class="checkbox-col py-4 px-3">
+                    <th class="checkbox-col py-5 px-4">
                         <input type="checkbox" id="select-all" class="table-checkbox">
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-6" data-key="priority_score">
+                    <th class="th th-sort sortable text-left py-5 px-8" data-key="priority_score">
                         <div class="th-content">
                             <i class="fa-solid fa-star th-icon"></i>
                             Priority
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="appetite_status">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="appetite_status">
                         <div class="th-content">
                             <i class="fa-solid fa-traffic-light th-icon"></i>
                             Status
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="account_name">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="account_name">
                         <div class="th-content">
                             <i class="fa-solid fa-building th-icon"></i>
                             Account
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="primary_risk_state">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="primary_risk_state">
                         <div class="th-content">
                             <i class="fa-solid fa-map-marker-alt th-icon"></i>
                             State
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="total_premium">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="total_premium">
                         <div class="th-content">
                             <i class="fa-solid fa-money-bill-wave th-icon"></i>
                             Premium
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="tiv">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="tiv">
                         <div class="th-content">
                             <i class="fa-solid fa-dollar-sign th-icon"></i>
                             TIV
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th th-sort sortable text-left py-4 px-4" data-key="winnability">
+                    <th class="th th-sort sortable text-left py-5 px-6" data-key="winnability">
                         <div class="th-content">
                             <i class="fa-solid fa-percentage th-icon"></i>
                             Win%
                             <i class="fa-solid fa-sort sort-icon arrow"></i>
                         </div>
                     </th>
-                    <th class="th actions-col text-left py-4 px-4">
+                    <th class="th actions-col text-left py-5 px-6">
                         <div class="th-content">
                             <i class="fa-solid fa-cog th-icon"></i>
                             Actions
@@ -364,19 +450,19 @@
     </div>
 
     <!-- Enhanced Pagination -->
-    <div class="table-footer bg-gradient-to-r from-gray-50/30 to-gray-100/30 p-4 border-t border-white/10">
+    <div class="table-footer bg-gradient-to-r from-gray-50/30 to-gray-100/30 p-6 border-t border-white/10">
         <div class="flex items-center justify-between">
             <div class="table-info">
                 <div class="pagination-info">
                     Showing <span id="page-start" class="font-semibold text-indigo-400">1</span>-<span id="page-end" class="font-semibold text-indigo-400">25</span> 
                     of <span id="total-count" class="font-semibold text-indigo-400">0</span> submissions
                 </div>
-                <div class="selected-info hidden">
+                <div class="selected-info hidden mt-2">
                     <span id="selected-count" class="font-semibold text-emerald-400">0</span> selected
                 </div>
             </div>
             
-            <div class="pagination-controls flex items-center gap-2">
+            <div class="pagination-controls flex items-center gap-4">
                 <div class="page-size-selector">
                     <span class="page-size-label">Rows</span>
                     <div class="page-size-select-wrap">
@@ -389,14 +475,14 @@
                     </div>
                 </div>
                 
-                <div class="pagination-buttons">
+                <div class="pagination-buttons flex items-center gap-2">
                     <button id="first-page" class="pagination-btn" disabled>
                         <i class="fa-solid fa-angles-left"></i>
                     </button>
                     <button id="prev-page" class="pagination-btn" disabled>
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
-                    <span id="pagination-numbers" class="pagination-numbers"></span>
+                    <span id="pagination-numbers" class="pagination-numbers mx-2"></span>
                     <button id="next-page" class="pagination-btn">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
@@ -423,6 +509,15 @@
         }
     }
     
+    // Money short format for compact columns
+    function fmtMoneyShort(v){
+        const n = Number(v || 0);
+        if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
+        if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+        if (n >= 1e3) return '$' + Math.round(n/1e3) + 'K';
+        return '$' + Math.round(n).toLocaleString();
+    }
+    
     if (typeof window.withLoading === 'undefined') {
         window.withLoading = async function(el, fn){
             try{ el?.classList?.add("is-loading"); return await fn(); } finally { el?.classList?.remove("is-loading"); }
@@ -445,6 +540,10 @@
     
     let SORT_BY = "priority_score";
     let SORT_DIR = "desc";
+    let CURRENT_PAGE = 1;
+    let PAGE_SIZE = 25;
+    let TOTAL_ITEMS = 0;
+    
     // Ensure a consistent analysis mode is always applied
     function getActiveMode() {
         const sel = document.getElementById('f_mode');
@@ -462,30 +561,43 @@
 
     // Enhanced table rendering with visual priorities and bulk selection
     function renderTable(rows){
+        console.log('renderTable called with', rows ? rows.length : 0, 'rows');
         const tbody = document.getElementById("tbody");
         const emptyState = document.getElementById("empty-state");
         const countSpan = document.getElementById("subs_count");
         
         if (!rows || rows.length === 0) {
+            console.log('No rows to display, showing empty state');
             tbody.innerHTML = "";
             emptyState?.classList.remove("hidden");
             countSpan.textContent = "0";
             updateStats({ total: 0, target: 0, processed: 0 });
+            updatePagination([]);
             return;
         }
+        
+        console.log('Processing', rows.length, 'rows for pagination');
+        // Get paginated rows
+        const paginatedRows = updatePagination(rows);
+        console.log('Got', paginatedRows.length, 'paginated rows for display');
         
         emptyState?.classList.add("hidden");
         countSpan.textContent = `${rows.length}`;
         
-        // Calculate stats for hero section
+        // Calculate stats for hero and header chips (factual, from rows)
         const stats = {
             total: rows.length,
             target: rows.filter(r => r.appetite_status === 'TARGET').length,
-            processed: Math.round(rows.length * 0.85) // Simulate processing rate
+            in: rows.filter(r => r.appetite_status === 'IN').length,
+            out: rows.filter(r => r.appetite_status === 'OUT').length,
         };
+        // Consider "processed" as items that are Target or In-Appetite (triaged for action)
+        stats.processed = stats.target + stats.in;
+        console.log('Calculated stats:', stats);
         updateStats(stats);
+        updateHeaderChips(stats);
         
-        tbody.innerHTML = rows.map((r) => {
+        tbody.innerHTML = paginatedRows.map((r) => {
             const appetiteClass = r.appetite_status === 'TARGET' ? 'target-row' : 
                                 r.appetite_status === 'IN' ? 'in-row' : 'out-row';
             
@@ -514,20 +626,20 @@
                     <td class="td py-4 px-4">
                         ${appetiteBadge}
                     </td>
-                    <td class="td py-4 px-4">
-                        <div class="font-semibold text-white">${r.account_name || "—"}</div>
-                        <div class="text-xs opacity-75">${r.line_of_business || "—"}</div>
+                    <td class="td py-4 px-4 col-account" title="${(r.account_name || '').replace(/"/g,'&quot;')}">
+                        <div class="font-semibold text-white name">${r.account_name || "—"}</div>
+                        <div class="text-xs sub">${r.line_of_business || "—"}</div>
                     </td>
                     <td class="td py-4 px-4">
                         <span class="chip">${r.primary_risk_state || "—"}</span>
                     </td>
-                    <td class="td py-4 px-4">
-                        <div class="font-semibold text-emerald-300">$${Math.round(r.total_premium || 0).toLocaleString()}</div>
+                    <td class="td py-4 px-4 text-right tabular-nums">
+                        <div class="font-semibold text-emerald-300">${fmtMoneyShort(r.total_premium)}</div>
                     </td>
-                    <td class="td py-4 px-4">
-                        <div class="font-semibold">$${Math.round(r.tiv || 0).toLocaleString()}</div>
+                    <td class="td py-4 px-4 text-right tabular-nums">
+                        <div class="font-semibold">${fmtMoneyShort(r.tiv)}</div>
                     </td>
-                    <td class="td py-4 px-4">
+                    <td class="td py-4 px-4 text-right tabular-nums">
                         <div class="font-semibold text-purple-300">${winnabilityPercent}%</div>
                     </td>
                     <td class="td py-4 px-4">
@@ -543,6 +655,200 @@
         // Setup bulk selection handlers
         setupBulkSelection();
         updateLastUpdated();
+    }
+
+    function updateHeaderChips(stats){
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val ?? '—'); };
+        set('stat_total', stats.total ?? '—');
+        set('stat_target', stats.target ?? '—');
+        set('stat_in', stats.in ?? '—');
+        set('stat_out', stats.out ?? '—');
+    }
+
+    // Pagination functions
+    function updatePagination(filteredRows) {
+        console.log('updatePagination called with', filteredRows.length, 'items');
+        TOTAL_ITEMS = filteredRows.length;
+        const totalPages = Math.ceil(TOTAL_ITEMS / PAGE_SIZE);
+        console.log('Total pages:', totalPages, 'Current page:', CURRENT_PAGE, 'Page size:', PAGE_SIZE);
+        
+        // Update pagination info
+        const start = Math.min((CURRENT_PAGE - 1) * PAGE_SIZE + 1, TOTAL_ITEMS);
+        const end = Math.min(CURRENT_PAGE * PAGE_SIZE, TOTAL_ITEMS);
+        
+        const pageStartEl = document.getElementById('page-start');
+        const pageEndEl = document.getElementById('page-end');
+        const totalCountEl = document.getElementById('total-count');
+        
+        if (pageStartEl) pageStartEl.textContent = TOTAL_ITEMS > 0 ? start : 0;
+        if (pageEndEl) pageEndEl.textContent = end;
+        if (totalCountEl) totalCountEl.textContent = TOTAL_ITEMS;
+        
+        console.log('Updated pagination display:', start, '-', end, 'of', TOTAL_ITEMS);
+        
+        // Update pagination buttons
+        const firstBtn = document.getElementById('first-page');
+        const prevBtn = document.getElementById('prev-page');
+        const nextBtn = document.getElementById('next-page');
+        const lastBtn = document.getElementById('last-page');
+        
+        if (firstBtn) firstBtn.disabled = CURRENT_PAGE <= 1;
+        if (prevBtn) prevBtn.disabled = CURRENT_PAGE <= 1;
+        if (nextBtn) nextBtn.disabled = CURRENT_PAGE >= totalPages;
+        if (lastBtn) lastBtn.disabled = CURRENT_PAGE >= totalPages;
+        
+        // Update pagination numbers
+        updatePaginationNumbers(totalPages);
+        
+        // Return paginated rows
+        const startIndex = (CURRENT_PAGE - 1) * PAGE_SIZE;
+        const endIndex = startIndex + PAGE_SIZE;
+        const paginatedRows = filteredRows.slice(startIndex, endIndex);
+        console.log('Returning', paginatedRows.length, 'paginated rows');
+        return paginatedRows;
+    }
+    
+    function updatePaginationNumbers(totalPages) {
+        const paginationNumbers = document.getElementById('pagination-numbers');
+        if (!paginationNumbers) return;
+        
+        let numbersHtml = '';
+        const startPage = Math.max(1, CURRENT_PAGE - 2);
+        const endPage = Math.min(totalPages, CURRENT_PAGE + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === CURRENT_PAGE;
+            numbersHtml += `<button class="pagination-number ${isActive ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        }
+        
+        paginationNumbers.innerHTML = numbersHtml;
+    }
+    
+    function goToPage(page) {
+        console.log('goToPage called with page:', page);
+        CURRENT_PAGE = page;
+        applyFiltersAndRender();
+    }
+    
+    function goToFirstPage() {
+        console.log('goToFirstPage called');
+        CURRENT_PAGE = 1;
+        applyFiltersAndRender();
+    }
+    
+    function goToLastPage() {
+        console.log('goToLastPage called');
+        const totalPages = Math.ceil(TOTAL_ITEMS / PAGE_SIZE);
+        CURRENT_PAGE = totalPages > 0 ? totalPages : 1;
+        applyFiltersAndRender();
+    }
+    
+    function goToPrevPage() {
+        console.log('goToPrevPage called, current page:', CURRENT_PAGE);
+        if (CURRENT_PAGE > 1) {
+            CURRENT_PAGE--;
+            applyFiltersAndRender();
+        }
+    }
+    
+    function goToNextPage() {
+        console.log('goToNextPage called, current page:', CURRENT_PAGE);
+        const totalPages = Math.ceil(TOTAL_ITEMS / PAGE_SIZE);
+        if (CURRENT_PAGE < totalPages) {
+            CURRENT_PAGE++;
+            applyFiltersAndRender();
+        }
+    }
+
+    // Helper function to apply filters and render
+    function applyFiltersAndRender() {
+        console.log('applyFiltersAndRender called');
+        const filteredData = applyClientSideFilters(ALL_SUBMISSIONS);
+        renderTable(filteredData);
+    }
+
+    // Client-side filtering function for pagination
+    function applyClientSideFilters(submissions) {
+        console.log('applyClientSideFilters called with', submissions.length, 'submissions');
+        
+        const state = document.getElementById("f_state")?.value.trim().toLowerCase() || "";
+        const status = document.getElementById("f_status")?.value || "";
+        const minPremium = parseFloat(document.getElementById("f_min")?.value) || 0;
+        const maxPremium = parseFloat(document.getElementById("f_max")?.value) || Infinity;
+        const query = document.getElementById("f_q")?.value.trim().toLowerCase() || "";
+        
+        let filtered = submissions.filter(submission => {
+            // State filter
+            if (state && !submission.primary_risk_state?.toLowerCase().includes(state)) {
+                return false;
+            }
+            
+            // Status filter
+            if (status && submission.appetite_status !== status) {
+                return false;
+            }
+            
+            // Premium range filter
+            const premium = parseFloat(submission.total_premium) || 0;
+            if (premium < minPremium || premium > maxPremium) {
+                return false;
+            }
+            
+            // Search query filter
+            if (query) {
+                const accountName = submission.account_name?.toLowerCase() || "";
+                if (!accountName.includes(query)) {
+                    return false;
+                }
+            }
+            
+            // Handle preset-specific filters
+            if (currentPreset === 'new-business') {
+                if (submission.renewal_or_new_business !== 'NEW_BUSINESS') {
+                    return false;
+                }
+            }
+            
+            if (currentPreset === 'recent') {
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const submissionDate = new Date(submission.created_at);
+                if (submissionDate < sevenDaysAgo) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        // Apply sorting
+        if (SORT_BY) {
+            filtered.sort((a, b) => {
+                let aVal = a[SORT_BY];
+                let bVal = b[SORT_BY];
+                
+                // Handle numeric values
+                if (typeof aVal === 'string' && !isNaN(parseFloat(aVal))) {
+                    aVal = parseFloat(aVal);
+                }
+                if (typeof bVal === 'string' && !isNaN(parseFloat(bVal))) {
+                    bVal = parseFloat(bVal);
+                }
+                
+                // Handle string comparison
+                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                
+                let result = 0;
+                if (aVal < bVal) result = -1;
+                else if (aVal > bVal) result = 1;
+                
+                return SORT_DIR === 'desc' ? -result : result;
+            });
+        }
+        
+        console.log('Filtered to', filtered.length, 'submissions');
+        return filtered;
     }
 
     // Navigation handler with better UX
@@ -572,19 +878,25 @@
     // Update the visual pipeline status bar
     function updatePipelineStatus(stats) {
         if (!stats.total) return;
-        
         const targetPercent = Math.round((stats.target / stats.total) * 100);
-        const inPercent = Math.round(((stats.total - stats.target) * 0.6 / stats.total) * 100);
-        const outPercent = 100 - targetPercent - inPercent;
+        const inPercent = Math.round((stats.in / stats.total) * 100);
+        // Ensure the three segments sum to 100 by assigning remainder to OUT
+        let outPercent = 100 - targetPercent - inPercent;
+        if (outPercent < 0) outPercent = 0; // guard
         
-        document.querySelector('.status-segment.target').style.width = `${targetPercent}%`;
-        document.querySelector('.status-segment.in').style.width = `${inPercent}%`;
-        document.querySelector('.status-segment.out').style.width = `${outPercent}%`;
+        const tgtEl = document.querySelector('.status-segment.target');
+        const inEl = document.querySelector('.status-segment.in');
+        const outEl = document.querySelector('.status-segment.out');
+        if (tgtEl) tgtEl.style.width = `${targetPercent}%`;
+        if (inEl) inEl.style.width = `${inPercent}%`;
+        if (outEl) outEl.style.width = `${outPercent}%`;
         
-        // Update legend
-        document.querySelector('.legend-item.target').textContent = `🎯 Target (${targetPercent}%)`;
-        document.querySelector('.legend-item.in').textContent = `✅ In-Appetite (${inPercent}%)`;
-        document.querySelector('.legend-item.out').textContent = `❌ Out-of-Appetite (${outPercent}%)`;
+        const liTarget = document.querySelector('.legend-item.target');
+        const liIn = document.querySelector('.legend-item.in');
+        const liOut = document.querySelector('.legend-item.out');
+        if (liTarget) liTarget.textContent = `🎯 Target (${targetPercent}%)`;
+        if (liIn) liIn.textContent = `✅ In-Appetite (${inPercent}%)`;
+        if (liOut) liOut.textContent = `❌ Out-of-Appetite (${outPercent}%)`;
     }
 
     // Bulk selection functionality
@@ -638,59 +950,106 @@
 
     // Filter presets for common underwriter workflows
     function applyPreset(preset) {
+        console.log('applyPreset called with preset:', preset);
         currentPreset = preset;
         
         // Update active preset button
         document.querySelectorAll('.filter-preset').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.filter-preset-card').forEach(btn => btn.classList.remove('active'));
         const presetBtn = document.querySelector(`[data-preset="${preset}"]`);
         if (presetBtn) presetBtn.classList.add('active');
         
-        const params = { sort_by: SORT_BY, sort_dir: SORT_DIR, mode: getActiveMode() };
+        // Clear existing form values
+        document.getElementById("f_state").value = "";
+        document.getElementById("f_status").value = "";
+        document.getElementById("f_min").value = "";
+        document.getElementById("f_max").value = "";
+        document.getElementById("f_q").value = "";
         
+        // Set form values based on preset
         switch(preset) {
             case 'targets':
-                params.status = 'TARGET';
+                document.getElementById("f_status").value = 'TARGET';
                 break;
             case 'in-appetite':
-                params.status = 'IN';
+                document.getElementById("f_status").value = 'IN';
                 break;
             case 'high-value':
-                params.min_premium = '100000';
+                document.getElementById("f_min").value = '100000';
                 break;
             case 'new-business':
-                params.renewal_or_new_business = 'NEW_BUSINESS';
+                // For new business, we'll need to add this filter to client-side filtering
                 break;
             case 'recent':
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                // For recent, we'll need to add this filter to client-side filtering
                 break;
             case 'all':
             default:
-                // No additional filters
+                // No additional filters - form is already cleared
                 break;
         }
         
-        load(params);
+        // Reset to first page
+        CURRENT_PAGE = 1;
+        
+        // If we have data, apply client-side filters, otherwise load from server
+        if (ALL_SUBMISSIONS.length > 0) {
+            console.log('Using existing data for preset filter');
+            applyFiltersAndRender();
+        } else {
+            console.log('Loading fresh data for preset filter');
+            const params = { mode: getActiveMode(), sort_by: SORT_BY, sort_dir: SORT_DIR };
+            
+            // Add preset-specific server-side filters
+            switch(preset) {
+                case 'targets':
+                    params.status = 'TARGET';
+                    break;
+                case 'in-appetite':
+                    params.status = 'IN';
+                    break;
+                case 'high-value':
+                    params.min_premium = '100000';
+                    break;
+                case 'new-business':
+                    params.renewal_or_new_business = 'NEW_BUSINESS';
+                    break;
+                case 'recent':
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                    break;
+            }
+            
+            load(params);
+        }
     }
 
     async function load(params = {}) {
+        console.log('load() called with params:', params);
         // Always include an explicit mode so sorting/filtering doesn't change the cohort
         if (!params.mode) params.mode = getActiveMode();
         const qs = new URLSearchParams(params).toString();
+        console.log('Fetching data with query string:', qs);
         const tbody = document.getElementById("tbody");
+        
+        // Reset to first page when loading new data
+        CURRENT_PAGE = 1;
         
         try {
             await withLoading(tbody, async () => {
                 const response = await fetchJSON("/api/classified_mode?" + qs);
+                console.log('Received response with', response.data?.length || 0, 'items');
                 const modeExpl = document.getElementById("sub_mode_expl");
                 if (modeExpl) {
                     modeExpl.textContent = response.mode_explanation || "";
                 }
                 ALL_SUBMISSIONS = response.data || [];
+                console.log('Updated ALL_SUBMISSIONS to', ALL_SUBMISSIONS.length, 'items');
                 renderTable(ALL_SUBMISSIONS);
             });
         } catch (error) {
+            console.error('Failed to load submissions:', error);
             toast("Failed to load submissions: " + error.message, "error");
         }
     }
@@ -704,6 +1063,21 @@
         // Reset mode to a stable default
         setActiveMode('balanced_growth');
         applyPreset('all');
+    }
+
+    // Create applyFilters function to work with pagination
+    function applyFilters() {
+        const params = {
+            state: document.getElementById("f_state")?.value || "",
+            status: document.getElementById("f_status")?.value || "",
+            min_premium: document.getElementById("f_min")?.value || "",
+            max_premium: document.getElementById("f_max")?.value || "",
+            q: document.getElementById("f_q")?.value || "",
+            mode: getActiveMode(),
+            sort_by: SORT_BY,
+            sort_dir: SORT_DIR,
+        };
+        load(params);
     }
 
     function updateLastUpdated() {
@@ -728,17 +1102,9 @@
         const applyBtn = document.getElementById("btn_apply");
         if (applyBtn) {
             applyBtn.onclick = () => {
-                const params = {
-                    state: document.getElementById("f_state")?.value || "",
-                    status: document.getElementById("f_status")?.value || "",
-                    min_premium: document.getElementById("f_min")?.value || "",
-                    max_premium: document.getElementById("f_max")?.value || "",
-                    q: document.getElementById("f_q")?.value || "",
-                    mode: getActiveMode(),
-                    sort_by: SORT_BY,
-                    sort_dir: SORT_DIR,
-                };
-                load(params);
+                console.log('Apply filters button clicked');
+                CURRENT_PAGE = 1; // Reset to first page when applying filters
+                applyFiltersAndRender();
             };
         }
 
@@ -765,6 +1131,36 @@
                 toast('Export functionality will be available soon', 'info');
             };
         }
+
+        // Pagination event handlers (sync top and bottom page-size controls)
+        const pageSizeBottom = document.getElementById("page-size");
+        const pageSizeTop = document.getElementById("page-size-top");
+        console.log('Pagination elements found - Bottom:', !!pageSizeBottom, 'Top:', !!pageSizeTop);
+        
+        function onPageSize(val){
+            console.log('onPageSize called with value:', val);
+            PAGE_SIZE = parseInt(val);
+            CURRENT_PAGE = 1;
+            console.log('Updated PAGE_SIZE to:', PAGE_SIZE, 'Reset CURRENT_PAGE to:', CURRENT_PAGE);
+            if (pageSizeBottom && pageSizeBottom.value !== String(val)) pageSizeBottom.value = String(val);
+            if (pageSizeTop && pageSizeTop.value !== String(val)) pageSizeTop.value = String(val);
+            console.log('Calling applyFiltersAndRender');
+            applyFiltersAndRender();
+        }
+        if (pageSizeBottom) pageSizeBottom.addEventListener('change', (e)=> onPageSize(e.target.value));
+        if (pageSizeTop) pageSizeTop.addEventListener('change', (e)=> onPageSize(e.target.value));
+
+        const firstPageBtn = document.getElementById("first-page");
+        if (firstPageBtn) firstPageBtn.onclick = goToFirstPage;
+
+        const prevPageBtn = document.getElementById("prev-page");
+        if (prevPageBtn) prevPageBtn.onclick = goToPrevPage;
+
+        const nextPageBtn = document.getElementById("next-page");
+        if (nextPageBtn) nextPageBtn.onclick = goToNextPage;
+
+        const lastPageBtn = document.getElementById("last-page");
+        if (lastPageBtn) lastPageBtn.onclick = goToLastPage;
 
         // NLQ handler
         const nlqBtn = document.getElementById("btn_nlq");
@@ -1152,7 +1548,10 @@
     populateModes()
         .then(() => {
             updateSortHeaders();
-            apply();
+            // Load initial data instead of just applying filters
+            load({ mode: getActiveMode() }).catch((err) =>
+                toast("Initial load failed: " + err.message, "error")
+            );
         })
         .catch(() => {
             updateSortHeaders();
