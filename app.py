@@ -52,6 +52,16 @@ def dateformat(value, format='%b %d, %Y'):
     
     return '—'
 
+# Custom Jinja2 filter for comma formatting of large numbers
+@app.template_filter('commafy')
+def commafy(value, decimals=0):
+    """Format a number with thousands separators."""
+    try:
+        fmt = f"{float(value):,.{decimals}f}"
+        return fmt
+    except (TypeError, ValueError):
+        return value
+
 FEDERATO_TOKEN = os.environ.get("FEDERATO_TOKEN")
 CLIENT_ID = os.environ.get("FEDERATO_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("FEDERATO_CLIENT_SECRET")
@@ -725,10 +735,28 @@ def apiTargetAccounts():
         per_page = limit if limit is not None else 20
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
-    
-    # Apply filters
+    mode = request.args.get("mode")
+
+    # Start with full dataset
     d = df.copy()
-    
+
+    # If a mode is specified, apply mode-specific filters and scoring
+    if mode and mode in MODES:
+        preset = MODES[mode]
+        filters = preset.get("filters", {})
+        weights = preset.get("weights", {})
+        d = apply_hard_filters(d, filters)
+        scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+        rows = []
+        for r in d.to_dict(orient="records"):
+            stat, reasons, s, pscore = classify_for_mode_row(r, weights, filters, scounts)
+            r["appetite_status"] = stat
+            r["appetite_reasons"] = reasons
+            r["priority_score"] = float(pscore) * 10.0  # scale to 0-10 for consistency
+            rows.append(r)
+        d = pd.DataFrame(rows)
+
+    # Apply UI filters
     if state:
         d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
     if status:
@@ -743,7 +771,7 @@ def apiTargetAccounts():
     
     # Focus on higher-priority submissions for review
     d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
-    
+
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
     if sort_by in d.columns:
@@ -1325,11 +1353,25 @@ def api_classified_mode():
     else:
         rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
 
+    # Build summary stats for UI metrics
+    status_counts = Counter([r.get("appetite_status") for r in rows])
+    premiums = [r.get("total_premium") for r in rows if r.get("total_premium") is not None]
+    wins = [r.get("winnability") for r in rows if r.get("winnability") is not None]
+    summary = {
+        "total": len(rows),
+        "target": status_counts.get("TARGET", 0),
+        "in": status_counts.get("IN", 0),
+        "out": status_counts.get("OUT", 0),
+        "avg_premium": float(np.mean(premiums)) if premiums else 0.0,
+        "avg_win": float(np.mean(wins)) if wins else 0.0,
+    }
+
     return jsonify({
         "count": len(rows),
         "data": rows,
         "mode": mode,
         "mode_explanation": mode_explanation,
+        "summary": summary,
     })
 
 
