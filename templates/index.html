@@ -90,6 +90,11 @@
         document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
         document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
         document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
+        // Also refresh quick-action counters if present
+        try {
+          const tEl = document.getElementById('qa_targets_count');
+          if (tEl && typeof metrics.targets === 'number') tEl.textContent = String(metrics.targets);
+        } catch(_){}
       }
       
       function simulateActivityFeed() {
@@ -233,22 +238,22 @@
         <button class="action-button hover-lift" onclick="window.location.href='/submissions?status=TARGET'">
             <div class="action-icon">🎯</div>
             <div class="action-label">Review Targets</div>
-            <div class="action-count">{{ tgt_ct }}</div>
+            <div class="action-count" id="qa_targets_count">{{ tgt_ct }}</div>
         </button>
         <button class="action-button hover-lift" onclick="exportOpportunities()">
             <div class="action-icon">📊</div>
             <div class="action-label">Export Data</div>
-            <div class="action-count">CSV/Excel</div>
+            <div class="action-count" id="qa_export_count">CSV/Excel</div>
         </button>
         <button class="action-button hover-lift" onclick="showBulkActions()">
             <div class="action-icon">⚡</div>
             <div class="action-label">Bulk Actions</div>
-            <div class="action-count">Multi-edit</div>
+            <div class="action-count" id="qa_bulk_count">Multi-edit</div>
         </button>
         <button class="action-button hover-lift" onclick="showAnalytics()">
             <div class="action-icon">📈</div>
             <div class="action-label">Analytics</div>
-            <div class="action-count">Deep dive</div>
+            <div class="action-count" id="qa_analytics_count">Deep dive</div>
         </button>
         <button class="action-button hover-lift" onclick="openCommandPalette()">
             <div class="action-icon">⌘</div>
@@ -348,10 +353,10 @@
             
             <div class="workload-filters">
                 <div class="filter-chips">
-                    <button class="filter-chip active" data-filter="all">All</button>
-                    <button class="filter-chip" data-filter="urgent">Urgent</button>
-                    <button class="filter-chip" data-filter="due-today">Due Today</button>
-                    <button class="filter-chip" data-filter="high-value">High Value</button>
+                    <button class="filter-chip active" id="chip_all" data-filter="all">All</button>
+                    <button class="filter-chip" id="chip_urgent" data-filter="urgent">Urgent</button>
+                    <button class="filter-chip" id="chip_due" data-filter="due-today">Due Today</button>
+                    <button class="filter-chip" id="chip_high" data-filter="high-value">High Value</button>
                 </div>
                 <div class="sort-options">
                     <div class="sort-with-info">
@@ -931,7 +936,8 @@
                 page: page,
                 per_page: PRIORITY_ACCOUNTS_PAGINATION.per_page,
                 sort_by: PRIORITY_ACCOUNTS_FILTERS.sort_by,
-                sort_dir: PRIORITY_ACCOUNTS_FILTERS.sort_dir
+                sort_dir: PRIORITY_ACCOUNTS_FILTERS.sort_dir,
+                mode: getActiveMode() // Include the current mode for consistency
             });
 
             // Add filters if they exist

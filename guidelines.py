@@ -69,11 +69,10 @@ def reasons_for_filters(r: Dict, filters: Dict) -> List[str]:
 
     if "loss_ratio_max" in filters:
         lr = r.get("loss_ratio")
-        if lr is None or (isinstance(lr, float) and np.isnan(lr)):
-            # If we require a max loss ratio, missing value should be flagged
-            reasons.append("Missing loss ratio for evaluation")
-        elif float(lr) > float(filters["loss_ratio_max"]):
-            reasons.append(f"Loss ratio {float(lr):.2f} exceeds max {filters['loss_ratio_max']:.2f}")
+        # Be more lenient with missing loss ratios - only flag if present and too high
+        if lr is not None and not (isinstance(lr, float) and np.isnan(lr)):
+            if float(lr) > float(filters["loss_ratio_max"]):
+                reasons.append(f"Loss ratio {float(lr):.2f} exceeds max {filters['loss_ratio_max']:.2f}")
 
     if "tiv_max" in filters:
         tiv = _safe_float(r.get("tiv"))
@@ -90,20 +89,19 @@ def reasons_for_filters(r: Dict, filters: Dict) -> List[str]:
 
     if "min_winnability" in filters:
         win = r.get("winnability")
-        if win is None or (isinstance(win, float) and np.isnan(win)):
-            reasons.append("Missing winnability for evaluation")
-        elif float(win) < float(filters["min_winnability"]):
-            reasons.append(
-                f"Winnability {float(win):.2f} below min {float(filters['min_winnability']):.2f}"
-            )
+        # Be more lenient with missing winnability - only flag if present and too low
+        if win is not None and not (isinstance(win, float) and np.isnan(win)):
+            if float(win) < float(filters["min_winnability"]):
+                reasons.append(
+                    f"Winnability {float(win):.2f} below min {float(filters['min_winnability']):.2f}"
+                )
 
     if "min_year" in filters:
         yr = r.get("building_year")
-        if yr is None or (isinstance(yr, float) and np.isnan(yr)):
-            # allow missing as acceptable only when rule intends to require a minimum
-            reasons.append("Missing building year for evaluation")
-        elif int(yr) < int(filters["min_year"]):
-            reasons.append(f"Oldest building {int(yr)} before {int(filters['min_year'])}")
+        # Be more lenient with missing building year - only flag if present and too old
+        if yr is not None and not (isinstance(yr, float) and np.isnan(yr)):
+            if int(yr) < int(filters["min_year"]):
+                reasons.append(f"Oldest building {int(yr)} before {int(filters['min_year'])}")
 
     if "fresh_days_max" in filters:
         fresh = _safe_float(r.get("fresh_days"))
@@ -131,13 +129,13 @@ def classify_for_mode_row(r: Dict, weights: Dict, filters: Dict, state_counts: D
         status = "OUT"
     else:
         comps = component_scores(r, weights)
-        # target if very strong score or strong components
-        if s >= 0.80 or (
-            comps["s_prem"] >= 0.9
-            and comps["s_win"] >= 0.6
-            and comps["s_con"] >= 1.0
-            and comps["s_year"] >= 0.6
-            and comps["s_tiv"] >= 0.6
+        # More generous TARGET criteria - relaxed thresholds for balanced growth
+        if s >= 0.65 or (  # Lowered from 0.80 to 0.65
+            comps["s_prem"] >= 0.7  # Lowered from 0.9 to 0.7
+            and comps["s_win"] >= 0.45  # Lowered from 0.6 to 0.45
+            and comps["s_con"] >= 0.7  # Lowered from 1.0 to 0.7 (allows some flexibility)
+            and comps["s_year"] >= 0.4  # Lowered from 0.6 to 0.4
+            and comps["s_tiv"] >= 0.4  # Lowered from 0.6 to 0.4
         ):
             status = "TARGET"
         else:

@@ -968,23 +968,89 @@
                     showTypingIndicator();
                     
                     try {
-                        // Call AI API (using existing NLQ endpoint as example)
-                        const response = await fetch('/api/nlq', {
+                        // Special case: "why was submission <id> ..." → call explain API
+                        const idMatch = message.match(/\b(?:submission|policy|id)\s*#?\s*(\d{1,10})\b/i);
+                        if (/\bwhy\b/i.test(message) && idMatch) {
+                            const pid = idMatch[1];
+                            const ex = await fetchJSON(`/api/explain/${pid}`, { method: 'POST' });
+                            removeTypingIndicator();
+                            addMessage(ex.explanation || 'No explanation available.');
+                            aiSend.disabled = false;
+                            return;
+                        }
+
+                        // 1) Ask Gemini to parse the NLQ into filters
+                        const nlqRes = await fetch('/api/nlq', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ q: message })
                         });
-                        
-                        const result = await response.json();
-                        
-                        removeTypingIndicator();
-                        
-                        if (result.ai_summary) {
-                            addMessage(result.ai_summary);
-                        } else {
-                            addMessage("I understand you're asking about: " + message + ". Let me help you with that!");
+
+                        const result = await nlqRes.json();
+
+                        // 2) If we got filters back, run them against /api/classified
+                        const f = result.filters || {};
+                        const params = new URLSearchParams();
+                        if (f.state) params.set('state', f.state);
+                        if (f.status) params.set('status', f.status);
+                        if (typeof f.min_premium === 'number') params.set('min_premium', String(f.min_premium));
+                        if (typeof f.max_premium === 'number') params.set('max_premium', String(f.max_premium));
+                        if (f.search) params.set('q', f.search);
+
+                        let classified = null;
+                        try {
+                            const url = '/api/classified' + (params.toString() ? ('?' + params.toString()) : '');
+                            classified = await fetchJSON(url);
+                        } catch (e) {
+                            // Non-fatal; we can still reply with Gemini summary
+                            console.warn('Classified fetch failed:', e);
                         }
-                        
+
+                        removeTypingIndicator();
+
+                        // Build a friendly answer
+                        const pieces = [];
+                        const parts = [];
+                        if (f.state) parts.push(`state = ${f.state}`);
+                        if (f.status) parts.push(`status = ${f.status}`);
+                        if (typeof f.min_premium === 'number') parts.push(`min premium = $${Number(f.min_premium).toLocaleString()}`);
+                        if (typeof f.max_premium === 'number') parts.push(`max premium = $${Number(f.max_premium).toLocaleString()}`);
+                        if (f.search) parts.push(`search = "${f.search}"`);
+                        const filterDesc = parts.length ? parts.join(', ') : 'no specific filters';
+
+                        if (classified && Array.isArray(classified.data)) {
+                            const count = classified.count ?? classified.data.length;
+                            if (count > 0) {
+                                pieces.push(`I found ${count} matching submissions (${filterDesc}).`);
+                                const top = classified.data.slice(0, 5);
+                                pieces.push('Top results:');
+                                for (const r of top) {
+                                    const name = r.account_name || 'Unknown Account';
+                                    const st = r.primary_risk_state || '—';
+                                    const stat = r.appetite_status || '—';
+                                    const prem = (r.total_premium != null) ? `$${Number(r.total_premium).toLocaleString()}` : '—';
+                                    pieces.push(`• ${name} (${st}) — ${stat}, Premium ${prem}`);
+                                }
+                            } else {
+                                pieces.push(`No submissions match those filters (${filterDesc}). Try broadening your criteria.`);
+                            }
+                        } else {
+                            // Fallback to Gemini summary only
+                            pieces.push(result.ai_summary || `Parsed your request into filters (${filterDesc}).`);
+                        }
+
+                        // Show AI activity widget (if present)
+                        try {
+                            const activity = `
+                                <div><strong>Gemini:</strong> ${result.ai_summary || 'NLQ parsed'}</div>
+                                <div><strong>Filters:</strong> ${filterDesc}</div>
+                                ${classified && typeof classified.count === 'number' ? `<div><strong>Matches:</strong> ${classified.count}</div>` : ''}
+                            `;
+                            window.showAiSummary?.(activity);
+                        } catch {}
+
+                        addMessage(pieces.join('<br>'));
+
                     } catch (error) {
                         removeTypingIndicator();
                         addMessage("Sorry, I'm having trouble connecting right now. Please try again in a moment.");

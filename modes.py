@@ -23,57 +23,65 @@ MODES = {
     }
   },
 
-  # Realistic, portfolio-friendly balance of value and risk
+  # Realistic, portfolio-friendly balance of value and risk (now extremely inclusive)
   "balanced_growth": {
     "filters": {
-      "lob_in": ["COMMERCIAL PROPERTY", "HABITATIONAL"],
-      "new_business_only": True,
-      "loss_ratio_max": 0.65,
-      "tiv_max": 150_000_000,
-      "premium_range": [100_000, 1_500_000],
-      "min_winnability": 0.50,
-      "min_year": 2000,
+      # Allow all LOBs
+      "lob_in": [
+        "COMMERCIAL PROPERTY", "HABITATIONAL", "GENERAL LIABILITY", "UMBRELLA", "INLAND MARINE", "AUTO", "CYBER", "WORKERS COMPENSATION"
+      ],
+      "new_business_only": False,
+      "loss_ratio_max": 1.5,     # Extremely loose
+      "tiv_max": 1_000_000_000,  # Extremely loose
+      "premium_range": [0, 100_000_000],  # Extremely loose
+      "min_winnability": 0.0,    # Allow all
+      "min_year": 1900,          # Allow all
       "good_construction_only": False
     },
     "weights": {
-      "w_prem": 0.25, "w_win": 0.25, "w_year": 0.15, "w_con": 0.15, "w_tiv": 0.10, "w_fresh": 0.10,
-      "premium_lo": 100_000, "premium_mid_lo": 250_000, "premium_mid_hi": 900_000, "premium_hi": 1_500_000,
-      "tiv_hi": 150_000_000
+      "w_prem": 0.15, "w_win": 0.15, "w_year": 0.10, "w_con": 0.10, "w_tiv": 0.10, "w_fresh": 0.40,
+      "premium_lo": 0, "premium_mid_lo": 100_000, "premium_mid_hi": 1_000_000, "premium_hi": 100_000_000,
+      "tiv_hi": 1_000_000_000
     }
   },
 
-  # Broad discovery; keep doors open but still rank with sensible priorities
+  # Broad discovery; keep doors open but still rank with sensible priorities (now most loose)
   "loose_fits": {
     "filters": {
-      # allow any LOB; LR cap generous
-      "loss_ratio_max": 0.85,
-      "tiv_max": 150_000_000,
-      "premium_range": [50_000, 1_500_000],
-      "min_winnability": 0.40,
-      "min_year": 1990,
+      "lob_in": [
+        "COMMERCIAL PROPERTY", "HABITATIONAL", "GENERAL LIABILITY", "UMBRELLA", "INLAND MARINE", "AUTO", "CYBER", "WORKERS COMPENSATION"
+      ],
+      "loss_ratio_max": 2.0,
+      "tiv_max": 2_000_000_000,
+      "premium_range": [0, 1_000_000_000],
+      "min_winnability": 0.0,
+      "min_year": 1800,
       "good_construction_only": False
     },
     "weights": {
-      "w_prem": 0.20, "w_win": 0.30, "w_year": 0.10, "w_con": 0.10, "w_tiv": 0.10, "w_fresh": 0.20,
-      "premium_lo": 50_000, "premium_mid_lo": 150_000, "premium_mid_hi": 600_000, "premium_hi": 1_500_000,
-      "tiv_hi": 150_000_000
+      "w_prem": 0.10, "w_win": 0.10, "w_year": 0.10, "w_con": 0.10, "w_tiv": 0.10, "w_fresh": 0.50,
+      "premium_lo": 0, "premium_mid_lo": 100_000, "premium_mid_hi": 1_000_000, "premium_hi": 1_000_000_000,
+      "tiv_hi": 2_000_000_000
     }
   },
 
-  # Smaller tickets, higher tolerance, move fast on potential turnarounds
+  # Turnaround bets (now most loose)
   "turnaround_bets": {
     "filters": {
-      "loss_ratio_max": 1.00,                 # allow up to break-even LR
-      "tiv_max": 75_000_000,
-      "premium_range": [50_000, 300_000],     # smaller premium band
-      "min_winnability": 0.45,
-      "min_year": 1995,
+      "lob_in": [
+        "COMMERCIAL PROPERTY", "HABITATIONAL", "GENERAL LIABILITY", "UMBRELLA", "INLAND MARINE", "AUTO", "CYBER", "WORKERS COMPENSATION"
+      ],
+      "loss_ratio_max": 2.0,
+      "tiv_max": 2_000_000_000,
+      "premium_range": [0, 1_000_000_000],
+      "min_winnability": 0.0,
+      "min_year": 1800,
       "good_construction_only": False
     },
     "weights": {
-      "w_prem": 0.15, "w_win": 0.25, "w_year": 0.10, "w_con": 0.10, "w_tiv": 0.10, "w_fresh": 0.30,  # speed emphasis
-      "premium_lo": 50_000, "premium_mid_lo": 120_000, "premium_mid_hi": 250_000, "premium_hi": 300_000,
-      "tiv_hi": 75_000_000
+      "w_prem": 0.10, "w_win": 0.10, "w_year": 0.10, "w_con": 0.10, "w_tiv": 0.10, "w_fresh": 0.50,
+      "premium_lo": 0, "premium_mid_lo": 100_000, "premium_mid_hi": 1_000_000, "premium_hi": 1_000_000_000,
+      "tiv_hi": 2_000_000_000
     }
-  }
+  },
 }

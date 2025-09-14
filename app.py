@@ -397,7 +397,7 @@ def classifyDataFrame(df):
 
 def mark_target_opportunities_df(frame):
     """Return a copy of frame with boolean column 'target_opportunity' set True
-    for the top ceil(30%) rows among in-appetite (TARGET/IN) by priority_score.
+    for the top ceil(40%) rows among in-appetite (TARGET/IN) by priority_score.
 
     This operates on the provided frame only; callers should pass a filtered
     subset when computing list-specific target opportunities.
@@ -412,7 +412,7 @@ def mark_target_opportunities_df(frame):
         in_df = d[in_mask]
         n = len(in_df)
         if n > 0:
-            top_n = int(np.ceil(0.30 * n))
+            top_n = int(np.ceil(0.40 * n))  # Increased from 30% to 40%
             # Sort by priority_score descending; NaNs go last
             in_sorted = in_df.sort_values(["priority_score"], ascending=[False])
             ids = in_sorted.head(max(1, top_n))["id"].tolist()
@@ -706,10 +706,65 @@ def apiClassified():
 
 @app.route("/api/priority-accounts")
 def apiPriorityAccounts():
-    """API endpoint for Priority Account Review - returns top priority submissions"""
-    df, _ = refreshCache()
+    """API endpoint for Priority Account Review - returns top priority submissions
+    Uses the same mode-aware classification as the main dashboard for consistency"""
     
-    # Get query parameters
+    # Get the current active mode to ensure consistency with dashboard
+    from flask import g
+    
+    # Use same logic as main dashboard
+    mode = request.args.get("mode") or "balanced_growth"
+    df = load_df("data.json")
+    if df.empty:
+        return jsonify({"data": [], "pagination": {"page": 1, "per_page": 20, "total_count": 0, "total_pages": 0, "has_next": False, "has_prev": False}})
+
+    # Map legacy/new names → percentile kind (same as main dashboard)
+    name_map = {
+        "unicorn_hunting": "unicorn",
+        "balanced_growth": "balanced", 
+        "loose_fits": "loose",
+        "turnaround_bets": "turnaround",
+        "unicorn": "unicorn",
+        "balanced": "balanced",
+        "loose": "loose", 
+        "turnaround": "turnaround",
+    }
+
+    # Use the same mode classification logic as the main dashboard
+    if mode in MODES:
+        preset = MODES[mode]
+        filters = (preset or {}).get("filters", {})
+        weights = (preset or {}).get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        d = apply_hard_filters(df, filters)
+        mode_explanation = f"Preset mode — {mode.replace('_',' ').title()}"
+    else:
+        # Fall back to percentile-driven dynamic filters
+        kind = name_map.get(mode, "balanced")
+        overrides = {}
+        for k in ("top_pct", "max_lr_pct", "min_win_pct", "max_tiv_pct", "fresh_pct"):
+            if k in request.args:
+                overrides[k] = request.args.get(k)
+        filters, _summary = build_percentile_filters(df, kind=kind, overrides=overrides)
+        d = apply_hard_filters(df, filters)
+        weights = MODES.get("balanced_growth", {}).get("weights", {})
+        mode_explanation = f"{kind.title()} mode — dynamic percentile-based filters"
+
+    # Classify all rows using the same logic as main dashboard
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+    classified_rows = []
+    
+    for r in d.to_dict(orient="records"):
+        status, reasons, s, pscore = classify_for_mode_row(r, weights, filters, scounts)
+        r["appetite_status"] = status
+        r["appetite_reasons"] = reasons if isinstance(reasons, list) else []
+        r["mode_score"] = s
+        r["priority_score"] = pscore
+        classified_rows.append(r)
+    
+    # Convert back to DataFrame for filtering
+    d = pd.DataFrame(classified_rows)
+    
+    # Get query parameters for additional filtering
     state = request.args.get("state")
     status = request.args.get("status")
     min_p = request.args.get("min_premium", type=float)
@@ -720,9 +775,7 @@ def apiPriorityAccounts():
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
     
-    # Apply filters
-    d = df.copy()
-    
+    # Apply user filters on top of mode classification
     if state:
         d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
     if status:
@@ -735,12 +788,12 @@ def apiPriorityAccounts():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
     
-    # Focus on higher-priority submissions for priority review
-    d = d[(d["priority_score"] >= 1.0)]
+    # Focus on in-appetite submissions (TARGET and IN) for priority review
+    d = d[d["appetite_status"].isin(["TARGET", "IN"])]
 
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
-    # Recompute list-local target opportunities and sort them first, then by requested sort
+    # Mark target opportunities and sort them first
     try:
         d = mark_target_opportunities_df(d)
         d = d.copy()
@@ -750,7 +803,8 @@ def apiPriorityAccounts():
         else:
             d = d.sort_values(["__top", "priority_score"], ascending=[False, False])
         d = d.drop(columns=["__top"])
-    except Exception:
+    except Exception as e:
+        print(f"Error in target opportunity sorting: {e}")
         if sort_by in d.columns:
             d = d.sort_values([sort_by], ascending=ascending)
         else:
