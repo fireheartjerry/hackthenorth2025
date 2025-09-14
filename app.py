@@ -200,122 +200,233 @@ def get_role():
 
 
 def classifyRow(row):
+    """
+    Enhanced appetite classification and priority scoring system.
+    
+    Returns (status, reasons, appetite_score, priority_score)
+    
+    Status Logic:
+    - TARGET: Premium submissions in target states with optimal characteristics
+    - IN: Acceptable submissions that meet core appetite requirements  
+    - OUT: Submissions that fail critical requirements
+    
+    Priority Score Range: 0.0 - 10.0
+    - Combines appetite alignment (40%), winnability (30%), premium size (20%), and freshness (10%)
+    - Higher scores indicate higher priority for underwriter attention
+    """
     reasons = []
-    status = "IN"
-    score = 0
-
+    base_score = 5.0  # Start at middle score
+    multipliers = []
+    
+    # === CRITICAL REQUIREMENTS (Automatic OUT if failed) ===
+    critical_failures = []
+    
+    # Line of Business - Must be Commercial Property
     lob = str(row.get("line_of_business", "") or "").strip().upper()
     if lob != "COMMERCIAL PROPERTY":
-        reasons.append("Line of Business not acceptable")
-
+        critical_failures.append("Line of Business not Commercial Property")
+    
+    # Submission Type - Prefer New Business
     sub_type = str(row.get("renewal_or_new_business", "") or "").strip().upper()
     if sub_type == "RENEWAL":
-        reasons.append("Renewal business not acceptable")
-
+        critical_failures.append("Renewal business (prefer new business)")
+        base_score -= 2.0  # Still allow but penalize
+    elif sub_type == "NEW_BUSINESS":
+        base_score += 1.0  # Bonus for new business
+        reasons.append("New business (preferred)")
+        
+    # If critical failures, mark as OUT
+    if critical_failures:
+        return "OUT", critical_failures, 1.0, max(0.1, base_score * 0.2)
+    
+    # === STATE SCORING ===
     st = str(row.get("primary_risk_state", "") or "").strip().upper()
-    if st not in ACCEPT_STATES:
-        reasons.append("Primary risk state not acceptable")
-
+    if st in TARGET_STATES:
+        base_score += 2.0
+        multipliers.append(1.2)
+        reasons.append(f"Target state: {st}")
+    elif st in ACCEPT_STATES:
+        base_score += 1.0
+        reasons.append(f"Acceptable state: {st}")
+    else:
+        base_score -= 1.5
+        reasons.append(f"Non-preferred state: {st}")
+    
+    # === TIV SCORING ===
     tiv = row.get("tiv", np.nan)
     if pd.notna(tiv):
-        if tiv > 150_000_000:
-            reasons.append("TIV exceeds 150M cap")
-        elif 50_000_000 <= tiv <= 100_000_000:
-            score += 2
-        elif tiv <= 150_000_000:
-            score += 1
-
+        if 50_000_000 <= tiv <= 100_000_000:  # Target range
+            base_score += 2.0
+            multipliers.append(1.15)
+            reasons.append("TIV in target range (50M-100M)")
+        elif tiv <= 150_000_000:  # Acceptable range
+            base_score += 1.0
+            reasons.append("TIV within acceptable limits")
+        elif tiv > 150_000_000:  # Over limit
+            base_score -= 2.0
+            reasons.append("TIV exceeds 150M limit")
+    else:
+        base_score -= 0.5
+        reasons.append("TIV data missing")
+    
+    # === PREMIUM SCORING ===
     premium = row.get("total_premium", np.nan)
+    premium_multiplier = 1.0
     if pd.notna(premium):
-        if premium < 50_000 or premium > 175_000:
-            reasons.append("Premium outside acceptable range")
-        elif 75_000 <= premium <= 100_000:
-            score += 2
-        else:
-            score += 1
-
-    # Building age/year checks per guidelines:
-    # - Newer than 2010 => Target
-    # - Newer than 1990 => Acceptable
-    # - Older than 1990 => Not acceptable
+        if 75_000 <= premium <= 100_000:  # Target range
+            base_score += 2.0
+            premium_multiplier = 1.3
+            reasons.append("Premium in target range (75K-100K)")
+        elif 50_000 <= premium <= 175_000:  # Acceptable range
+            base_score += 1.0
+            premium_multiplier = 1.1
+            reasons.append("Premium in acceptable range")
+        elif premium < 50_000:
+            base_score -= 1.0
+            reasons.append("Premium below minimum (50K)")
+        else:  # > 175K
+            base_score -= 1.0
+            reasons.append("Premium above preferred maximum")
+        
+        # Additional premium size bonus
+        if premium >= 1_000_000:
+            base_score += 1.5
+            premium_multiplier *= 1.2
+            reasons.append("High-value premium (1M+)")
+        elif premium >= 500_000:
+            base_score += 0.5
+            reasons.append("Substantial premium (500K+)")
+    else:
+        base_score -= 1.0
+        reasons.append("Premium data missing")
+    
+    # === BUILDING AGE SCORING ===
     age = row.get("building_age", np.nan)
     year = row.get("oldest_building", np.nan)
-    # Prefer year-based strict comparisons when available; otherwise derive from age
+    
     if pd.notna(year):
         try:
             y = int(float(year))
-            if y > 2010:
-                score += 2
-            elif y > 1990:
-                score += 1
-            else:
-                reasons.append("Building age older than 1990")
+            current_age = CURRENT_YEAR - y
+            if y > 2010:  # Less than ~14 years old
+                base_score += 2.0
+                multipliers.append(1.1)
+                reasons.append("Modern building (post-2010)")
+            elif y > 1990:  # Less than ~34 years old
+                base_score += 1.0
+                reasons.append("Acceptable building age (post-1990)")
+            else:  # Older than 34 years
+                base_score -= 1.5
+                reasons.append("Older building construction (pre-1990)")
         except Exception:
-            # Fallback to age logic if parsing fails
-            if pd.notna(age):
-                if age < (CURRENT_YEAR - 2010):
-                    score += 2
-                elif age <= (CURRENT_YEAR - 1990):
-                    score += 1
-                else:
-                    reasons.append("Building age older than 1990")
+            base_score -= 0.5
+            reasons.append("Building age data unclear")
+    elif pd.notna(age):
+        if age < 14:  # Equivalent to post-2010
+            base_score += 2.0
+            multipliers.append(1.1)
+            reasons.append("Modern building (< 14 years)")
+        elif age <= 34:  # Equivalent to post-1990
+            base_score += 1.0
+            reasons.append("Acceptable building age")
+        else:
+            base_score -= 1.5
+            reasons.append("Older building (> 34 years)")
     else:
-        if pd.notna(age):
-            if age < (CURRENT_YEAR - 2010):
-                score += 2
-            elif age <= (CURRENT_YEAR - 1990):
-                score += 1
-            else:
-                reasons.append("Building age older than 1990")
-
+        base_score -= 0.5
+        reasons.append("Building age unknown")
+    
+    # === CONSTRUCTION TYPE SCORING ===
     ctype = str(row.get("construction_type", "") or "").strip()
     if ctype in ACCEPT_CONSTRUCTION:
-        score += 1
+        base_score += 1.0
+        reasons.append(f"Preferred construction: {ctype}")
     else:
-        reasons.append("Construction type not acceptable")
-
+        base_score -= 0.5
+        reasons.append(f"Non-preferred construction type")
+    
+    # === LOSS HISTORY SCORING ===
     loss = row.get("loss_value", np.nan)
     if pd.notna(loss):
-        # exact match fix: >= 100_000 is Not Acceptable
-        if loss >= 100_000:
-            reasons.append("Loss value >= 100k")
-        else:
-            score += 1
-
-    if reasons:
-        status = "OUT"
+        if loss < 25_000:  # Very low losses
+            base_score += 1.5
+            multipliers.append(1.1)
+            reasons.append("Excellent loss history (< 25K)")
+        elif loss < 100_000:  # Acceptable losses
+            base_score += 0.5
+            reasons.append("Acceptable loss history (< 100K)")
+        else:  # High losses
+            base_score -= 2.0
+            reasons.append("Concerning loss history (≥ 100K)")
     else:
-        status = "IN"
-        if (
-            st in TARGET_STATES
-            and 75_000 <= (premium or 0) <= 100_000
-            and 50_000_000 <= (tiv or 0) <= 100_000_000
-            and (
-                (pd.notna(year) and float(year) > 2010)
-                or (pd.notna(age) and age < (CURRENT_YEAR - 2010))
-            )
-        ):
-            status = "TARGET"
-
+        # No loss data - assume neutral
+        reasons.append("Loss history unknown")
+    
+    # === WINNABILITY FACTOR ===
     w = row.get("winnability", np.nan)
     if pd.notna(w):
         if isinstance(w, (int, float)) and w > 1:
-            w = w / 100.0
+            w = w / 100.0  # Convert percentage to decimal
         w = max(0.0, min(1.0, float(w)))
+        
+        if w >= 0.8:  # 80%+ win probability
+            base_score += 1.5
+            multipliers.append(1.2)
+            reasons.append("Very high win probability (80%+)")
+        elif w >= 0.6:  # 60%+ win probability
+            base_score += 1.0
+            reasons.append("High win probability (60%+)")
+        elif w >= 0.4:  # 40%+ win probability
+            base_score += 0.5
+            reasons.append("Moderate win probability")
+        else:  # Low win probability
+            base_score -= 0.5
+            reasons.append("Lower win probability")
     else:
-        w = 0.5
-
-    appetite_score = score
-    priority_score = appetite_score * 0.6 + w * 0.4
-
-    try:
-        with open("scores_debug.txt", "a", encoding="utf-8") as f:
-            f.write(
-                f"id={row.get('id')}, status={status}, appetite_score={appetite_score}, priority_score={priority_score}, reasons={reasons}\n"
-            )
-    except Exception:
-        pass
-
+        w = 0.5  # Default assumption
+        reasons.append("Win probability unknown (assumed 50%)")
+    
+    # === CALCULATE FINAL SCORES ===
+    
+    # Apply multipliers to base score
+    appetite_score = base_score
+    for mult in multipliers:
+        appetite_score *= mult
+    
+    # Ensure appetite score is in reasonable range
+    appetite_score = max(1.0, min(10.0, appetite_score))
+    
+    # Calculate composite priority score
+    # 40% appetite alignment, 30% winnability, 20% premium size, 10% freshness
+    freshness_factor = 1.0  # Could be enhanced with submission date analysis
+    
+    priority_score = (
+        appetite_score * 0.4 +
+        (w * 10.0) * 0.3 +  # Scale winnability to 0-10 range
+        (min(premium / 200_000, 1.0) * 10.0 if pd.notna(premium) else 5.0) * 0.2 +  # Premium factor
+        freshness_factor * 10.0 * 0.1
+    )
+    
+    # Apply premium multiplier to final score
+    priority_score *= premium_multiplier
+    
+    # Ensure priority score is in 0-10 range
+    priority_score = max(0.1, min(10.0, priority_score))
+    
+    # === DETERMINE STATUS ===
+    severe_issues = [r for r in reasons if any(keyword in r.lower() for keyword in 
+                    ['exceeds', 'below minimum', 'above preferred maximum', 'concerning', 'non-preferred state'])]
+    
+    if len(severe_issues) >= 3 or appetite_score < 3.0:
+        status = "OUT"
+    elif (st in TARGET_STATES and 
+          appetite_score >= 7.0 and 
+          priority_score >= 7.0 and
+          len(severe_issues) == 0):
+        status = "TARGET"
+    else:
+        status = "IN"
+    
     return status, reasons, appetite_score, priority_score
 
 
@@ -596,6 +707,97 @@ def apiClassified():
         d = d[m.fillna(False)]
     d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
+
+
+@app.route("/api/priority-accounts")
+def apiPriorityAccounts():
+    """API endpoint for Priority Account Review - returns top priority submissions"""
+    df, _ = refreshCache()
+    
+    # Get query parameters
+    state = request.args.get("state")
+    status = request.args.get("status")
+    min_p = request.args.get("min_premium", type=float)
+    max_p = request.args.get("max_premium", type=float)
+    q = request.args.get("q")
+    page = request.args.get("page", default=1, type=int)
+    per_page = request.args.get("per_page", default=20, type=int)
+    sort_by = request.args.get("sort_by", default="priority_score")
+    sort_dir = request.args.get("sort_dir", default="desc")
+    
+    # Apply filters
+    d = df.copy()
+    
+    if state:
+        d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
+    if status:
+        d = d[d["appetite_status"] == status]
+    if min_p is not None:
+        d = d[d["total_premium"] >= min_p]
+    if max_p is not None:
+        d = d[d["total_premium"] <= max_p]
+    if q:
+        m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
+        d = d[m.fillna(False)]
+    
+    # Focus on higher-priority submissions for priority review
+    # Show submissions with priority_score >= 1.0 and preferably IN or TARGET status
+    d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
+    
+    # Apply sorting
+    ascending = sort_dir.lower() == "asc"
+    if sort_by in d.columns:
+        d = d.sort_values([sort_by], ascending=ascending)
+    else:
+        d = d.sort_values(["priority_score"], ascending=False)
+    
+    # Calculate pagination
+    total_count = len(d)
+    total_pages = (total_count + per_page - 1) // per_page
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    
+    # Get paginated data
+    paginated_data = d.iloc[start_idx:end_idx]
+    
+    # Convert to response format
+    response_data = []
+    for _, row in paginated_data.iterrows():
+        response_data.append({
+            "id": int(row["id"]),
+            "account_name": str(row["account_name"]),
+            "appetite_status": str(row["appetite_status"]),
+            "total_premium": float(row["total_premium"]),
+            "primary_risk_state": str(row["primary_risk_state"]),
+            "winnability": float(row["winnability"]) if pd.notna(row["winnability"]) else 0.0,
+            "priority_score": float(row["priority_score"]) if pd.notna(row["priority_score"]) else 0.0,
+            "tiv": float(row["tiv"]) if pd.notna(row["tiv"]) else 0.0,
+            "line_of_business": str(row["line_of_business"]) if pd.notna(row["line_of_business"]) else "",
+            "appetite_reasons": row.get("appetite_reasons", []) if isinstance(row.get("appetite_reasons"), list) else [],
+            "created_at": str(row["created_at"]) if pd.notna(row["created_at"]) else "",
+            "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else "",
+        })
+    
+    return jsonify({
+        "data": response_data,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
+        },
+        "filters": {
+            "state": state,
+            "status": status,
+            "min_premium": min_p,
+            "max_premium": max_p,
+            "search": q,
+            "sort_by": sort_by,
+            "sort_dir": sort_dir
+        }
+    })
 
 
 @app.route("/api/refresh", methods=["POST"]) 
