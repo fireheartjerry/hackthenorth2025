@@ -11,6 +11,7 @@ from utils_data import load_df
 from scoring import score_row
 from guidelines import classify_for_mode_row
 from modes import MODES
+from persona_store import load_store as persona_load_store, save_store as persona_save_store, list_personas as persona_list, add_persona as persona_add, get_persona as persona_get, set_active as persona_set_active, get_active as persona_get_active
 from ai_suggest import summarize_dataframe
 from persona_seed import seeds_from_answers
 from ai_constraints import propose_with_gemini
@@ -18,7 +19,6 @@ from gemini_test import explain_with_gemini, nlq_with_gemini
 from utils_json import df_records_to_builtin, to_builtin
 from percentile_modes import build_percentile_filters, summarize_percentiles
 from blend import blend_modes
-from chatbot import chatbot
 
 load_dotenv()
 
@@ -84,6 +84,32 @@ USE_LOCAL_DATA = os.environ.get("USE_LOCAL_DATA", "false").lower() == "true"
 
 CACHE_TTL = 300
 _cache_data = {"ts": 0, "df": None, "raw": None}
+
+# Persona registry (slugs loaded from personas.json). We mirror saved personas into MODES
+_PERSONA_INDEX = {}  # slug -> title
+
+def _load_personas_into_modes():
+    global _PERSONA_INDEX
+    store = persona_load_store()
+    items = store.get("items", {}) or {}
+    _PERSONA_INDEX = {slug: rec.get("title") or slug for slug, rec in items.items()}
+    # Mirror saved personas into MODES by their slug key
+    for slug, rec in items.items():
+        preset = rec.get("preset") or {}
+        if isinstance(preset, dict) and preset:
+            MODES[slug] = preset
+    # Set MODES["custom"] to active persona if present
+    active_slug = store.get("active")
+    if active_slug and active_slug in items:
+        active_preset = items[active_slug].get("preset")
+        if isinstance(active_preset, dict) and active_preset:
+            MODES["custom"] = active_preset
+
+# Load personas at startup
+try:
+    _load_personas_into_modes()
+except Exception:
+    pass
 
 ACCEPT_STATES = {"OH", "PA", "MD", "CO", "CA", "FL", "NC", "SC", "GA", "VA", "UT"}
 TARGET_STATES = {"OH", "PA", "MD", "CO", "CA", "FL"}
@@ -211,228 +237,139 @@ def get_role():
 
 def classifyRow(row):
     """
-    Enhanced appetite classification and priority scoring system.
+    Streamlined appetite classification and priority scoring.
     
     Returns (status, reasons, appetite_score, priority_score)
-    
-    Status Logic:
-    - TARGET: Premium submissions in target states with optimal characteristics
-    - IN: Acceptable submissions that meet core appetite requirements  
-    - OUT: Submissions that fail critical requirements
-    
-    Priority Score Range: 0.0 - 10.0
-    - Combines appetite alignment (40%), winnability (30%), premium size (20%), and freshness (10%)
-    - Higher scores indicate higher priority for underwriter attention
+    Range: 0.0 - 10.0, combining appetite (50%), winnability (30%), premium (20%)
     """
     reasons = []
-    base_score = 5.0  # Start at middle score
-    multipliers = []
+    score = 5.0
+    multiplier = 1.0
     
-    # === CRITICAL REQUIREMENTS (Automatic OUT if failed) ===
-    critical_failures = []
-    
-    # Line of Business - Must be Commercial Property
-    lob = str(row.get("line_of_business", "") or "").strip().upper()
+    # === CRITICAL REQUIREMENTS ===
+    lob = str(row.get("line_of_business", "")).strip().upper()
     if lob != "COMMERCIAL PROPERTY":
-        critical_failures.append("Line of Business not Commercial Property")
+        return "OUT", ["Line of Business not Commercial Property"], 1.0, 0.1
     
-    # Submission Type - Prefer New Business
-    sub_type = str(row.get("renewal_or_new_business", "") or "").strip().upper()
+    sub_type = str(row.get("renewal_or_new_business", "")).strip().upper()
     if sub_type == "RENEWAL":
-        critical_failures.append("Renewal business (prefer new business)")
-        base_score -= 2.0  # Still allow but penalize
+        score -= 1.5
+        reasons.append("Renewal business (prefer new)")
     elif sub_type == "NEW_BUSINESS":
-        base_score += 1.0  # Bonus for new business
+        score += 1.0
         reasons.append("New business (preferred)")
-        
-    # If critical failures, mark as OUT
-    if critical_failures:
-        return "OUT", critical_failures, 1.0, max(0.1, base_score * 0.2)
     
-    # === STATE SCORING ===
-    st = str(row.get("primary_risk_state", "") or "").strip().upper()
+    # === CORE FACTORS ===
+    # State scoring
+    st = str(row.get("primary_risk_state", "")).strip().upper()
     if st in TARGET_STATES:
-        base_score += 2.0
-        multipliers.append(1.2)
+        score += 2.0
+        multiplier *= 1.2
         reasons.append(f"Target state: {st}")
     elif st in ACCEPT_STATES:
-        base_score += 1.0
+        score += 1.0
         reasons.append(f"Acceptable state: {st}")
     else:
-        base_score -= 1.5
+        score -= 2.0
         reasons.append(f"Non-preferred state: {st}")
     
-    # === TIV SCORING ===
+    # TIV scoring
     tiv = row.get("tiv", np.nan)
     if pd.notna(tiv):
-        if 50_000_000 <= tiv <= 100_000_000:  # Target range
-            base_score += 2.0
-            multipliers.append(1.15)
-            reasons.append("TIV in target range (50M-100M)")
-        elif tiv <= 150_000_000:  # Acceptable range
-            base_score += 1.0
-            reasons.append("TIV within acceptable limits")
-        elif tiv > 150_000_000:  # Over limit
-            base_score -= 2.0
-            reasons.append("TIV exceeds 150M limit")
-    else:
-        base_score -= 0.5
-        reasons.append("TIV data missing")
+        if 50_000_000 <= tiv <= 100_000_000:
+            score += 2.0
+            multiplier *= 1.15
+            reasons.append("TIV in target range")
+        elif tiv <= 150_000_000:
+            score += 0.5
+            reasons.append("TIV acceptable")
+        else:
+            score -= 2.0
+            reasons.append("TIV exceeds limit")
     
-    # === PREMIUM SCORING ===
+    # Premium scoring
     premium = row.get("total_premium", np.nan)
-    premium_multiplier = 1.0
     if pd.notna(premium):
-        if 75_000 <= premium <= 100_000:  # Target range
-            base_score += 2.0
-            premium_multiplier = 1.3
-            reasons.append("Premium in target range (75K-100K)")
-        elif 50_000 <= premium <= 175_000:  # Acceptable range
-            base_score += 1.0
-            premium_multiplier = 1.1
-            reasons.append("Premium in acceptable range")
-        elif premium < 50_000:
-            base_score -= 1.0
-            reasons.append("Premium below minimum (50K)")
-        else:  # > 175K
-            base_score -= 1.0
-            reasons.append("Premium above preferred maximum")
+        if 75_000 <= premium <= 100_000:
+            score += 2.0
+            multiplier *= 1.3
+            reasons.append("Premium in target range")
+        elif 50_000 <= premium <= 175_000:
+            score += 0.5
+            reasons.append("Premium acceptable")
+        else:
+            score -= 1.0
+            reasons.append("Premium outside range")
         
-        # Additional premium size bonus
+        # High value bonus
         if premium >= 1_000_000:
-            base_score += 1.5
-            premium_multiplier *= 1.2
-            reasons.append("High-value premium (1M+)")
-        elif premium >= 500_000:
-            base_score += 0.5
-            reasons.append("Substantial premium (500K+)")
-    else:
-        base_score -= 1.0
-        reasons.append("Premium data missing")
+            score += 1.0
+            multiplier *= 1.1
+            reasons.append("High-value premium")
     
-    # === BUILDING AGE SCORING ===
-    age = row.get("building_age", np.nan)
+    # Building age scoring
     year = row.get("oldest_building", np.nan)
-    
     if pd.notna(year):
-        try:
-            y = int(float(year))
-            current_age = CURRENT_YEAR - y
-            if y > 2010:  # Less than ~14 years old
-                base_score += 2.0
-                multipliers.append(1.1)
-                reasons.append("Modern building (post-2010)")
-            elif y > 1990:  # Less than ~34 years old
-                base_score += 1.0
-                reasons.append("Acceptable building age (post-1990)")
-            else:  # Older than 34 years
-                base_score -= 1.5
-                reasons.append("Older building construction (pre-1990)")
-        except Exception:
-            base_score -= 0.5
-            reasons.append("Building age data unclear")
-    elif pd.notna(age):
-        if age < 14:  # Equivalent to post-2010
-            base_score += 2.0
-            multipliers.append(1.1)
-            reasons.append("Modern building (< 14 years)")
-        elif age <= 34:  # Equivalent to post-1990
-            base_score += 1.0
+        y = int(float(year)) if not pd.isna(year) else 0
+        if y > 2010:
+            score += 1.5
+            reasons.append("Modern building")
+        elif y > 1990:
+            score += 0.5
             reasons.append("Acceptable building age")
         else:
-            base_score -= 1.5
-            reasons.append("Older building (> 34 years)")
-    else:
-        base_score -= 0.5
-        reasons.append("Building age unknown")
+            score -= 1.5
+            reasons.append("Older building")
     
-    # === CONSTRUCTION TYPE SCORING ===
-    ctype = str(row.get("construction_type", "") or "").strip()
+    # Construction type
+    ctype = str(row.get("construction_type", "")).strip()
     if ctype in ACCEPT_CONSTRUCTION:
-        base_score += 1.0
-        reasons.append(f"Preferred construction: {ctype}")
-    else:
-        base_score -= 0.5
-        reasons.append(f"Non-preferred construction type")
+        score += 0.5
+        reasons.append("Preferred construction")
     
-    # === LOSS HISTORY SCORING ===
+    # Loss history
     loss = row.get("loss_value", np.nan)
     if pd.notna(loss):
-        if loss < 25_000:  # Very low losses
-            base_score += 1.5
-            multipliers.append(1.1)
-            reasons.append("Excellent loss history (< 25K)")
-        elif loss < 100_000:  # Acceptable losses
-            base_score += 0.5
-            reasons.append("Acceptable loss history (< 100K)")
-        else:  # High losses
-            base_score -= 2.0
-            reasons.append("Concerning loss history (≥ 100K)")
-    else:
-        # No loss data - assume neutral
-        reasons.append("Loss history unknown")
+        if loss < 100_000:
+            score += 1.0 if loss < 25_000 else 0.5
+            reasons.append("Good loss history")
+        else:
+            score -= 2.0
+            reasons.append("High loss history")
     
-    # === WINNABILITY FACTOR ===
-    w = row.get("winnability", np.nan)
+    # Winnability
+    w = row.get("winnability", 0.5)
     if pd.notna(w):
-        if isinstance(w, (int, float)) and w > 1:
-            w = w / 100.0  # Convert percentage to decimal
+        w = w / 100.0 if w > 1 else w
         w = max(0.0, min(1.0, float(w)))
-        
-        if w >= 0.8:  # 80%+ win probability
-            base_score += 1.5
-            multipliers.append(1.2)
-            reasons.append("Very high win probability (80%+)")
-        elif w >= 0.6:  # 60%+ win probability
-            base_score += 1.0
-            reasons.append("High win probability (60%+)")
-        elif w >= 0.4:  # 40%+ win probability
-            base_score += 0.5
-            reasons.append("Moderate win probability")
-        else:  # Low win probability
-            base_score -= 0.5
-            reasons.append("Lower win probability")
+        if w >= 0.8:
+            score += 1.0
+            multiplier *= 1.15
+            reasons.append("High win probability")
+        elif w >= 0.6:
+            score += 0.5
+            reasons.append("Good win probability")
     else:
-        w = 0.5  # Default assumption
-        reasons.append("Win probability unknown (assumed 50%)")
+        w = 0.5
     
-    # === CALCULATE FINAL SCORES ===
+    # === FINAL CALCULATION ===
+    appetite_score = max(1.0, min(10.0, score * multiplier))
     
-    # Apply multipliers to base score
-    appetite_score = base_score
-    for mult in multipliers:
-        appetite_score *= mult
+    # Composite priority score: appetite (50%) + winnability (30%) + premium factor (20%)
+    premium_factor = min(premium / 150_000, 1.0) if pd.notna(premium) else 0.5
+    priority_score = max(0.1, min(10.0, 
+        appetite_score * 0.5 + 
+        w * 10.0 * 0.3 + 
+        premium_factor * 10.0 * 0.2
+    ))
     
-    # Ensure appetite score is in reasonable range
-    appetite_score = max(1.0, min(10.0, appetite_score))
+    # === STATUS DETERMINATION ===
+    severe_issues = sum(1 for r in reasons if any(word in r.lower() 
+                       for word in ['exceeds', 'outside', 'non-preferred', 'high loss']))
     
-    # Calculate composite priority score
-    # 40% appetite alignment, 30% winnability, 20% premium size, 10% freshness
-    freshness_factor = 1.0  # Could be enhanced with submission date analysis
-    
-    priority_score = (
-        appetite_score * 0.4 +
-        (w * 10.0) * 0.3 +  # Scale winnability to 0-10 range
-        (min(premium / 200_000, 1.0) * 10.0 if pd.notna(premium) else 5.0) * 0.2 +  # Premium factor
-        freshness_factor * 10.0 * 0.1
-    )
-    
-    # Apply premium multiplier to final score
-    priority_score *= premium_multiplier
-    
-    # Ensure priority score is in 0-10 range
-    priority_score = max(0.1, min(10.0, priority_score))
-    
-    # === DETERMINE STATUS ===
-    severe_issues = [r for r in reasons if any(keyword in r.lower() for keyword in 
-                    ['exceeds', 'below minimum', 'above preferred maximum', 'concerning', 'non-preferred state'])]
-    
-    if len(severe_issues) >= 3 or appetite_score < 3.0:
+    if severe_issues >= 2 or appetite_score < 3.0:
         status = "OUT"
-    elif (st in TARGET_STATES and 
-          appetite_score >= 7.0 and 
-          priority_score >= 7.0 and
-          len(severe_issues) == 0):
+    elif st in TARGET_STATES and appetite_score >= 7.0 and priority_score >= 7.0:
         status = "TARGET"
     else:
         status = "IN"
@@ -459,7 +396,42 @@ def classifyDataFrame(df):
     df["appetite_reasons"] = reasons
     df["appetite_score"] = appetites
     df["priority_score"] = priorities
+    # Mark target opportunities globally on the full dataset (top 30% of in-appetite by priority)
+    try:
+        df = mark_target_opportunities_df(df)
+    except Exception:
+        # Non-fatal if marking fails; continue without the flag
+        pass
     return df
+
+
+def mark_target_opportunities_df(frame):
+    """Return a copy of frame with boolean column 'target_opportunity' set True
+    for the top ceil(30%) rows among in-appetite (TARGET/IN) by priority_score.
+
+    This operates on the provided frame only; callers should pass a filtered
+    subset when computing list-specific target opportunities.
+    """
+    if frame is None or len(frame) == 0:
+        return frame
+    d = frame.copy()
+    # Initialize column
+    d["target_opportunity"] = False
+    try:
+        in_mask = d["appetite_status"].isin(["TARGET", "IN"]).fillna(False)
+        in_df = d[in_mask]
+        n = len(in_df)
+        if n > 0:
+            top_n = int(np.ceil(0.30 * n))
+            # Sort by priority_score descending; NaNs go last
+            in_sorted = in_df.sort_values(["priority_score"], ascending=[False])
+            ids = in_sorted.head(max(1, top_n))["id"].tolist()
+            if ids:
+                d.loc[d["id"].isin(ids), "target_opportunity"] = True
+    except Exception:
+        # If anything goes wrong, leave column as False
+        pass
+    return d
 
 
 def refreshCache():
@@ -533,8 +505,17 @@ def dfToDict(df):
 def home():
     df, _ = refreshCache()
     total = len(df)
-    in_ct = int((df["appetite_status"] == "IN").sum()) if not df.empty else 0
-    tgt_ct = int((df["appetite_status"] == "TARGET").sum()) if not df.empty else 0
+    # In-appetite includes both IN and TARGET statuses
+    in_ct = int(df["appetite_status"].isin(["IN", "TARGET"]).sum()) if not df.empty else 0
+    # Target opportunities are the top 30% of in-appetite by priority_score
+    if not df.empty and "target_opportunity" in df.columns:
+        tgt_ct = int((df["target_opportunity"] == True).sum())
+    else:
+        try:
+            _tmp = mark_target_opportunities_df(df)
+            tgt_ct = int((_tmp["target_opportunity"] == True).sum())
+        except Exception:
+            tgt_ct = 0
     out_ct = int((df["appetite_status"] == "OUT").sum()) if not df.empty else 0
     avg_premium = float(df["total_premium"].mean()) if not df.empty else 0.0
     avg_premium_str = f"${avg_premium:,.0f}"
@@ -580,8 +561,8 @@ def home():
         except Exception:
             avg_win = 0.0
 
-    # Opportunities = targets + in-appetite
-    opp_ct = int(tgt_ct + in_ct)
+    # Opportunities = all in-appetite (includes targets)
+    opp_ct = int(in_ct)
     return render_template(
         "index.html",
         total=total,
@@ -623,14 +604,21 @@ def submissions():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]  # Handle NaN values explicitly
-    # Sort: TARGET -> IN -> OUT, then by priority score desc, premium desc
+    # Recompute target opportunities within the filtered set to keep 30% rule list-specific
+    try:
+        d = mark_target_opportunities_df(d)
+    except Exception:
+        pass
+
+    # Sort: target_opportunity first, then TARGET -> IN -> OUT, then by priority score desc, premium desc
     try:
         d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
         d["__s"] = pd.Categorical(
             d["appetite_status"], categories=["TARGET", "IN", "OUT"], ordered=True
         )
-        d = d.sort_values(["__s", "priority_score", "total_premium"], ascending=[True, False, False])
-        d = d.drop(columns=["__s"])
+        d = d.sort_values(["__top", "__s", "priority_score", "total_premium"], ascending=[False, True, False, False])
+        d = d.drop(columns=["__top", "__s"])
     except Exception:
         d = d.sort_values(["priority_score"], ascending=False)
     rows = dfToDict(d)
@@ -642,10 +630,12 @@ def insights():
     # Portfolio Insights landing with simple role-based access for tabs
     role = get_role()
     tabs = [
-        {"id": "overview", "title": "Overview", "protected": False},
-        {"id": "premium_by_state", "title": "Premium by State", "protected": False},
-        {"id": "status_mix", "title": "Status Mix", "protected": False},
-        {"id": "tiv_bands", "title": "TIV Bands", "protected": True},
+        {"id": "overview", "title": "Triage", "protected": False},
+        {"id": "premium_by_state", "title": "Pricing", "protected": False},
+        {"id": "status_mix", "title": "Exposure", "protected": False},
+        {"id": "tiv_bands", "title": "Renewals", "protected": False},
+        {"id": "mix", "title": "Mix", "protected": False},
+        {"id": "risk_signals", "title": "Risk Signals", "protected": False},
         {"id": "geo", "title": "US Map", "protected": False},
         {"id": "scatter3d", "title": "3D Scatter", "protected": False},
         {"id": "flows", "title": "Flows (Sankey)", "protected": False},
@@ -713,7 +703,14 @@ def apiClassified():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
-    d = d.sort_values(["priority_score"], ascending=False)
+    # Mark targets within the filtered set then sort with them first
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        d = d.sort_values(["__top", "priority_score"], ascending=[False, False]).drop(columns=["__top"])
+    except Exception:
+        d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 
@@ -749,15 +746,25 @@ def apiPriorityAccounts():
         d = d[m.fillna(False)]
     
     # Focus on higher-priority submissions for priority review
-    # Show submissions with priority_score >= 1.0 and preferably IN or TARGET status
-    d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
-    
+    d = d[(d["priority_score"] >= 1.0)]
+
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
-    if sort_by in d.columns:
-        d = d.sort_values([sort_by], ascending=ascending)
-    else:
-        d = d.sort_values(["priority_score"], ascending=False)
+    # Recompute list-local target opportunities and sort them first, then by requested sort
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        if sort_by in d.columns:
+            d = d.sort_values(["__top", sort_by], ascending=[False, ascending])
+        else:
+            d = d.sort_values(["__top", "priority_score"], ascending=[False, False])
+        d = d.drop(columns=["__top"])
+    except Exception:
+        if sort_by in d.columns:
+            d = d.sort_values([sort_by], ascending=ascending)
+        else:
+            d = d.sort_values(["priority_score"], ascending=False)
     
     # Calculate pagination
     total_count = len(d)
@@ -781,6 +788,7 @@ def apiPriorityAccounts():
             "priority_score": float(row["priority_score"]) if pd.notna(row["priority_score"]) else 0.0,
             "tiv": float(row["tiv"]) if pd.notna(row["tiv"]) else 0.0,
             "line_of_business": str(row["line_of_business"]) if pd.notna(row["line_of_business"]) else "",
+            "target_opportunity": bool(row.get("target_opportunity", False)),
             "appetite_reasons": row.get("appetite_reasons", []) if isinstance(row.get("appetite_reasons"), list) else [],
             "created_at": str(row["created_at"]) if pd.notna(row["created_at"]) else "",
             "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else "",
@@ -806,6 +814,100 @@ def apiPriorityAccounts():
             "sort_dir": sort_dir
         }
     })
+
+
+@app.route("/api/metrics_mode")
+def api_metrics_mode():
+    """Return KPI metrics for the given analysis mode without trimming to top_pct.
+
+    Provides counts and percents for TARGET/IN/OUT based on mode-driven classification,
+    plus totals, avg premium, avg winnability and opportunities.
+    """
+    mode = (request.args.get("mode") or "balanced_growth").strip()
+    df = load_df("data.json")
+    if df.empty:
+        return jsonify({"ok": True, "metrics": {
+            "total": 0, "targets": 0, "inCt": 0, "outCt": 0,
+            "pctTgt": 0, "pctIn": 0, "pctOut": 0,
+            "avgPremium": 0.0, "winRate": 0.0, "opportunities": 0,
+        }})
+
+    # Determine filters/weights for the requested mode
+    name_map = {
+        "unicorn_hunting": "unicorn",
+        "balanced_growth": "balanced",
+        "loose_fits": "loose",
+        "turnaround_bets": "turnaround",
+        "unicorn": "unicorn",
+        "balanced": "balanced",
+        "loose": "loose",
+        "turnaround": "turnaround",
+    }
+
+    if mode == "custom" and "custom" in MODES:
+        preset = MODES["custom"]
+        filters = preset.get("filters", {})
+        weights = preset.get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        d = apply_hard_filters(df, filters)
+    else:
+        kind = name_map.get(mode, "balanced")
+        filters, _summary = build_percentile_filters(df, kind=kind, overrides=None)
+        d = apply_hard_filters(df, filters)
+        weights = MODES.get("balanced_growth", {}).get("weights", {})
+
+    if d.empty:
+        return jsonify({"ok": True, "metrics": {
+            "total": 0, "targets": 0, "inCt": 0, "outCt": 0,
+            "pctTgt": 0, "pctIn": 0, "pctOut": 0,
+            "avgPremium": 0.0, "winRate": 0.0, "opportunities": 0,
+        }})
+
+    # Classify all rows (no top_pct cut) to get status counts
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+    t = i = o = 0
+    wins = []
+    prems = []
+    for r in d.to_dict(orient="records"):
+        status, reasons, s, pscore = classify_for_mode_row(r, weights, filters, scounts)
+        if status == "TARGET":
+            t += 1
+        elif status == "IN":
+            i += 1
+        else:
+            o += 1
+        try:
+            v = r.get("winnability")
+            if v is not None and v == v:
+                wins.append(float(v))
+        except Exception:
+            pass
+        try:
+            v = r.get("total_premium")
+            if v is not None and v == v:
+                prems.append(float(v))
+        except Exception:
+            pass
+
+    total = int(t + i + o)
+    def _pct(n, d):
+        try:
+            return int(round(((n / d) * 100.0))) if d else 0
+        except Exception:
+            return 0
+
+    metrics = {
+        "total": total,
+        "targets": int(t),
+        "inCt": int(i),
+        "outCt": int(o),
+        "pctTgt": _pct(t, total),
+        "pctIn": _pct(i, total),
+        "pctOut": _pct(o, total),
+        "avgPremium": float(np.mean(prems)) if prems else 0.0,
+        "winRate": float(np.mean(wins) * 100.0) if wins else 0.0,
+        "opportunities": int(t + i),
+    }
+    return jsonify({"ok": True, "metrics": metrics})
 
 
 @app.route("/api/refresh", methods=["POST"]) 
@@ -939,9 +1041,20 @@ def apiNlq():
 @app.route("/api/modes")
 def api_modes():
     # Return an array of objects so the UI can render key/label pairs
-    arr = [
-        {"key": k, "label": k.replace("_", " ").title()} for k in MODES.keys()
-    ]
+    arr = []
+    for k in MODES.keys():
+        if k in _PERSONA_INDEX:
+            label = f"Persona: {_PERSONA_INDEX[k]}"
+        elif k == "custom":
+            # If custom is active persona, reflect it
+            slug, rec = persona_get_active()
+            if slug and rec:
+                label = f"Persona: {rec.get('title') or slug} (Active)"
+            else:
+                label = k.replace("_", " ").title()
+        else:
+            label = k.replace("_", " ").title()
+        arr.append({"key": k, "label": label})
     return jsonify(arr)
 
 
@@ -975,163 +1088,178 @@ def api_mode_blend():
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
-@app.route("/api/chat", methods=["POST"])
-def api_chat():
-    """Chat with the AI assistant"""
+@app.route("/api/ai-sort", methods=["POST"])
+def api_ai_sort():
+    """AI-powered sorting based on selected categories"""
     try:
         data = request.get_json(silent=True) or {}
-        message = data.get("message", "").strip()
-        session_id = data.get("session_id", "default")
+        categories = data.get("categories", [])
+        current_filters = data.get("current_filters", {})
+        sort_preferences = data.get("sort_preferences", {})
         
-        if not message:
-            return jsonify({"ok": False, "error": "No message provided"}), 400
+        if not categories:
+            return jsonify({
+                "ok": False, 
+                "error": "No categories provided for AI sorting"
+            }), 400
         
-        result = chatbot.chat(message, session_id)
-        return jsonify({"ok": True, **result})
+        # Load and filter data based on current filters
+        df, _ = refreshCache()
+        if df.empty:
+            return jsonify({
+                "ok": True,
+                "data": [],
+                "ai_used": False,
+                "ai_summary": "No data available for sorting"
+            })
         
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/stream")
-def api_chat_stream():
-    """Server-sent events for streaming chat responses"""
-    from flask import Response
-    
-    message = request.args.get("message", "").strip()
-    session_id = request.args.get("session_id", "default")
-    
-    if not message:
-        return Response("data: " + json.dumps({"type": "error", "content": "No message provided"}) + "\n\n", 
-                       mimetype="text/plain")
-    
-    def generate():
-        try:
-            for chunk in chatbot.get_streaming_response(message, session_id):
-                yield f"data: {json.dumps(chunk)}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-    
-    return Response(generate(), mimetype="text/event-stream")
-
-
-@app.route("/api/chat/execute", methods=["POST"])
-def api_chat_execute():
-    """Execute an action suggested by the chatbot"""
-    try:
-        data = request.get_json(silent=True) or {}
-        action = data.get("action", {})
+        # Apply current filters
+        filtered_df = df.copy()
         
-        if not action or "type" not in action:
-            return jsonify({"ok": False, "error": "No valid action provided"}), 400
+        # Apply basic filters
+        if current_filters.get("state"):
+            filtered_df = filtered_df[
+                filtered_df["primary_risk_state"].astype(str).str.upper() == 
+                current_filters["state"].upper()
+            ]
         
-        action_type = action["type"]
-        params = action.get("params", {})
+        if current_filters.get("status"):
+            filtered_df = filtered_df[
+                filtered_df["appetite_status"] == current_filters["status"]
+            ]
         
-        # Build URL parameters for the action
-        url_params = []
+        if current_filters.get("min_premium"):
+            min_p = float(current_filters["min_premium"])
+            filtered_df = filtered_df[filtered_df["total_premium"] >= min_p]
         
-        if action_type == "filter":
-            for key, value in params.items():
-                if value is not None:
-                    url_params.append(f"{key}={value}")
+        if current_filters.get("max_premium"):
+            max_p = float(current_filters["max_premium"])
+            filtered_df = filtered_df[filtered_df["total_premium"] <= max_p]
         
-        elif action_type == "mode":
-            url_params.append(f"mode={params.get('mode', 'balanced')}")
+        if current_filters.get("q"):
+            query = current_filters["q"]
+            mask = filtered_df["account_name"].astype(str).str.contains(
+                query, case=False, na=False
+            )
+            filtered_df = filtered_df[mask.fillna(False)]
         
-        elif action_type == "search":
-            url_params.append(f"q={params.get('q', '')}")
+        # Apply category-specific filters and create AI-powered sorting strategy
+        category_weights = {}
+        category_filters = {}
+        ai_strategy_parts = []
         
-        elif action_type == "sort":
-            url_params.append(f"sort_by={params.get('sort_by', 'priority_score')}")
-            url_params.append(f"sort_dir={params.get('sort_dir', 'desc')}")
+        for category in categories:
+            if category == "targets":
+                category_filters["targets"] = filtered_df["appetite_status"] == "TARGET"
+                category_weights["priority_score"] = category_weights.get("priority_score", 0) + 0.4
+                category_weights["appetite_alignment"] = category_weights.get("appetite_alignment", 0) + 0.3
+                ai_strategy_parts.append("prioritizing TARGET status submissions")
+                
+            elif category == "in-appetite":
+                category_filters["in_appetite"] = filtered_df["appetite_status"] == "IN"
+                category_weights["appetite_alignment"] = category_weights.get("appetite_alignment", 0) + 0.25
+                ai_strategy_parts.append("including IN-APPETITE submissions")
+                
+            elif category == "high-value":
+                high_value_threshold = filtered_df["total_premium"].quantile(0.75)
+                category_filters["high_value"] = filtered_df["total_premium"] >= high_value_threshold
+                category_weights["premium_size"] = category_weights.get("premium_size", 0) + 0.35
+                ai_strategy_parts.append(f"emphasizing high-value premiums (${high_value_threshold:,.0f}+)")
+                
+            elif category == "new-business":
+                category_filters["new_business"] = (
+                    filtered_df["renewal_or_new_business"].astype(str).str.upper() == "NEW_BUSINESS"
+                )
+                category_weights["business_type"] = category_weights.get("business_type", 0) + 0.2
+                ai_strategy_parts.append("favoring new business opportunities")
+                
+            elif category == "recent":
+                if "created_at" in filtered_df.columns:
+                    recent_threshold = pd.Timestamp.utcnow() - pd.Timedelta(days=7)
+                    category_filters["recent"] = filtered_df["created_at"] >= recent_threshold
+                    category_weights["freshness"] = category_weights.get("freshness", 0) + 0.15
+                    ai_strategy_parts.append("prioritizing recent submissions (last 7 days)")
+                
+            elif category == "geographic":
+                target_states = {"OH", "PA", "MD", "CO", "CA", "FL"}
+                category_filters["geographic"] = filtered_df["primary_risk_state"].isin(target_states)
+                category_weights["geographic_preference"] = category_weights.get("geographic_preference", 0) + 0.2
+                ai_strategy_parts.append("focusing on target geographic regions")
         
-        # Return the URL parameters for the frontend to apply
+        # Create AI-powered composite score
+        ai_scores = []
+        explanations = []
+        
+        for _, row in filtered_df.iterrows():
+            composite_score = row.get("priority_score", 0.0)
+            score_components = []
+            
+            # Apply category-specific scoring
+            for category, condition in category_filters.items():
+                if condition.loc[row.name] if hasattr(condition, 'loc') else condition:
+                    if category == "targets":
+                        composite_score += 3.0
+                        score_components.append("TARGET status (+3.0)")
+                    elif category == "in_appetite":
+                        composite_score += 1.5
+                        score_components.append("IN-APPETITE (+1.5)")
+                    elif category == "high_value":
+                        premium_bonus = min(2.0, (row.get("total_premium", 0) / 100000) * 0.5)
+                        composite_score += premium_bonus
+                        score_components.append(f"High premium (+{premium_bonus:.1f})")
+                    elif category == "new_business":
+                        composite_score += 1.0
+                        score_components.append("New business (+1.0)")
+                    elif category == "recent":
+                        composite_score += 0.8
+                        score_components.append("Recent submission (+0.8)")
+                    elif category == "geographic":
+                        composite_score += 1.2
+                        score_components.append("Target geography (+1.2)")
+            
+            # Winnability boost
+            winnability = row.get("winnability", 0.5)
+            if isinstance(winnability, (int, float)) and winnability > 1:
+                winnability = winnability / 100.0
+            winnability_bonus = winnability * 2.0
+            composite_score += winnability_bonus
+            score_components.append(f"Winnability (+{winnability_bonus:.1f})")
+            
+            ai_scores.append(composite_score)
+            explanations.append("; ".join(score_components))
+        
+        # Add AI scores to dataframe
+        filtered_df = filtered_df.copy()
+        filtered_df["ai_composite_score"] = ai_scores
+        filtered_df["ai_score_explanation"] = explanations
+        
+        # Sort by AI composite score
+        filtered_df = filtered_df.sort_values("ai_composite_score", ascending=False)
+        
+        # Convert to response format
+        response_data = dfToDict(filtered_df)
+        
+        # Generate AI summary
+        ai_summary = f"Applied intelligent sorting strategy: {', '.join(ai_strategy_parts)}. " \
+                    f"Analyzed {len(filtered_df)} submissions with composite scoring algorithm."
+        
         return jsonify({
             "ok": True,
-            "action_type": action_type,
-            "url_params": "&".join(url_params),
-            "message": f"Applied {action_type} action successfully"
+            "data": response_data,
+            "ai_used": True,
+            "ai_summary": ai_summary,
+            "categories_applied": categories,
+            "total_submissions": len(response_data),
+            "strategy_components": ai_strategy_parts
         })
         
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/context", methods=["POST"])
-def api_chat_context():
-    """Update chatbot with current dashboard context"""
-    try:
-        data = request.get_json(silent=True) or {}
-        
-        # Update chatbot with current dashboard state
-        context_info = {
-            "current_mode": data.get("mode", "balanced"),
-            "active_filters": data.get("filters", {}),
-            "current_page": data.get("page", "dashboard"),
-            "visible_submissions": data.get("submission_count", 0),
-            "user_action": data.get("last_action", ""),
-        }
-        
-        # Store context in chatbot (you could extend this)
-        if hasattr(chatbot, 'current_context'):
-            chatbot.current_context = context_info
-        
-        return jsonify({"ok": True, "message": "Context updated"})
-        
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/suggestions")
-def api_chat_suggestions():
-    """Get contextual suggestions based on current dashboard state"""
-    try:
-        df = load_df("data.json")
-        if df.empty:
-            return jsonify({"suggestions": []})
-        
-        suggestions = []
-        
-        # Analyze current data to provide smart suggestions
-        if "total_premium" in df.columns:
-            high_premium_count = len(df[df["total_premium"] > df["total_premium"].quantile(0.9)])
-            if high_premium_count > 0:
-                suggestions.append({
-                    "text": f"Show me the {high_premium_count} highest premium submissions",
-                    "action": "filter",
-                    "icon": "💰"
-                })
-        
-        if "primary_risk_state" in df.columns:
-            top_state = df["primary_risk_state"].value_counts().index[0]
-            state_count = df["primary_risk_state"].value_counts().iloc[0]
-            suggestions.append({
-                "text": f"Focus on {state_count} submissions in {top_state}",
-                "action": "filter",
-                "icon": "📍"
-            })
-        
-        if "fresh_days" in df.columns:
-            fresh_count = len(df[df["fresh_days"] <= 7])
-            if fresh_count > 0:
-                suggestions.append({
-                    "text": f"Show me {fresh_count} submissions from this week",
-                    "action": "filter",
-                    "icon": "🆕"
-                })
-        
-        # Mode suggestions
-        suggestions.extend([
-            {"text": "Switch to unicorn mode for premium opportunities", "action": "mode", "icon": "🦄"},
-            {"text": "Explain current filtering criteria", "action": "explain", "icon": "💡"},
-            {"text": "What are the trends in my portfolio?", "action": "analyze", "icon": "📈"}
-        ])
-        
-        return jsonify({"suggestions": suggestions[:6]})  # Limit to 6 suggestions
-        
-    except Exception as e:
-        return jsonify({"suggestions": [], "error": str(e)})
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "ai_used": False,
+            "ai_summary": f"AI sorting failed: {str(e)}"
+        }), 500
 
 
 def apply_hard_filters(df, f):
@@ -1233,22 +1361,52 @@ def api_classified_mode():
         "turnaround": "turnaround",
     }
 
-    if mode == "custom" and "custom" in MODES:
-        # Persona-driven
-        preset = MODES["custom"]
-        filters = preset.get("filters", {})
-        d = apply_hard_filters(df, filters)
-        weights = preset.get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
-        mode_explanation = "Custom mode (persona-refined)"
+    # Check if all user filters are empty (reset state)
+    user_filters_active = any([
+        request.args.get("state"),
+        request.args.get("status"), 
+        request.args.get("min_premium"),
+        request.args.get("max_premium"),
+        request.args.get("q")
+    ])
+
+    # 1) If mode refers to a concrete preset in MODES (including saved personas), use it
+    if mode in MODES:
+        preset = MODES[mode]
+        filters = (preset or {}).get("filters", {})
+        weights = (preset or {}).get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        
+        # If no user filters are active, show ALL data but use mode weights for scoring
+        if not user_filters_active:
+            d = df  # Don't apply hard filters - show all data
+        else:
+            d = apply_hard_filters(df, filters)
+            
+        if mode in _PERSONA_INDEX or mode == "custom":
+            # Persona-selected
+            title = _PERSONA_INDEX.get(mode)
+            if mode == "custom":
+                _slug, _rec = persona_get_active()
+                if _rec:
+                    title = _rec.get("title") or title
+            mode_explanation = f"Custom persona — {title or mode}"
+        else:
+            mode_explanation = f"Preset mode — {mode.replace('_',' ').title()}"
     else:
+        # 2) Otherwise, fall back to percentile-driven dynamic filters by kind
         kind = name_map.get(mode, "balanced")
-        # Collect overrides
         overrides = {}
         for k in ("top_pct", "max_lr_pct", "min_win_pct", "max_tiv_pct", "fresh_pct"):
             if k in request.args:
                 overrides[k] = request.args.get(k)
         filters, _summary = build_percentile_filters(df, kind=kind, overrides=overrides)
-        d = apply_hard_filters(df, filters)
+        
+        # If no user filters are active, show ALL data but use mode weights for scoring
+        if not user_filters_active:
+            d = df  # Don't apply hard filters - show all data
+        else:
+            d = apply_hard_filters(df, filters)
+            
         weights = MODES.get("balanced_growth", {}).get("weights", {})
         mode_explanation = f"{kind.title()} mode — dynamic percentile-based filters"
 
@@ -1282,6 +1440,23 @@ def api_classified_mode():
         r["mode_score"] = round(float(pscore), 4)
         rows.append(sanitize_row(r))
 
+    # Mark target opportunities in this list (top 30% by priority among in-appetite)
+    try:
+        in_rows = [r for r in rows if str(r.get("appetite_status")) in ("TARGET", "IN")]
+        k = len(in_rows)
+        if k > 0:
+            top_n = max(1, int(np.ceil(0.30 * k)))
+            in_rows_sorted = sorted(in_rows, key=lambda r: (r.get("priority_score") or 0.0), reverse=True)
+            top_set = {r.get("id") for r in in_rows_sorted[:top_n]}
+            for r in rows:
+                r["target_opportunity"] = bool(r.get("id") in top_set)
+        else:
+            for r in rows:
+                r["target_opportunity"] = False
+    except Exception:
+        for r in rows:
+            r["target_opportunity"] = False
+
     # Cut to top N% if provided in filters
     top_pct = None
     try:
@@ -1298,7 +1473,7 @@ def api_classified_mode():
     if status_filter:
         rows = [r for r in rows if str(r.get("appetite_status")) == status_filter]
 
-    # Sorting
+    # Sorting (always put target_opportunity first)
     sort_by = request.args.get("sort_by")
     sort_dir = (request.args.get("sort_dir") or "desc").lower()
     reverse = sort_dir != "asc"
@@ -1328,10 +1503,12 @@ def api_classified_mode():
         "total_premium", "tiv", "winnability", "appetite_status",
         "priority_score", "mode_score",
     }
-    if sort_by in valid_keys:
-        rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
-    else:
-        rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
+    # Primary sort by target_opportunity desc, then requested sort
+    rows.sort(
+        key=lambda r: (1 if r.get("target_opportunity") else 0,
+                       sort_key(r, sort_by) if sort_by in valid_keys else (r.get("priority_score") or 0.0)),
+        reverse=True,
+    )
 
     return jsonify({
         "count": len(rows),
@@ -1339,6 +1516,67 @@ def api_classified_mode():
         "mode": mode,
         "mode_explanation": mode_explanation,
     })
+
+
+@app.route("/api/persona/list")
+def api_persona_list():
+    """List saved personas."""
+    items = persona_list()
+    # Shallow list for UI
+    out = []
+    for slug, rec in items.items():
+        out.append({
+            "slug": slug,
+            "title": rec.get("title") or slug,
+            "saved_at": rec.get("saved_at"),
+        })
+    active_slug, _rec = persona_get_active()
+    return jsonify({"active": active_slug, "items": out})
+
+
+@app.route("/api/persona/save", methods=["POST"])
+def api_persona_save():
+    """Save the current custom persona (or provided preset) under a name and make it selectable."""
+    try:
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip() or None
+        preset = data.get("preset")
+        # If no preset provided, try using current MODES["custom"]
+        if not isinstance(preset, dict) or not preset:
+            preset = MODES.get("custom")
+        if not isinstance(preset, dict) or not preset:
+            return jsonify({"ok": False, "error": "No custom persona available to save"}), 400
+        if not name:
+            name = time.strftime("Persona %Y-%m-%d %H:%M")
+        slug, rec = persona_add(name, preset)
+        # Mirror into MODES and refresh index
+        _load_personas_into_modes()
+        return jsonify({"ok": True, "slug": slug, "record": rec})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/persona/activate", methods=["POST"])
+def api_persona_activate():
+    """Set a saved persona as active (also mirrors to MODES['custom'])."""
+    try:
+        data = request.get_json(silent=True) or {}
+        slug = data.get("slug")
+        if not slug:
+            return jsonify({"ok": False, "error": "Missing slug"}), 400
+        rec = persona_get(slug)
+        if not rec:
+            return jsonify({"ok": False, "error": "Persona not found"}), 404
+        persona_set_active(slug)
+        # Mirror into MODES
+        preset = rec.get("preset") or {}
+        if isinstance(preset, dict) and preset:
+            MODES[slug] = preset
+            MODES["custom"] = preset
+        _load_personas_into_modes()
+        return jsonify({"ok": True, "active": slug})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 @app.route("/api/persona/seed", methods=["POST"])
@@ -1492,7 +1730,13 @@ def api_underlying():
         d = d[d[group].astype(str) == label]
     if series_by and series_val is not None and series_by in d.columns:
         d = d[d[series_by].astype(str) == series_val]
-    d = d.sort_values(["priority_score"], ascending=False)
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        d = d.sort_values(["__top", "priority_score"], ascending=[False, False]).drop(columns=["__top"])
+    except Exception:
+        d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 

@@ -1,4 +1,4 @@
-AppetizerIQ Underwriting Dashboard
+Appetizer-IQ Underwriting Dashboard
 
 Quick Start
 

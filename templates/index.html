@@ -57,12 +57,24 @@
   
   <script>
     (function(){
-      // Seed quick stats from backend so they are factual on first paint
+      // Global metrics from backend (full dataset)
+      window._globalMetrics = {
+        total: {{ total|int }},
+        targets: {{ tgt_ct|int }},
+        inCt: {{ in_ct|int }},
+        outCt: {{ out_ct|int }},
+        pctTgt: {{ pct_tgt|int }},
+        pctIn: {{ pct_in|int }},
+        pctOut: {{ pct_out|int }},
+        avgPremium: {{ avg_premium|round(0) }}
+      };
+      // Seed quick stats for hero (first paint)
       window._dashboardMetrics = {
         targets: {{ tgt_ct|int }},
         winRate: {{ (avg_win*100)|round(0) if avg_win is defined else 0 }},
         avgPremium: {{ avg_premium|round(0) }},
-        opportunities: {{ (tgt_ct + in_ct)|int }}
+        // Opportunities = all in-appetite (includes targets)
+        opportunities: {{ in_ct|int }}
       };
       function greet(){
         const n = localStorage.getItem('USER_NAME') || '';
@@ -74,14 +86,10 @@
       function updateQuickStats() {
         // This will be populated by the main script
         const metrics = window._dashboardMetrics || {};
-        document.getElementById('active_targets').textContent =
-          metrics.targets ? Number(metrics.targets).toLocaleString() : '—';
+        document.getElementById('active_targets').textContent = metrics.targets || '—';
         document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
-        document.getElementById('avg_premium').textContent = metrics.avgPremium
-          ? '$' + Math.round(metrics.avgPremium / 1000).toLocaleString() + 'K'
-          : '—';
-        document.getElementById('opportunities_count').textContent =
-          metrics.opportunities ? Number(metrics.opportunities).toLocaleString() : '—';
+        document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
+        document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
       }
       
       function simulateActivityFeed() {
@@ -105,6 +113,7 @@
       
       greet();
       updateQuickStats();
+      try { if (window._globalMetrics) updateOverviewCards(window._globalMetrics); } catch(_){}
       simulateActivityFeed();
       
       window.addEventListener('storage', (e) => {
@@ -166,28 +175,6 @@
         </div>
     </div>
     
-    <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
-        <div class="metric-header">
-            <div class="metric-icon total-icon">📊</div>
-            {% set t = trend_total %}
-            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
-                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
-                <span class="trend-value">{{ '%+d' % t }}%</span>
-            </div>
-        </div>
-        <div class="metric-content">
-            <div class="metric-value text-blue-400 animate-counter" data-target="{{ total }}">0</div>
-            <div class="metric-label">Total Submissions</div>
-            <div class="metric-subtitle">This period</div>
-        </div>
-        <div class="metric-progress">
-            <div class="progress-bar bg-blue-500/30">
-                <div class="progress-fill bg-blue-400" style="width: 100%"></div>
-            </div>
-            <div class="progress-text">Avg premium {{ avg_premium_str }}</div>
-        </div>
-    </div>
-    
     <div class="metric-card-enhanced out-metric hover-lift" data-metric="out">
         <div class="metric-header">
             <div class="metric-icon out-icon">❌</div>
@@ -207,6 +194,28 @@
                 <div class="progress-fill bg-rose-400" style="width: {{ pct_out }}%"></div>
             </div>
             <div class="progress-text">{{ pct_out }}% of submissions</div>
+        </div>
+    </div>
+
+    <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
+        <div class="metric-header">
+            <div class="metric-icon total-icon">📊</div>
+            {% set t = trend_total %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-blue-400 animate-counter" data-target="{{ total }}">0</div>
+            <div class="metric-label">Total Submissions</div>
+            <div class="metric-subtitle">This period</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-blue-500/30">
+                <div class="progress-fill bg-blue-400" style="width: 100%"></div>
+            </div>
+            <div class="progress-text">Avg premium {{ avg_premium_str }}</div>
         </div>
     </div>
 </div>
@@ -264,6 +273,57 @@
                     <h2 class="text-xl font-bold flex items-center gap-2">
                         <span class="workload-icon">📋</span>
                         Today's Priority Worklist
+                        <div class="relative group">
+                            <button class="info-icon" type="button">
+                                <svg class="w-4 h-4 text-slate-400 hover:text-slate-200 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                            </button>
+                            <div class="priority-score-tooltip">
+                                <div class="tooltip-header">Strategic Priority Score Algorithm</div>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Multi-Factor Composite Scoring</div>
+                                        <div class="tooltip-desc">Engineered to maximize profitable growth through strategic resource allocation:</div>
+                                        <div class="tooltip-formula">P = (A × 0.4) + (W × 0.3) + (Π × 0.2) + (F × 0.1)</div>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Component Breakdown</div>
+                                        <ul class="tooltip-list">
+                                            <li><strong>A:</strong> Appetite Alignment Score (40% weight) - Risk profile fit</li>
+                                            <li><strong>W:</strong> Winnability Factor (30% weight) - Competitive advantage</li>
+                                            <li><strong>Π:</strong> Premium Contribution (20% weight) - Revenue potential</li>
+                                            <li><strong>F:</strong> Freshness Index (10% weight) - Market timing</li>
+                                        </ul>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Growth Strategy Integration</div>
+                                        <div class="tooltip-desc">
+                                            <strong>Appetite Alignment (40%):</strong> Ensures compliance with risk tolerances<br>
+                                            <strong>Winnability Weighting (30%):</strong> Prioritizes high-conversion opportunities<br>
+                                            <strong>Premium Scaling (20%):</strong> Balances volume with revenue impact<br>
+                                            <strong>Market Freshness (10%):</strong> Captures early-mover advantages
+                                        </div>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Business Impact Framework</div>
+                                        <div class="tooltip-formula">Final Score ∈ [0.1, 10.0] → Revenue Optimization</div>
+                                        <div class="tooltip-desc">
+                                            Higher scores drive resource allocation toward submissions with optimal<br>
+                                            risk-adjusted returns, accelerating profitable portfolio growth while<br>
+                                            maintaining disciplined underwriting standards.
+                                        </div>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Competitive Advantage</div>
+                                        <div class="tooltip-desc">
+                                            This algorithm enables faster identification of high-value opportunities,<br>
+                                            reducing cycle time and improving win rates through data-driven prioritization.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </h2>
                     <div class="mode-selector">
                         <label class="text-xs opacity-75">Analysis Mode</label>
@@ -282,14 +342,7 @@
                             <span class="icon">⊞</span>
                             Cards
                         </button>
-                        <button class="view-btn" data-view="kanban">
-                            <span class="icon">⋯</span>
-                            Kanban
-                        </button>
                     </div>
-                    <button id="workload_settings" class="settings-btn">
-                        <span class="icon">⚙</span>
-                    </button>
                 </div>
             </div>
             
@@ -301,12 +354,44 @@
                     <button class="filter-chip" data-filter="high-value">High Value</button>
                 </div>
                 <div class="sort-options">
-                    <select id="sort_mode" class="sort-select">
-                        <option value="priority">Priority Score</option>
-                        <option value="premium">Premium Amount</option>
-                        <option value="deadline">Deadline</option>
-                        <option value="created">Date Created</option>
-                    </select>
+                    <div class="sort-with-info">
+                        <div id="priority_sort_info" class="relative group" style="display:none;">
+                            <button class="info-icon" type="button" aria-label="Priority score info">
+                                <svg class="w-4 h-4 text-slate-400 hover:text-slate-200 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                            </button>
+                            <div class="priority-score-tooltip">
+                                <div class="tooltip-header">Strategic Priority Score Algorithm</div>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Multi-Factor Composite Scoring</div>
+                                        <div class="tooltip-desc">Engineered to maximize profitable growth through strategic resource allocation:</div>
+                                        <div class="tooltip-formula">P = (A x 0.4) + (W x 0.3) + (P x 0.2) + (F x 0.1)</div>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Component Breakdown</div>
+                                        <ul class="tooltip-list">
+                                            <li><strong>A:</strong> Appetite Alignment Score (40% weight) - Risk profile fit</li>
+                                            <li><strong>W:</strong> Winnability Factor (30% weight) - Competitive advantage</li>
+                                            <li><strong>P:</strong> Premium Contribution (20% weight) - Revenue potential</li>
+                                            <li><strong>F:</strong> Freshness Index (10% weight) - Market timing</li>
+                                        </ul>
+                                    </div>
+                                    <div class="tooltip-section">
+                                        <div class="tooltip-label">Business Impact</div>
+                                        <div class="tooltip-desc">Higher scores indicate submissions with optimal risk-adjusted returns.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <select id="sort_mode" class="sort-select">
+                            <option value="priority">Priority Score</option>
+                            <option value="premium">Premium Amount</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="created">Date Created</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
@@ -546,6 +631,102 @@
     
     let ALL = [];
 
+    // Compute dashboard metrics from rows returned by /api/classified_mode
+    function computeMetricsFromRows(rows) {
+        const r = Array.isArray(rows) ? rows : [];
+        const total = r.length;
+        let tgt = 0, inn = 0, out = 0;
+        let premSum = 0, winSum = 0, winCt = 0;
+        for (const x of r) {
+            const s = (x && x.appetite_status) || '';
+            if (s === 'TARGET') tgt++; else if (s === 'IN') inn++; else if (s === 'OUT') out++;
+            const p = Number(x?.total_premium || 0);
+            if (!Number.isNaN(p)) premSum += p;
+            let w = x?.winnability;
+            if (typeof w === 'string') { w = parseFloat(w); }
+            if (typeof w === 'number' && !Number.isNaN(w)) {
+                // Normalize if provided as percentage
+                if (w > 1) w = w / 100.0;
+                winSum += w; winCt += 1;
+            }
+        }
+        const pct = (n, d) => d > 0 ? Math.round((n / d) * 100) : 0;
+        return {
+            total,
+            targets: tgt,
+            inCt: inn,
+            outCt: out,
+            pctTgt: pct(tgt, total),
+            pctIn: pct(inn, total),
+            pctOut: pct(out, total),
+            avgPremium: total ? (premSum / total) : 0,
+            winRate: winCt ? (winSum / winCt) * 100 : 0,
+            opportunities: tgt + inn,
+        };
+    }
+
+    // Update hero quick stats area using computed metrics
+    function updateHeroQuickStats(m) {
+        try {
+            if (!m) return;
+            const $ = (id) => document.getElementById(id);
+            const fmt$ = (v) => '$' + Math.round(Number(v || 0)).toLocaleString();
+            const tgtEl = $('active_targets');
+            const winEl = $('win_rate');
+            const premEl = $('avg_premium');
+            const oppEl = $('opportunities_count');
+            if (tgtEl) tgtEl.textContent = String(m.targets ?? '—');
+            if (winEl) winEl.textContent = Math.round(m.winRate || 0) + '%';
+            if (premEl) premEl.textContent = fmt$(m.avgPremium);
+            if (oppEl) oppEl.textContent = String(m.opportunities ?? '—');
+        } catch (e) {
+            console.warn('Hero quick stats update failed:', e);
+        }
+    }
+
+    // Update the four KPI tiles at top of the page
+    function updateOverviewCards(m) {
+        try {
+            if (!m) return;
+            const setVal = (sel, v) => {
+                const el = document.querySelector(sel);
+                if (!el) return;
+                const val = Math.round(v || 0);
+                // Update displayed value immediately
+                el.textContent = String(val);
+                // Sync data-target so the counter animation animates to the latest value
+                try { el.dataset.target = String(val); } catch(_) {}
+            };
+            const setPct = (card, pct) => {
+                const fill = document.querySelector(`${card} .progress-fill`);
+                const txt = document.querySelector(`${card} .progress-text`);
+                if (fill) fill.style.width = `${Math.max(0, Math.min(100, Math.round(pct || 0)))}%`;
+                if (txt) txt.textContent = `${Math.round(pct || 0)}% of submissions`;
+            };
+
+            // Target
+            setVal('.target-metric .metric-value', m.targets);
+            setPct('.target-metric', m.pctTgt);
+
+            // In-Appetite
+            setVal('.in-metric .metric-value', m.inCt);
+            setPct('.in-metric', m.pctIn);
+
+            // Total
+            setVal('.total-metric .metric-value', m.total);
+            const avgTxt = document.querySelector('.total-metric .progress-text');
+            if (avgTxt) avgTxt.textContent = `Avg premium $${Math.round(m.avgPremium || 0).toLocaleString()}`;
+
+            // Out-of-Appetite
+            setVal('.out-metric .metric-value', m.outCt);
+            setPct('.out-metric', m.pctOut);
+
+            // No animation on update to avoid race conditions with prior timers
+        } catch (e) {
+            console.warn('Overview KPI update failed:', e);
+        }
+    }
+
     function getActiveMode() {
         return localStorage.getItem("ACTIVE_MODE") || "balanced_growth";
     }
@@ -576,7 +757,11 @@
 
     // Worklist view state helpers
     function getWorklistView(){
-        try { return localStorage.getItem('WORKLIST_VIEW') || 'list'; } catch(e){ return 'list'; }
+        try { 
+            const view = localStorage.getItem('WORKLIST_VIEW') || 'list';
+            // Ensure valid view (remove legacy kanban view)
+            return ['list', 'cards'].includes(view) ? view : 'list';
+        } catch(e){ return 'list'; }
     }
     function setWorklistView(v){
         try { localStorage.setItem('WORKLIST_VIEW', v); } catch(e){}
@@ -600,6 +785,10 @@
                 setActiveMode(last);
                 if (sel) sel.value = last;
                 const jj = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(last)}`);
+                // Update overview + hero from fallback rows
+                const m2 = computeMetricsFromRows(jj.data || []);
+                updateHeroQuickStats(m2);
+                updateOverviewCards(m2);
                 renderWorklistRows(jj.data || [], last);
                 return;
             }
@@ -611,6 +800,12 @@
             renderWorklistRows(window._worklistRows, mode);
             updateModeChip();
             updateLastUpdated('worklist_last');
+
+            // Update hero + KPI tiles based strictly on the visible worklist
+            // so cards and hero stay in sync with what the user sees.
+            const metrics = computeMetricsFromRows(window._worklistRows);
+            updateHeroQuickStats(metrics);
+            updateOverviewCards(metrics);
         });
     }
 
@@ -624,7 +819,8 @@
 
         if (view === 'list') return renderWorklistList(top, mode);
         if (view === 'cards') return renderWorklistCards(top, mode);
-        return renderWorklistKanban(rows || [], mode);
+        // Default to list view if no valid view is selected
+        return renderWorklistList(top, mode);
     }
 
     function badge(s) {
@@ -670,13 +866,14 @@
     function renderWorklistList(rows, mode){
         const el = document.getElementById('worklist');
         el.innerHTML = rows.map(r => `
-            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row ${r.target_opportunity ? 'target-opportunity-glow' : ''}">
               <div class="row-main">
                 <div class="row-title">${r.account_name || "-"}</div>
                 <div class="row-sub">${r.primary_risk_state || "-"} · ${r.line_of_business || "-"} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
               </div>
               <div class="row-badges">
                 ${badge(r.appetite_status)}
+                ${r.target_opportunity ? '<span class="pill pill-indigo">TOP</span>' : ''}
                 <span class="chip">Score ${Number(r.priority_score || 0).toFixed(2)}</span>
               </div>
             </a>
@@ -687,7 +884,7 @@
         const el = document.getElementById('worklist');
         el.innerHTML = `
           <div class="worklist-cards">${rows.map(r => `
-            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="work-card ${r.appetite_status?.toLowerCase() || ''}">
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="work-card ${r.appetite_status?.toLowerCase() || ''} ${r.target_opportunity ? 'target-opportunity-glow' : ''}">
               <div class="work-card-head">
                 <div class="work-card-title">${r.account_name || '-'}</div>
                 <div class="work-card-badges">${badge(r.appetite_status)}</div>
@@ -697,39 +894,12 @@
                 <span>$${Math.round(r.total_premium || 0).toLocaleString()} premium</span>
                 <span>Score ${Number(r.priority_score || 0).toFixed(2)}</span>
               </div>
+              ${r.target_opportunity ? '<div class="top-banner">TOP TARGET</div>' : ''}
             </a>`).join('')}
           </div>`;
     }
 
-    function renderWorklistKanban(rows, mode){
-        const el = document.getElementById('worklist');
-        // group by appetite_status
-        const groups = { TARGET: [], IN: [], OUT: [] };
-        rows.forEach(r=>{ (groups[r.appetite_status]||groups.OUT).push(r); });
-        // sort each group by priority_score desc and take top 8 across columns
-        Object.keys(groups).forEach(k=> groups[k] = groups[k].sort((a,b)=> (b.priority_score||0)-(a.priority_score||0)).slice(0,8));
-        const col = (k,label,emoji)=>`
-          <div class="kanban-col">
-            <div class="kanban-header">
-              <div class="kanban-title">${emoji} ${label}</div>
-              <div class="kanban-count">${groups[k].length}</div>
-            </div>
-            <div class="kanban-items">
-              ${groups[k].map(r=>`
-                <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="kanban-card">
-                  <div class="k-title">${r.account_name || '-'}</div>
-                  <div class="k-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'}</div>
-                  <div class="k-meta">
-                    <span>$${Math.round(r.total_premium || 0).toLocaleString()}</span>
-                    <span>Score ${Number(r.priority_score || 0).toFixed(1)}</span>
-                  </div>
-                </a>`).join('')}
-            </div>
-          </div>`;
-        el.innerHTML = `<div class="kanban-board">${
-            col('TARGET','Target','🎯') + col('IN','In-Appetite','✅') + col('OUT','Out','❌')
-        }</div>`;
-    }
+
 
     // Priority Accounts functionality
     let PRIORITY_ACCOUNTS_DATA = [];
@@ -800,6 +970,9 @@
             
             // Update results count
             updatePriorityAccountsCount();
+
+            // Note: keep overview KPIs sourced from home mode worklist, not this table,
+            // to avoid conflicting counts.
             
         } catch (error) {
             console.error('Error loading priority accounts:', error);
@@ -852,7 +1025,7 @@
                     .format(account.total_premium) : '—';
 
             return `
-                <tr class="table-row hover:bg-white/5 transition-all duration-200" data-account-id="${account.id}">
+                <tr class="table-row hover:bg-white/5 transition-all duration-200 ${account.target_opportunity ? 'target-opportunity-row' : ''}" data-account-id="${account.id}">
                     <td class="table-cell">
                         <div class="flex flex-col">
                             <span class="font-medium text-white">${account.account_name || '—'}</span>
@@ -863,6 +1036,7 @@
                         <span class="status-badge ${statusClass} bg-opacity-20 px-2 py-1 rounded-md text-xs font-medium">
                             ${statusEmoji} ${account.appetite_status}
                         </span>
+                        ${account.target_opportunity ? '<span class="ml-2 pill pill-indigo">TOP</span>' : ''}
                     </td>
                     <td class="table-cell">
                         <span class="font-mono text-emerald-400">${premiumFormatted}</span>
@@ -909,7 +1083,7 @@
         const nextBtn = document.getElementById('next_page');
         
         if (paginationInfo) {
-            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page.toLocaleString()} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages.toLocaleString()}`;
+            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages}`;
         }
         
         if (prevBtn) {
@@ -936,7 +1110,7 @@
         const lastUpdated = document.getElementById('last_updated');
         
         if (resultsCount) {
-            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count.toLocaleString()} priority accounts`;
+            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count} priority accounts`;
         }
         
         if (lastUpdated) {
@@ -1192,89 +1366,7 @@
         
         return modal;
     }
-    
-    function createWorkloadSettingsModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 workload-settings-modal';
-        modal.innerHTML = `
-            <div class="glass-panel max-w-lg mx-4 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>⚙️</span>
-                        Workload Settings
-                    </h3>
-                    <button class="close-modal text-2xl hover:text-red-400">×</button>
-                </div>
-                <div class="space-y-4">
-                    <div class="setting-group">
-                        <label class="setting-label">Items per page</label>
-                        <select class="setting-select" id="items_per_page">
-                            <option value="5">5 items</option>
-                            <option value="10" selected>10 items</option>
-                            <option value="15">15 items</option>
-                            <option value="20">20 items</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label class="setting-label">Auto-refresh interval</label>
-                        <select class="setting-select" id="refresh_interval">
-                            <option value="30">30 seconds</option>
-                            <option value="45" selected>45 seconds</option>
-                            <option value="60">1 minute</option>
-                            <option value="120">2 minutes</option>
-                            <option value="0">Disabled</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" id="show_priorities" checked class="setting-checkbox">
-                            <span>Show priority scores</span>
-                        </label>
-                    </div>
-                    <div class="setting-group">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" id="compact_view" class="setting-checkbox">
-                            <span>Compact view</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-6">
-                    <button class="btn-cancel close-modal">Cancel</button>
-                    <button class="btn-primary" onclick="applyWorkloadSettings()">Apply</button>
-                </div>
-            </div>
-        `;
-        
-        modal.querySelectorAll('.close-modal').forEach(btn => {
-            btn.onclick = () => modal.remove();
-        });
-        
-        // Load current settings
-        document.getElementById('items_per_page').value = localStorage.getItem('workload_items_per_page') || '10';
-        document.getElementById('refresh_interval').value = localStorage.getItem('workload_refresh_interval') || '45';
-        document.getElementById('show_priorities').checked = localStorage.getItem('workload_show_priorities') !== 'false';
-        document.getElementById('compact_view').checked = localStorage.getItem('workload_compact_view') === 'true';
-        
-        return modal;
-    }
-    
-    function applyWorkloadSettings() {
-        const itemsPerPage = document.getElementById('items_per_page').value;
-        const refreshInterval = document.getElementById('refresh_interval').value;
-        const showPriorities = document.getElementById('show_priorities').checked;
-        const compactView = document.getElementById('compact_view').checked;
-        
-        localStorage.setItem('workload_items_per_page', itemsPerPage);
-        localStorage.setItem('workload_refresh_interval', refreshInterval);
-        localStorage.setItem('workload_show_priorities', showPriorities);
-        localStorage.setItem('workload_compact_view', compactView);
-        
-        toast('Workload settings saved', 'success');
-        document.querySelector('.workload-settings-modal')?.remove();
-        
-        // Reload workload with new settings
-        loadHome();
-    }
+
     
     function performExport() {
         const activeFormat = document.querySelector('.export-option.active')?.dataset.format || 'csv';
@@ -1316,14 +1408,7 @@
         };
     }
 
-    // Workload settings button
-    const workloadSettingsBtn = document.getElementById("workload_settings");
-    if (workloadSettingsBtn) {
-        workloadSettingsBtn.onclick = () => {
-            const modal = createWorkloadSettingsModal();
-            document.body.appendChild(modal);
-        };
-    }
+
 
     const modeSelect = document.getElementById('home_mode');
     if (modeSelect) {
@@ -1331,7 +1416,10 @@
             if (e.target.value && e.target.value !== "") {
                 setActiveMode(e.target.value);
                 updateModeChip();
+                // Simulate a full dashboard refresh
                 loadHome();
+                // Also refresh the priority accounts table to keep UI consistent
+                try { loadPriorityAccounts(1); } catch (_) {}
             }
         });
     }
@@ -1345,6 +1433,14 @@
         loadHome();
         loadPriorityAccounts(); // Load priority accounts table even if modes fail
         updateModeChip();
+    });
+
+    // React to global mode changes dispatched from the header
+    window.addEventListener('MODE_CHANGED', (e) => {
+        const m = (e?.detail && e.detail.mode) ? e.detail.mode : getActiveMode();
+        try { const sel = document.getElementById('home_mode'); if (sel) sel.value = m; } catch {}
+        loadHome();
+        try { loadPriorityAccounts(1); } catch {}
     });
 
     // Priority Accounts Filter Controls
@@ -1609,25 +1705,29 @@
             });
         }
         
-        // Animate counters
-        animateCounters();
+        // Counters animate on first paint only via initial dataset
     }
     
     function animateCounters() {
         document.querySelectorAll('.animate-counter').forEach(counter => {
+            // Cancel any existing animation tied to this element
+            try { if (counter.__timer) { clearInterval(counter.__timer); counter.__timer = null; } } catch(_) {}
+            const cur = parseInt(counter.textContent) || 0;
             const target = parseInt(counter.dataset.target) || 0;
-            const duration = 1500;
-            const start = 0;
-            const increment = target / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(timer);
+            const duration = 800; // quicker, snappier updates
+            const steps = Math.max(1, Math.round(duration / 16));
+            const delta = (target - cur) / steps;
+            let i = 0; let val = cur;
+            if (steps === 1) { counter.textContent = String(target); return; }
+            counter.__timer = setInterval(() => {
+                i += 1; val += delta;
+                if (i >= steps) {
+                    counter.textContent = String(target);
+                    clearInterval(counter.__timer);
+                    counter.__timer = null;
+                } else {
+                    counter.textContent = String(Math.round(val));
                 }
-                counter.textContent = Math.round(current).toLocaleString();
             }, 16);
         });
     }
@@ -1806,6 +1906,17 @@
             });
         });
     }
+
+    // Show info icon next to sort only when "Priority Score" is selected
+    function updatePrioritySortInfo(){
+        const sel = document.getElementById('sort_mode');
+        const info = document.getElementById('priority_sort_info');
+        if (!sel || !info) return;
+        info.style.display = (sel.value === 'priority') ? 'inline-flex' : 'none';
+    }
+    document.getElementById('sort_mode')?.addEventListener('change', updatePrioritySortInfo);
+    // Initialize visibility on load
+    updatePrioritySortInfo();
 
     // Initialize everything
     setupCommandPalette();

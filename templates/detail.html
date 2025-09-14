@@ -1,395 +1,488 @@
-{% extends "base.html" %}
-{% block content %}
-{% if not item %}
-  <div class="glass-panel">
+{% extends "base.html" %} {% block content %} {% if not item %}
+<div class="glass-panel">
     <div class="flex items-center justify-between">
-      <div class="text-sm opacity-80">Submission not found.</div>
-      <a href="{{ url_for('submissions') }}" class="quick-action">Back to list</a>
+        <div class="text-sm opacity-80">Submission not found.</div>
+        <a href="{{ url_for('submissions') }}" class="quick-action"
+            >Back to list</a
+        >
     </div>
-  </div>
+</div>
 {% else %}
 
 <!-- Enhanced Header with Underwriter Actions -->
 <div class="glass-panel">
-  <div class="flex items-center justify-between gap-3 mb-4">
-    <div>
-      <div class="text-2xl font-semibold tracking-tight">{{ item.account_name or 'Unknown Account' }}</div>
-      <div class="flex items-center gap-2 mt-2">
-        <span class="text-xs opacity-70">ID {{ item.id }}</span>
-        <span class="text-xs opacity-70">•</span>
-        <span id="mode_label" class="text-xs opacity-70">Mode: default</span>
-        {% if item.appetite_status == 'TARGET' %}
-          <span class="appetite-indicator appetite-target pill">🎯 TARGET OPPORTUNITY</span>
-        {% elif item.appetite_status == 'IN' %}
-          <span class="appetite-indicator appetite-in pill">✅ IN-APPETITE</span>
-        {% else %}
-          <span class="appetite-indicator appetite-out pill">❌ OUT-OF-APPETITE</span>
-        {% endif %}
-      </div>
+    <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+            <div class="text-2xl font-semibold tracking-tight">
+                {{ item.account_name or 'Unknown Account' }}
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+                <span class="text-xs opacity-70">ID {{ item.id }}</span>
+                <span class="text-xs opacity-70">•</span>
+                <span id="mode_label" class="text-xs opacity-70"
+                    >Mode: default</span
+                >
+                {% if item.appetite_status == 'TARGET' %}
+                <span class="appetite-indicator appetite-target pill"
+                    >🎯 TARGET OPPORTUNITY</span
+                >
+                {% elif item.appetite_status == 'IN' %}
+                <span class="appetite-indicator appetite-in pill"
+                    >✅ IN-APPETITE</span
+                >
+                {% else %}
+                <span class="appetite-indicator appetite-out pill"
+                    >❌ OUT-OF-APPETITE</span
+                >
+                {% endif %}
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span
+                class="priority-score {% if item.priority_score >= 7 %}priority-high{% elif item.priority_score >= 4 %}priority-medium{% else %}priority-low{% endif %}"
+            >
+                Priority {{ '%.1f'|format(item.priority_score or 0) }}
+            </span>
+            <button id="btn_copy" class="quick-action">🔗 Copy Link</button>
+            <button id="btn_watch" class="quick-action">👀 Watch</button>
+            <button id="btn_note" class="quick-action">📝 Add Note</button>
+            <button id="btn_refresh" class="quick-action">🔄 Refresh</button>
+            <a href="{{ url_for('submissions') }}" class="quick-action"
+                >← Back</a
+            >
+        </div>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="priority-score {% if item.priority_score >= 7 %}priority-high{% elif item.priority_score >= 4 %}priority-medium{% else %}priority-low{% endif %}">
-        Priority {{ '%.1f'|format(item.priority_score or 0) }}
-      </span>
-      <button id="btn_copy" class="quick-action">🔗 Copy Link</button>
-      <button id="btn_watch" class="quick-action">👀 Watch</button>
-      <button id="btn_note" class="quick-action">📝 Add Note</button>
-      <button id="btn_refresh" class="quick-action">🔄 Refresh</button>
-      <a href="{{ url_for('submissions') }}" class="quick-action">← Back</a>
+
+    <!-- Quick Assessment Summary -->
+    <div
+        class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white bg-opacity-5 rounded-lg"
+    >
+        <div class="text-center">
+            <div class="text-lg font-semibold text-emerald-300">
+                ${{ '%.0f'|format(item.total_premium or 0) }}
+            </div>
+            <div class="text-xs opacity-75">Premium</div>
+        </div>
+        <div class="text-center">
+            <div class="text-lg font-semibold">
+                ${{ (item.tiv / 1000000) | round(1) }}M
+            </div>
+            <div class="text-xs opacity-75">TIV</div>
+        </div>
+        <div class="text-center">
+            <div class="text-lg font-semibold text-purple-300">
+                {% if item.winnability is number %} {% if item.winnability > 1
+                %}{{ '%.0f'|format(item.winnability) }}%{% else %}{{
+                '%.0f'|format((item.winnability or 0)*100) }}%{% endif %} {%
+                else %}—{% endif %}
+            </div>
+            <div class="text-xs opacity-75">Win Rate</div>
+        </div>
+        <div class="text-center">
+            <div class="text-lg font-semibold">
+                {{ item.primary_risk_state or '—' }}
+            </div>
+            <div class="text-xs opacity-75">State</div>
+        </div>
     </div>
-  </div>
-  
-  <!-- Quick Assessment Summary -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white bg-opacity-5 rounded-lg">
-    <div class="text-center">
-      <div class="text-lg font-semibold text-emerald-300">${{ item.total_premium | commafy }}</div>
-      <div class="text-xs opacity-75">Premium</div>
-    </div>
-    <div class="text-center">
-      <div class="text-lg font-semibold">${{ (item.tiv / 1000000) | commafy(1) }}M</div>
-      <div class="text-xs opacity-75">TIV</div>
-    </div>
-    <div class="text-center">
-      <div class="text-lg font-semibold text-purple-300">
-        {% if item.winnability is number %}
-          {% if item.winnability > 1 %}{{ '%.0f'|format(item.winnability) }}%{% else %}{{ '%.0f'|format((item.winnability or 0)*100) }}%{% endif %}
-        {% else %}—{% endif %}
-      </div>
-      <div class="text-xs opacity-75">Win Rate</div>
-    </div>
-    <div class="text-center">
-      <div class="text-lg font-semibold">{{ item.primary_risk_state or '—' }}</div>
-      <div class="text-xs opacity-75">State</div>
-    </div>
-  </div>
 </div>
 
 <!-- Enhanced Body Layout -->
 <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <!-- Left: Detailed Information -->
-  <div class="lg:col-span-2 space-y-6">
-    <!-- Risk Profile -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4">Risk Profile</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-        <div class="kv">
-          <span>Line of Business</span>
-          <b class="text-indigo-300">{{ item.line_of_business or '—' }}</b>
-        </div>
-        <div class="kv">
-          <span>Submission Type</span>
-          <b class="{% if item.renewal_or_new_business == 'NEW_BUSINESS' %}text-emerald-300{% else %}text-orange-300{% endif %}">
-            {{ 'New Business' if item.renewal_or_new_business == 'NEW_BUSINESS' else 'Renewal' }}
-          </b>
-        </div>
-        <div class="kv">
-          <span>Construction Type</span>
-          <b>{{ item.construction_type or '—' }}</b>
-        </div>
-        <div class="kv">
-          <span>Building Age</span>
-          <b>{{ (item.building_age | round(0)) or '—' }} years</b>
-        </div>
-        <div class="kv">
-          <span>Loss Value</span>
-          <b class="{% if item.loss_value > 100000 %}text-rose-300{% else %}text-emerald-300{% endif %}">
-            ${{ item.loss_value | commafy }}
-          </b>
-        </div>
-        <div class="kv">
-          <span>Loss Ratio</span>
-          <b class="{% if (item.loss_value / item.total_premium * 100) > 50 %}text-rose-300{% else %}text-emerald-300{% endif %}">
-            {{ '%.1f'|format((item.loss_value / item.total_premium * 100) if item.total_premium else 0) }}%
-          </b>
-        </div>
-      </div>
-    </div>
-
-    <!-- Policy Dates -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4">Policy Timeline</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div class="kv">
-          <span>Created Date</span>
-          <b>{{ item.created_at|dateformat }}</b>
-        </div>
-        <div class="kv">
-          <span>Effective Date</span>
-          <b class="text-emerald-300">{{ item.effective_date|dateformat }}</b>
-        </div>
-        <div class="kv">
-          <span>Expiration Date</span>
-          <b>{{ item.expiration_date|dateformat }}</b>
-        </div>
-      </div>
-    </div>
-
-    <!-- Appetite Analysis -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <span>Appetite Analysis</span>
-        {% if item.appetite_status == 'TARGET' %}
-          <span class="text-purple-300">🎯</span>
-        {% elif item.appetite_status == 'IN' %}
-          <span class="text-emerald-300">✅</span>
-        {% else %}
-          <span class="text-rose-300">❌</span>
-        {% endif %}
-      </h3>
-      <div class="space-y-3 text-sm">
-        {% if item.appetite_reasons and item.appetite_reasons|length > 0 %}
-          {% for reason in item.appetite_reasons %}
-            <div class="flex items-start gap-2">
-              <div class="w-2 h-2 rounded-full bg-indigo-400 mt-2 flex-shrink-0"></div>
-              <div>{{ reason }}</div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="opacity-80 italic">
-            {% if item.appetite_status == 'TARGET' %}
-              This submission meets all target criteria and represents a high-priority opportunity.
-            {% elif item.appetite_status == 'IN' %}
-              This submission meets appetite criteria and is suitable for underwriting review.
-            {% else %}
-              This submission does not meet current appetite criteria.
-            {% endif %}
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- Right: Actions & Analysis -->
-  <div class="space-y-4">
-    <!-- Quick Actions -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4">Underwriter Actions</h3>
-      <div class="space-y-2">
-        <button id="btn_explain" class="w-full quick-action primary">💡 Get AI Explanation</button>
-        <button id="btn_similar" class="w-full quick-action">🔍 Find Similar Risks</button>
-        <button id="btn_compare" class="w-full quick-action">📊 Compare to Portfolio</button>
-        <button id="btn_refer" class="w-full quick-action">👥 Refer to Specialist</button>
-        <div class="border-t border-white border-opacity-10 pt-3 mt-3">
-          <button id="btn_approve" class="w-full quick-action" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
-            ✅ Recommend Approval
-          </button>
-          <button id="btn_decline" class="w-full quick-action mt-2" style="background: linear-gradient(135deg, #f43f5e, #e11d48); color: white;">
-            ❌ Recommend Decline
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- AI Summary Widget for Detail Page -->
-    <div id="ai_summary_widget" class="hidden glass-panel">
-        <div class="flex items-start gap-3">
-            <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white text-sm">🤖</span>
+    <!-- Left: Detailed Information -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Risk Profile -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">Risk Profile</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div class="kv">
+                    <span>Line of Business</span>
+                    <b class="text-indigo-300"
+                        >{{ item.line_of_business or '—' }}</b
+                    >
+                </div>
+                <div class="kv">
+                    <span>Submission Type</span>
+                    <b
+                        class="{% if item.renewal_or_new_business == 'NEW_BUSINESS' %}text-emerald-300{% else %}text-orange-300{% endif %}"
+                    >
+                        {{ 'New Business' if item.renewal_or_new_business ==
+                        'NEW_BUSINESS' else 'Renewal' }}
+                    </b>
+                </div>
+                <div class="kv">
+                    <span>Construction Type</span>
+                    <b>{{ item.construction_type or '—' }}</b>
+                </div>
+                <div class="kv">
+                    <span>Building Age</span>
+                    <b>{{ (item.building_age | round(0)) or '—' }} years</b>
+                </div>
+                <div class="kv">
+                    <span>Loss Value</span>
+                    <b
+                        class="{% if item.loss_value > 100000 %}text-rose-300{% else %}text-emerald-300{% endif %}"
+                    >
+                        ${{ '%.0f'|format(item.loss_value or 0) }}
+                    </b>
+                </div>
+                <div class="kv">
+                    <span>Loss Ratio</span>
+                    <b
+                        class="{% if (item.loss_value / item.total_premium * 100) > 50 %}text-rose-300{% else %}text-emerald-300{% endif %}"
+                    >
+                        {{ '%.1f'|format((item.loss_value / item.total_premium *
+                        100) if item.total_premium else 0) }}%
+                    </b>
                 </div>
             </div>
-            <div class="flex-grow">
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-semibold text-purple-300">Gemini AI Activity</h4>
-                    <button id="ai_summary_close" class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity">
-                        <span class="text-xs">✕</span>
+        </div>
+
+        <!-- Policy Dates -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">Policy Timeline</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="kv">
+                    <span>Created Date</span>
+                    <b>{{ item.created_at|dateformat }}</b>
+                </div>
+                <div class="kv">
+                    <span>Effective Date</span>
+                    <b class="text-emerald-300"
+                        >{{ item.effective_date|dateformat }}</b
+                    >
+                </div>
+                <div class="kv">
+                    <span>Expiration Date</span>
+                    <b>{{ item.expiration_date|dateformat }}</b>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appetite Analysis -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span>Appetite Analysis</span>
+                {% if item.appetite_status == 'TARGET' %}
+                <span class="text-purple-300">🎯</span>
+                {% elif item.appetite_status == 'IN' %}
+                <span class="text-emerald-300">✅</span>
+                {% else %}
+                <span class="text-rose-300">❌</span>
+                {% endif %}
+            </h3>
+            <div class="space-y-3 text-sm">
+                {% if item.appetite_reasons and item.appetite_reasons|length > 0
+                %} {% for reason in item.appetite_reasons %}
+                <div class="flex items-start gap-2">
+                    <div
+                        class="w-2 h-2 rounded-full bg-indigo-400 mt-2 flex-shrink-0"
+                    ></div>
+                    <div>{{ reason }}</div>
+                </div>
+                {% endfor %} {% else %}
+                <div class="opacity-80 italic">
+                    {% if item.appetite_status == 'TARGET' %} This submission
+                    meets all target criteria and represents a high-priority
+                    opportunity. {% elif item.appetite_status == 'IN' %} This
+                    submission meets appetite criteria and is suitable for
+                    underwriting review. {% else %} This submission does not
+                    meet current appetite criteria. {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Actions & Analysis -->
+    <div class="space-y-4">
+        <!-- Quick Actions -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">Underwriter Actions</h3>
+            <div class="space-y-2">
+                <button id="btn_explain" class="w-full quick-action primary">
+                    💡 Get AI Explanation
+                </button>
+                <button id="btn_similar" class="w-full quick-action">
+                    🔍 Find Similar Risks
+                </button>
+                <button id="btn_compare" class="w-full quick-action">
+                    📊 Compare to Portfolio
+                </button>
+                <button id="btn_refer" class="w-full quick-action">
+                    👥 Refer to Specialist
+                </button>
+                <div class="border-t border-white border-opacity-10 pt-3 mt-3">
+                    <button
+                        id="btn_approve"
+                        class="w-full quick-action"
+                        style="
+                            background: linear-gradient(
+                                135deg,
+                                #10b981,
+                                #059669
+                            );
+                            color: white;
+                        "
+                    >
+                        ✅ Recommend Approval
+                    </button>
+                    <button
+                        id="btn_decline"
+                        class="w-full quick-action mt-2"
+                        style="
+                            background: linear-gradient(
+                                135deg,
+                                #f43f5e,
+                                #e11d48
+                            );
+                            color: white;
+                        "
+                    >
+                        ❌ Recommend Decline
                     </button>
                 </div>
-                <div id="ai_summary_content" class="text-xs text-slate-300 space-y-1">
-                    <!-- AI activity will be populated here -->
-                </div>
-                <div class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20">
-                    <div class="text-xs text-purple-400/80">
-                        <span id="ai_model_info">Powered by Gemini Flash 2.0</span>
+            </div>
+        </div>
+
+        <!-- AI Summary Widget for Detail Page -->
+        <div id="ai_summary_widget" class="hidden glass-panel">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <div
+                        class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center"
+                    >
+                        <span class="text-white text-sm">🤖</span>
                     </div>
-                    <div class="text-xs text-purple-400/60" id="ai_last_used">
-                        <!-- Last used timestamp -->
+                </div>
+                <div class="flex-grow">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-semibold text-purple-300">
+                            Gemini AI Activity
+                        </h4>
+                        <button
+                            id="ai_summary_close"
+                            class="text-purple-400 hover:text-purple-200 opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                            <span class="text-xs">✕</span>
+                        </button>
+                    </div>
+                    <div
+                        id="ai_summary_content"
+                        class="text-xs text-slate-300 space-y-1"
+                    >
+                        <!-- AI activity will be populated here -->
+                    </div>
+                    <div
+                        class="flex items-center justify-between mt-3 pt-2 border-t border-purple-400/20"
+                    >
+                        <div class="text-xs text-purple-400/80">
+                            <span id="ai_model_info"
+                                >Powered by Gemini Flash 2.0</span
+                            >
+                        </div>
+                        <div
+                            class="text-xs text-purple-400/60"
+                            id="ai_last_used"
+                        >
+                            <!-- Last used timestamp -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- AI Insights -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4">AI Insights</h3>
-      <div id="ai_insights" class="text-sm opacity-90">
-        <div class="text-center py-4 opacity-60">
-          Click "Get AI Explanation" to see detailed analysis
+        <!-- AI Insights -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">AI Insights</h3>
+            <div id="ai_insights" class="text-sm opacity-90">
+                <div class="text-center py-4 opacity-60">
+                    Click "Get AI Explanation" to see detailed analysis
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Risk Indicators -->
-    <div class="glass-panel">
-      <h3 class="text-lg font-semibold mb-4">Risk Indicators</h3>
-      <div class="space-y-3 text-sm">
-        <div class="flex items-center justify-between">
-          <span>Premium Size</span>
-          <span class="{% if item.total_premium > 100000 %}text-emerald-300{% elif item.total_premium > 50000 %}text-yellow-300{% else %}text-rose-300{% endif %}">
-            {% if item.total_premium > 100000 %}HIGH{% elif item.total_premium > 50000 %}MED{% else %}LOW{% endif %}
-          </span>
+        <!-- Risk Indicators -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">Risk Indicators</h3>
+            <div class="space-y-3 text-sm">
+                <div class="flex items-center justify-between">
+                    <span>Premium Size</span>
+                    <span
+                        class="{% if item.total_premium > 100000 %}text-emerald-300{% elif item.total_premium > 50000 %}text-yellow-300{% else %}text-rose-300{% endif %}"
+                    >
+                        {% if item.total_premium > 100000 %}HIGH{% elif
+                        item.total_premium > 50000 %}MED{% else %}LOW{% endif %}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Win Probability</span>
+                    <span
+                        class="{% if item.winnability > 0.7 %}text-emerald-300{% elif item.winnability > 0.4 %}text-yellow-300{% else %}text-rose-300{% endif %}"
+                    >
+                        {% if item.winnability > 0.7 %}HIGH{% elif
+                        item.winnability > 0.4 %}MED{% else %}LOW{% endif %}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>State Appetite</span>
+                    <span
+                        class="{% if item.primary_risk_state in ['OH', 'PA', 'MD', 'CO', 'CA', 'FL'] %}text-emerald-300{% else %}text-yellow-300{% endif %}"
+                    >
+                        {% if item.primary_risk_state in ['OH', 'PA', 'MD',
+                        'CO', 'CA', 'FL'] %}TARGET{% else %}SECONDARY{% endif %}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Construction Risk</span>
+                    <span
+                        class="{% if item.construction_type in ['Fire Resistive', 'Non-Combustible', 'Masonry Non-Combustible'] %}text-emerald-300{% else %}text-yellow-300{% endif %}"
+                    >
+                        {% if item.construction_type in ['Fire Resistive',
+                        'Non-Combustible', 'Masonry Non-Combustible'] %}LOW{%
+                        else %}MED{% endif %}
+                    </span>
+                </div>
+            </div>
         </div>
-        <div class="flex items-center justify-between">
-          <span>Win Probability</span>
-          <span class="{% if item.winnability > 0.7 %}text-emerald-300{% elif item.winnability > 0.4 %}text-yellow-300{% else %}text-rose-300{% endif %}">
-            {% if item.winnability > 0.7 %}HIGH{% elif item.winnability > 0.4 %}MED{% else %}LOW{% endif %}
-          </span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span>State Appetite</span>
-          <span class="{% if item.primary_risk_state in ['OH', 'PA', 'MD', 'CO', 'CA', 'FL'] %}text-emerald-300{% else %}text-yellow-300{% endif %}">
-            {% if item.primary_risk_state in ['OH', 'PA', 'MD', 'CO', 'CA', 'FL'] %}TARGET{% else %}SECONDARY{% endif %}
-          </span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span>Construction Risk</span>
-          <span class="{% if item.construction_type in ['Fire Resistive', 'Non-Combustible', 'Masonry Non-Combustible'] %}text-emerald-300{% else %}text-yellow-300{% endif %}">
-            {% if item.construction_type in ['Fire Resistive', 'Non-Combustible', 'Masonry Non-Combustible'] %}LOW{% else %}MED{% endif %}
-          </span>
-        </div>
-      </div>
     </div>
-  </div>
 </div>
 
 <script>
-  // Fill mode label from URL
-  (function(){
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    const el = document.getElementById('mode_label');
-    el.textContent = 'Mode: ' + (mode || 'default');
-  })();
-
-  // Copy link
-  document.getElementById('btn_copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); toast('Link copied', 'success'); }
-    catch { toast('Copy failed', 'error'); }
-  };
-
-  // Manual refresh to get latest data
-  document.getElementById('btn_refresh').onclick = async () => {
-    await withLoading(document.getElementById('btn_refresh'), async () => {
-      try{ await fetchJSON('/api/refresh', { method: 'POST' }); toast('Data refreshed', 'success'); location.reload(); }
-      catch(e){ toast('Refresh failed: ' + e.message, 'error'); }
-    });
-  };
-
-  // Watch functionality
-  document.getElementById('btn_watch').onclick = () => {
-    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
-    const submissionId = {{ item.id }};
-    
-    if (watchList.includes(submissionId)) {
-      const index = watchList.indexOf(submissionId);
-      watchList.splice(index, 1);
-      localStorage.setItem('watchList', JSON.stringify(watchList));
-      document.getElementById('btn_watch').innerHTML = '👀 Watch';
-      toast('Removed from watch list', 'success');
-    } else {
-      watchList.push(submissionId);
-      localStorage.setItem('watchList', JSON.stringify(watchList));
-      document.getElementById('btn_watch').innerHTML = '✅ Watching';
-      toast('Added to watch list', 'success');
-    }
-  };
-
-  // Add note functionality
-  document.getElementById('btn_note').onclick = () => {
-    const note = prompt('Add a note for this submission:', localStorage.getItem(`note_{{ item.id }}`) || '');
-    if (note !== null) {
-      if (note.trim()) {
-        localStorage.setItem(`note_{{ item.id }}`, note);
-        toast('Note saved', 'success');
-      } else {
-        localStorage.removeItem(`note_{{ item.id }}`);
-        toast('Note removed', 'success');
-      }
-    }
-  };
-
-  // Find similar risks
-  document.getElementById('btn_similar').onclick = () => {
-    const state = '{{ item.primary_risk_state }}';
-    const lob = '{{ item.line_of_business }}';
-    const premium = {{ item.total_premium or 0 }};
-    const url = `/submissions?state=${state}&min_premium=${Math.round(premium * 0.8)}&max_premium=${Math.round(premium * 1.2)}&q=${encodeURIComponent(lob)}`;
-    window.location.href = url;
-  };
-
-  // Compare to portfolio
-  document.getElementById('btn_compare').onclick = () => {
-    window.location.href = '/insights';
-  };
-
-  // Refer to specialist
-  document.getElementById('btn_refer').onclick = () => {
-    const specialists = ['Risk Assessment Team', 'Senior Underwriter', 'Construction Expert', 'Catastrophe Specialist'];
-    const specialist = specialists[Math.floor(Math.random() * specialists.length)];
-    if (confirm(`Refer this submission to ${specialist}?`)) {
-      toast(`Referred to ${specialist}`, 'success');
-    }
-  };
-
-  // Approve submission
-  document.getElementById('btn_approve').onclick = () => {
-    if (confirm('Recommend this submission for approval?')) {
-      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
-      recommendations[{{ item.id }}] = { status: 'approved', timestamp: new Date().toISOString() };
-      localStorage.setItem('recommendations', JSON.stringify(recommendations));
-      toast('Submission recommended for approval', 'success');
-    }
-  };
-
-  // Decline submission
-  document.getElementById('btn_decline').onclick = () => {
-    if (confirm('Recommend this submission for decline?')) {
-      const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
-      recommendations[{{ item.id }}] = { status: 'declined', timestamp: new Date().toISOString() };
-      localStorage.setItem('recommendations', JSON.stringify(recommendations));
-      toast('Submission recommended for decline', 'warning');
-    }
-  };
-
-  // AI rationale with loading state
-  document.getElementById('btn_explain').onclick = async () => {
-    const box = document.getElementById('ai_insights');
-    const originalContent = box.innerHTML;
-    box.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full"></div> Generating explanation...</div>';
-    
-    try {
+    // Fill mode label from URL
+    (function(){
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
-      const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
-      const j = await fetchJSON(url, { method: 'POST' });
-      box.innerHTML = `<div class="text-sm">${j.explanation || 'No explanation available'}</div>`;
-      
-      // Show AI summary
-      const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
-      const activity = `
-          <div><strong>Action:</strong> Generated explanation for submission {{ item.id }}</div>
-          <div><strong>AI Status:</strong> ${aiUsed}</div>
-          <div><strong>Result:</strong> ${j.explanation ? 'Explanation provided' : 'No explanation available'}</div>
-          ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
-      `;
-      if (window.showAiSummary) {
-          window.showAiSummary(activity);
-      }
-    } catch(e){
-      box.innerHTML = `<div class="text-sm text-red-400">Failed to generate explanation: ${e.message}</div>`;
-    }
-  };
+      const el = document.getElementById('mode_label');
+      el.textContent = 'Mode: ' + (mode || 'default');
+    })();
 
-  // Initialize watch button state
-  (() => {
-    const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
-    if (watchList.includes({{ item.id }})) {
-      document.getElementById('btn_watch').innerHTML = '✅ Watching';
-    }
-  })();
+    // Copy link
+    document.getElementById('btn_copy').onclick = async () => {
+      try { await navigator.clipboard.writeText(window.location.href); toast('Link copied', 'success'); }
+      catch { toast('Copy failed', 'error'); }
+    };
+
+    // Manual refresh to get latest data
+    document.getElementById('btn_refresh').onclick = async () => {
+      await withLoading(document.getElementById('btn_refresh'), async () => {
+        try{ await fetchJSON('/api/refresh', { method: 'POST' }); toast('Data refreshed', 'success'); location.reload(); }
+        catch(e){ toast('Refresh failed: ' + e.message, 'error'); }
+      });
+    };
+
+    // Watch functionality
+    document.getElementById('btn_watch').onclick = () => {
+      const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+      const submissionId = {{ item.id }};
+
+      if (watchList.includes(submissionId)) {
+        const index = watchList.indexOf(submissionId);
+        watchList.splice(index, 1);
+        localStorage.setItem('watchList', JSON.stringify(watchList));
+        document.getElementById('btn_watch').innerHTML = '👀 Watch';
+        toast('Removed from watch list', 'success');
+      } else {
+        watchList.push(submissionId);
+        localStorage.setItem('watchList', JSON.stringify(watchList));
+        document.getElementById('btn_watch').innerHTML = '✅ Watching';
+        toast('Added to watch list', 'success');
+      }
+    };
+
+    // Add note functionality
+    document.getElementById('btn_note').onclick = () => {
+      const note = prompt('Add a note for this submission:', localStorage.getItem(`note_{{ item.id }}`) || '');
+      if (note !== null) {
+        if (note.trim()) {
+          localStorage.setItem(`note_{{ item.id }}`, note);
+          toast('Note saved', 'success');
+        } else {
+          localStorage.removeItem(`note_{{ item.id }}`);
+          toast('Note removed', 'success');
+        }
+      }
+    };
+
+    // Find similar risks
+    document.getElementById('btn_similar').onclick = () => {
+      const state = '{{ item.primary_risk_state }}';
+      const lob = '{{ item.line_of_business }}';
+      const premium = {{ item.total_premium or 0 }};
+      const url = `/submissions?state=${state}&min_premium=${Math.round(premium * 0.8)}&max_premium=${Math.round(premium * 1.2)}&q=${encodeURIComponent(lob)}`;
+      window.location.href = url;
+    };
+
+    // Compare to portfolio
+    document.getElementById('btn_compare').onclick = () => {
+      window.location.href = '/insights';
+    };
+
+    // Refer to specialist
+    document.getElementById('btn_refer').onclick = () => {
+      const specialists = ['Risk Assessment Team', 'Senior Underwriter', 'Construction Expert', 'Catastrophe Specialist'];
+      const specialist = specialists[Math.floor(Math.random() * specialists.length)];
+      if (confirm(`Refer this submission to ${specialist}?`)) {
+        toast(`Referred to ${specialist}`, 'success');
+      }
+    };
+
+    // Approve submission
+    document.getElementById('btn_approve').onclick = () => {
+      if (confirm('Recommend this submission for approval?')) {
+        const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+        recommendations[{{ item.id }}] = { status: 'approved', timestamp: new Date().toISOString() };
+        localStorage.setItem('recommendations', JSON.stringify(recommendations));
+        toast('Submission recommended for approval', 'success');
+      }
+    };
+
+    // Decline submission
+    document.getElementById('btn_decline').onclick = () => {
+      if (confirm('Recommend this submission for decline?')) {
+        const recommendations = JSON.parse(localStorage.getItem('recommendations') || '{}');
+        recommendations[{{ item.id }}] = { status: 'declined', timestamp: new Date().toISOString() };
+        localStorage.setItem('recommendations', JSON.stringify(recommendations));
+        toast('Submission recommended for decline', 'warning');
+      }
+    };
+
+    // AI rationale with loading state
+    document.getElementById('btn_explain').onclick = async () => {
+      const box = document.getElementById('ai_insights');
+      const originalContent = box.innerHTML;
+      box.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full"></div> Generating explanation...</div>';
+
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        const url = mode ? `/api/explain/{{ item.id }}?mode=${encodeURIComponent(mode)}` : `/api/explain/{{ item.id }}`;
+        const j = await fetchJSON(url, { method: 'POST' });
+        box.innerHTML = `<div class="text-sm">${j.explanation || 'No explanation available'}</div>`;
+
+        // Show AI summary
+        const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
+        const activity = `
+            <div><strong>Action:</strong> Generated explanation for submission {{ item.id }}</div>
+            <div><strong>AI Status:</strong> ${aiUsed}</div>
+            <div><strong>Result:</strong> ${j.explanation ? 'Explanation provided' : 'No explanation available'}</div>
+            ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
+        `;
+        if (window.showAiSummary) {
+            window.showAiSummary(activity);
+        }
+      } catch(e){
+        box.innerHTML = `<div class="text-sm text-red-400">Failed to generate explanation: ${e.message}</div>`;
+      }
+    };
+
+    // Initialize watch button state
+    (() => {
+      const watchList = JSON.parse(localStorage.getItem('watchList') || '[]');
+      if (watchList.includes({{ item.id }})) {
+        document.getElementById('btn_watch').innerHTML = '✅ Watching';
+      }
+    })();
 </script>
 
-{% endif %}
-{% endblock %}
-
+{% endif %} {% endblock %}

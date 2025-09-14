@@ -68,64 +68,105 @@
         </div>
     </div>
 
-    <!-- Quick Filter Presets - Improved Layout -->
+    <!-- Quick Filter Presets - Multiselect Layout -->
     <div class="filter-presets mb-10">
-        <div class="preset-row-1 grid grid-cols-3 gap-6 mb-6">
-            <button class="filter-preset-card active enhanced" data-preset="all">
-                <div class="preset-icon">📋</div>
-                <div class="preset-content">
-                    <div class="preset-title">All Submissions</div>
-                    <div class="preset-desc">Complete pipeline view</div>
+        <div class="preset-header mb-4">
+            <div class="flex items-center justify-between">
+                <div class="preset-info">
+                    <h4 class="text-sm font-semibold text-gray-300">Smart Categories</h4>
+                    <p class="text-xs text-gray-400 mt-1">Select multiple categories for AI-powered analysis</p>
                 </div>
-                <div class="preset-count" id="preset_all_count">—</div>
-            </button>
-            
-            <button class="filter-preset-card enhanced" data-preset="targets">
+                <div class="preset-actions flex items-center gap-3">
+                    <span class="selected-count text-xs text-indigo-400" id="selected_categories_count">0 selected</span>
+                    <button id="clear_categories" class="text-xs text-gray-400 hover:text-gray-200 transition-colors">Clear All</button>
+                    <button id="apply_ai_sorting" class="glass-btn-small ai-btn disabled" disabled>
+                        <i class="fa-solid fa-sparkles"></i>
+                        <span>Filter</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="preset-row-1 grid grid-cols-3 gap-6 mb-6">
+            <div class="filter-preset-card enhanced multiselect" data-preset="targets">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_targets" class="preset-check">
+                    <label for="preset_targets" class="preset-check-label"></label>
+                </div>
                 <div class="preset-icon">🎯</div>
                 <div class="preset-content">
                     <div class="preset-title">Priority Targets</div>
                     <div class="preset-desc">High-value opportunities</div>
                 </div>
                 <div class="preset-count" id="preset_targets_count">—</div>
-            </button>
+            </div>
             
-            <button class="filter-preset-card enhanced" data-preset="in-appetite">
+            <div class="filter-preset-card enhanced multiselect" data-preset="in-appetite">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_in_appetite" class="preset-check">
+                    <label for="preset_in_appetite" class="preset-check-label"></label>
+                </div>
                 <div class="preset-icon">✅</div>
                 <div class="preset-content">
                     <div class="preset-title">In-Appetite</div>
                     <div class="preset-desc">Ready for review</div>
                 </div>
                 <div class="preset-count" id="preset_in_count">—</div>
-            </button>
-        </div>
-        
-        <div class="preset-row-2 grid grid-cols-3 gap-6">
-            <button class="filter-preset-card enhanced" data-preset="high-value">
+            </div>
+            
+            <div class="filter-preset-card enhanced multiselect" data-preset="high-value">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_high_value" class="preset-check">
+                    <label for="preset_high_value" class="preset-check-label"></label>
+                </div>
                 <div class="preset-icon">💎</div>
                 <div class="preset-content">
                     <div class="preset-title">High Value</div>
                     <div class="preset-desc">$100K+ premium</div>
                 </div>
                 <div class="preset-count" id="preset_high_count">—</div>
-            </button>
-            
-            <button class="filter-preset-card enhanced" data-preset="new-business">
+            </div>
+        </div>
+        
+        <div class="preset-row-2 grid grid-cols-3 gap-6">
+            <div class="filter-preset-card enhanced multiselect" data-preset="new-business">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_new_business" class="preset-check">
+                    <label for="preset_new_business" class="preset-check-label"></label>
+                </div>
                 <div class="preset-icon">🆕</div>
                 <div class="preset-content">
                     <div class="preset-title">New Business</div>
                     <div class="preset-desc">Fresh opportunities</div>
                 </div>
                 <div class="preset-count" id="preset_new_count">—</div>
-            </button>
+            </div>
             
-            <button class="filter-preset-card enhanced" data-preset="recent">
+            <div class="filter-preset-card enhanced multiselect" data-preset="recent">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_recent" class="preset-check">
+                    <label for="preset_recent" class="preset-check-label"></label>
+                </div>
                 <div class="preset-icon">⏰</div>
                 <div class="preset-content">
                     <div class="preset-title">Recent</div>
                     <div class="preset-desc">Last 7 days</div>
                 </div>
                 <div class="preset-count" id="preset_recent_count">—</div>
-            </button>
+            </div>
+            
+            <div class="filter-preset-card enhanced multiselect" data-preset="geographic">
+                <div class="preset-checkbox">
+                    <input type="checkbox" id="preset_geographic" class="preset-check">
+                    <label for="preset_geographic" class="preset-check-label"></label>
+                </div>
+                <div class="preset-icon">🗺️</div>
+                <div class="preset-content">
+                    <div class="preset-title">Geographic Focus</div>
+                    <div class="preset-desc">Target states priority</div>
+                </div>
+                <div class="preset-count" id="preset_geographic_count">—</div>
+            </div>
         </div>
     </div>
 
@@ -224,17 +265,6 @@
                 <i class="fa-solid fa-bookmark"></i>
                 <span>Save Filter</span>
             </button>
-        </div>
-        
-        <!-- AI Assistant -->
-        <div class="ai-assistant flex items-center gap-4">
-            <div class="ai-input-group">
-                <input id="nlq" class="ai-input" placeholder="Ask AI: 'Show targets in CA over $100k premium'" />
-                <button id="btn_nlq" class="ai-ask-btn">
-                    <i class="fa-solid fa-sparkles"></i>
-                    <span>Ask AI</span>
-                </button>
-            </div>
         </div>
         
         <!-- Utility Actions -->
@@ -625,7 +655,7 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-                <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
+                <tr class="table-row ${appetiteClass} ${r.target_opportunity ? 'target-opportunity-row' : ''}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
                     <td class="td py-4 px-3 text-center">
                         <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
                     </td>
@@ -636,6 +666,7 @@
                     </td>
                     <td class="td py-4 px-4">
                         ${appetiteBadge}
+                        ${r.target_opportunity ? '<span class="pill pill-indigo ml-2">TOP</span>' : ''}
                     </td>
                     <td class="td py-4 px-4 col-account" title="${(r.account_name || '').replace(/"/g,'&quot;')}">
                         <div class="font-semibold text-white name">${r.account_name || "—"}</div>
@@ -706,7 +737,7 @@
         // Pagination slice
         const pageRows = updatePagination(rows);
         cardsGrid.innerHTML = pageRows.map(r => `
-            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')}" href="/detail/${r.id}">
+            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')} ${r.target_opportunity ? 'target-opportunity-glow' : ''}" href="/detail/${r.id}">
                 <div class=\"flex items-start justify-between mb-1\">
                     <div class=\"font-medium\">${r.account_name || '-'}</div>
                     ${r.appetite_status ? `<span class=\"pill ${r.appetite_status==='TARGET'?'pill-indigo': (r.appetite_status==='IN'?'pill-emerald':'pill-rose')}\">${r.appetite_status}</span>` : ''}
@@ -716,6 +747,7 @@
                     <span>Score ${Number(r.priority_score||0).toFixed(1)}</span>
                     <span>Win ${Number((r.winnability>1?r.winnability:(r.winnability||0)*100)).toFixed(0)}%</span>
                 </div>
+                ${r.target_opportunity ? '<div class="top-banner">TOP TARGET</div>' : ''}
             </a>
         `).join('');
     }
@@ -923,16 +955,117 @@
         }
     }
 
-    // Filter presets for common underwriter workflows
-function applyPreset(preset) {
+    // Multiselect filter management
+    let selectedCategories = new Set();
+    
+    function updateSelectedCategories() {
+        const countEl = document.getElementById('selected_categories_count');
+        const aiSortBtn = document.getElementById('apply_ai_sorting');
+        const count = selectedCategories.size;
+        
+        if (countEl) {
+            countEl.textContent = count === 0 ? '0 selected' : `${count} selected`;
+            countEl.classList.toggle('has-selections', count > 0);
+        }
+        
+        if (aiSortBtn) {
+            aiSortBtn.disabled = count === 0;
+            aiSortBtn.classList.toggle('disabled', count === 0);
+        }
+    }
+    
+    function toggleCategory(category) {
+        const checkbox = document.getElementById(`preset_${category.replace('-', '_')}`);
+        const card = document.querySelector(`[data-preset="${category}"]`);
+        
+        if (selectedCategories.has(category)) {
+            selectedCategories.delete(category);
+            if (checkbox) checkbox.checked = false;
+            if (card) card.classList.remove('selected');
+        } else {
+            selectedCategories.add(category);
+            if (checkbox) checkbox.checked = true;
+            if (card) card.classList.add('selected');
+        }
+        
+        updateSelectedCategories();
+    }
+    
+    function clearAllCategories() {
+        selectedCategories.clear();
+        document.querySelectorAll('.preset-check').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.filter-preset-card.multiselect').forEach(card => {
+            card.classList.remove('selected');
+        });
+        updateSelectedCategories();
+    }
+    
+    async function applyAiSorting() {
+        if (selectedCategories.size === 0) {
+            toast('Please select at least one category for AI sorting', 'warning');
+            return;
+        }
+        
+        const aiSortBtn = document.getElementById('apply_ai_sorting');
+        const categories = Array.from(selectedCategories);
+        
+        try {
+            await withLoading(aiSortBtn, async () => {
+                // Build AI sorting request
+                const aiRequest = {
+                    categories: categories,
+                    current_filters: {
+                        state: document.getElementById("f_state")?.value || "",
+                        status: document.getElementById("f_status")?.value || "",
+                        min_premium: document.getElementById("f_min")?.value || "",
+                        max_premium: document.getElementById("f_max")?.value || "",
+                        q: document.getElementById("f_q")?.value || "",
+                        mode: getActiveMode()
+                    },
+                    sort_preferences: {
+                        sort_by: SORT_BY,
+                        sort_dir: SORT_DIR
+                    }
+                };
+                
+                const response = await fetchJSON("/api/ai-sort", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(aiRequest)
+                });
+                
+                // Show AI activity
+                const aiUsed = response.ai_used ? "✅ Active" : "⚠️ Fallback";
+                const activity = `
+                    <div><strong>AI Sorting Applied:</strong> ${categories.join(', ')}</div>
+                    <div><strong>AI Status:</strong> ${aiUsed}</div>
+                    <div><strong>Strategy:</strong> ${response.ai_summary || 'Intelligent prioritization based on selected categories'}</div>
+                    ${response.ai_note ? `<div><strong>Note:</strong> ${response.ai_note}</div>` : ''}
+                `;
+                
+                if (window.showAiSummary) {
+                    window.showAiSummary(activity);
+                }
+                
+                // Apply the AI-sorted results
+                if (response.data) {
+                    ALL_SUBMISSIONS = response.data;
+                    renderTable(ALL_SUBMISSIONS);
+                    toast(`AI sorting applied to ${response.data.length} submissions`, 'success');
+                } else {
+                    toast('AI sorting completed but no data returned', 'warning');
+                }
+            });
+        } catch (error) {
+            console.error('AI sorting failed:', error);
+            toast('AI sorting failed: ' + error.message, 'error');
+        }
+    }
+
+    // Legacy preset function for backward compatibility
+    function applyPreset(preset) {
         console.log('applyPreset called with preset:', preset);
         currentPreset = preset;
-        
-        // Update active preset button
-        document.querySelectorAll('.filter-preset').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.filter-preset-card').forEach(btn => btn.classList.remove('active'));
-        const presetBtn = document.querySelector(`[data-preset="${preset}"]`);
-        if (presetBtn) presetBtn.classList.add('active');
         
         // Clear existing form values
         document.getElementById("f_state").value = "";
@@ -1029,7 +1162,7 @@ function applyPreset(preset) {
             if (el) el.value = '';
         });
         // Reset mode to a stable default
-        setActiveMode('balanced_growth');
+        // Keep current mode; only clear filters
         applyPreset('all');
     }
 
@@ -1059,7 +1192,43 @@ function applyPreset(preset) {
 
     // Event handlers
     document.addEventListener('DOMContentLoaded', () => {
-        // Preset filter handlers
+        // Multiselect category handlers
+        document.querySelectorAll('.filter-preset-card.multiselect').forEach(card => {
+            const preset = card.dataset.preset;
+            const checkbox = card.querySelector('.preset-check');
+            
+            // Handle card click (excluding checkbox area)
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.preset-checkbox')) {
+                    toggleCategory(preset);
+                }
+            });
+            
+            // Handle checkbox change
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    toggleCategory(preset);
+                });
+            }
+        });
+        
+        // Clear categories button
+        const clearCategoriesBtn = document.getElementById('clear_categories');
+        if (clearCategoriesBtn) {
+            clearCategoriesBtn.addEventListener('click', clearAllCategories);
+        }
+        
+        // AI sorting button
+        const aiSortBtn = document.getElementById('apply_ai_sorting');
+        if (aiSortBtn) {
+            aiSortBtn.addEventListener('click', applyAiSorting);
+        }
+        
+        // Initialize multiselect state
+        updateSelectedCategories();
+
+        // Legacy preset filter handlers (for backward compatibility)
         document.querySelectorAll('.filter-preset').forEach(btn => {
             btn.addEventListener('click', () => {
                 applyPreset(btn.dataset.preset);
@@ -1128,53 +1297,6 @@ function applyPreset(preset) {
 
         const lastPageBtn = document.getElementById("last-page");
         if (lastPageBtn) lastPageBtn.onclick = goToLastPage;
-
-        // NLQ handler
-        const nlqBtn = document.getElementById("btn_nlq");
-        if (nlqBtn) {
-            nlqBtn.onclick = () => {
-                const query = document.getElementById("nlq")?.value.trim();
-                if (!query) {
-                    toast("Please enter a question", "warning");
-                    return;
-                }
-                
-                fetch("/api/nlq", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ q: query }),
-                })
-                .then((r) => r.json())
-                .then((j) => {
-                    // Show AI summary
-                    const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
-                    const summary = j.ai_summary || "Processed query";
-                    const activity = `
-                        <div><strong>Query:</strong> "${query}"</div>
-                        <div><strong>AI Status:</strong> ${aiUsed}</div>
-                        <div><strong>Action:</strong> ${summary}</div>
-                        ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
-                    `;
-                    if (window.showAiSummary) {
-                        window.showAiSummary(activity);
-                    }
-                    
-                    if (j.filters) {
-                        // Apply the AI-generated filters
-                        Object.entries(j.filters).forEach(([key, value]) => {
-                            const element = document.getElementById(`f_${key}`);
-                            if (element && value) element.value = value;
-                        });
-                        const applyBtn = document.getElementById("btn_apply");
-                        if (applyBtn) applyBtn.click();
-                        toast("AI filters applied", "success");
-                    } else {
-                        toast("No filters generated from query", "warning");
-                    }
-                })
-                .catch(() => toast("AI query failed", "error"));
-            };
-        }
 
         // Sorting handlers
         document.querySelectorAll(".th-sort").forEach((th) => {
@@ -1290,7 +1412,7 @@ function applyPreset(preset) {
         document.getElementById('f_min').value = '';
         document.getElementById('f_max').value = '';
         document.getElementById('f_q').value = '';
-        setActiveMode('balanced_growth');
+        // Keep current mode; only clear filters
         applyPreset('all');
     }
 
@@ -1307,7 +1429,7 @@ function applyPreset(preset) {
         const wrap = document.getElementById('f_mode_wrap');
         try {
             const j = await fetchJSON("/api/modes");
-            const modes = (j.modes || []).filter(Boolean);
+            const modes = Array.isArray(j) ? j : [];
             const sel = document.getElementById("f_mode");
             if (!sel) return;
             if (!modes.length) {
@@ -1317,11 +1439,12 @@ function applyPreset(preset) {
             }
             wrap?.classList?.remove('hidden');
             sel.innerHTML = modes
-                .map((m) => `<option value="${m}">${m.replace(/_/g,' ')}</option>`)
+                .map((m) => `<option value="${m.key}">${m.label || m.key}</option>`)
                 .join("");
             // default to ACTIVE_MODE if available
             const active = localStorage.getItem('ACTIVE_MODE') || 'balanced_growth';
-            sel.value = modes.includes(active) ? active : (modes.includes('balanced_growth') ? 'balanced_growth' : (modes[0] || ''));
+            const keys = modes.map(m => m.key);
+            sel.value = keys.includes(active) ? active : (keys.includes('balanced_growth') ? 'balanced_growth' : (keys[0] || ''));
         } catch (e) {
             console.error("Failed to load modes", e);
             wrap?.classList?.add('hidden');
