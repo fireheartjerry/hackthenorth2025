@@ -267,17 +267,6 @@
             </button>
         </div>
         
-        <!-- AI Assistant -->
-        <div class="ai-assistant flex items-center gap-4">
-            <div class="ai-input-group">
-                <input id="nlq" class="ai-input" placeholder="Ask AI: 'Show targets in CA over $100k premium'" />
-                <button id="btn_nlq" class="ai-ask-btn">
-                    <i class="fa-solid fa-sparkles"></i>
-                    <span>Ask AI</span>
-                </button>
-            </div>
-        </div>
-        
         <!-- Utility Actions -->
         <div class="utility-actions flex items-center gap-3">
             <button id="btn_refresh" class="glass-btn-small utility-action" title="Refresh Data">
@@ -1305,53 +1294,6 @@
 
         const lastPageBtn = document.getElementById("last-page");
         if (lastPageBtn) lastPageBtn.onclick = goToLastPage;
-
-        // NLQ handler
-        const nlqBtn = document.getElementById("btn_nlq");
-        if (nlqBtn) {
-            nlqBtn.onclick = () => {
-                const query = document.getElementById("nlq")?.value.trim();
-                if (!query) {
-                    toast("Please enter a question", "warning");
-                    return;
-                }
-                
-                fetch("/api/nlq", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ q: query }),
-                })
-                .then((r) => r.json())
-                .then((j) => {
-                    // Show AI summary
-                    const aiUsed = j.ai_used ? "✅ Active" : "⚠️ Fallback";
-                    const summary = j.ai_summary || "Processed query";
-                    const activity = `
-                        <div><strong>Query:</strong> "${query}"</div>
-                        <div><strong>AI Status:</strong> ${aiUsed}</div>
-                        <div><strong>Action:</strong> ${summary}</div>
-                        ${j.ai_note ? `<div><strong>Note:</strong> ${j.ai_note}</div>` : ''}
-                    `;
-                    if (window.showAiSummary) {
-                        window.showAiSummary(activity);
-                    }
-                    
-                    if (j.filters) {
-                        // Apply the AI-generated filters
-                        Object.entries(j.filters).forEach(([key, value]) => {
-                            const element = document.getElementById(`f_${key}`);
-                            if (element && value) element.value = value;
-                        });
-                        const applyBtn = document.getElementById("btn_apply");
-                        if (applyBtn) applyBtn.click();
-                        toast("AI filters applied", "success");
-                    } else {
-                        toast("No filters generated from query", "warning");
-                    }
-                })
-                .catch(() => toast("AI query failed", "error"));
-            };
-        }
 
         // Sorting handlers
         document.querySelectorAll(".th-sort").forEach((th) => {

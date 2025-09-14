@@ -19,7 +19,6 @@ from gemini_test import explain_with_gemini, nlq_with_gemini
 from utils_json import df_records_to_builtin, to_builtin
 from percentile_modes import build_percentile_filters, summarize_percentiles
 from blend import blend_modes
-from chatbot import chatbot
 
 load_dotenv()
 
@@ -228,228 +227,139 @@ def get_role():
 
 def classifyRow(row):
     """
-    Enhanced appetite classification and priority scoring system.
+    Streamlined appetite classification and priority scoring.
     
     Returns (status, reasons, appetite_score, priority_score)
-    
-    Status Logic:
-    - TARGET: Premium submissions in target states with optimal characteristics
-    - IN: Acceptable submissions that meet core appetite requirements  
-    - OUT: Submissions that fail critical requirements
-    
-    Priority Score Range: 0.0 - 10.0
-    - Combines appetite alignment (40%), winnability (30%), premium size (20%), and freshness (10%)
-    - Higher scores indicate higher priority for underwriter attention
+    Range: 0.0 - 10.0, combining appetite (50%), winnability (30%), premium (20%)
     """
     reasons = []
-    base_score = 5.0  # Start at middle score
-    multipliers = []
+    score = 5.0
+    multiplier = 1.0
     
-    # === CRITICAL REQUIREMENTS (Automatic OUT if failed) ===
-    critical_failures = []
-    
-    # Line of Business - Must be Commercial Property
-    lob = str(row.get("line_of_business", "") or "").strip().upper()
+    # === CRITICAL REQUIREMENTS ===
+    lob = str(row.get("line_of_business", "")).strip().upper()
     if lob != "COMMERCIAL PROPERTY":
-        critical_failures.append("Line of Business not Commercial Property")
+        return "OUT", ["Line of Business not Commercial Property"], 1.0, 0.1
     
-    # Submission Type - Prefer New Business
-    sub_type = str(row.get("renewal_or_new_business", "") or "").strip().upper()
+    sub_type = str(row.get("renewal_or_new_business", "")).strip().upper()
     if sub_type == "RENEWAL":
-        critical_failures.append("Renewal business (prefer new business)")
-        base_score -= 2.0  # Still allow but penalize
+        score -= 1.5
+        reasons.append("Renewal business (prefer new)")
     elif sub_type == "NEW_BUSINESS":
-        base_score += 1.0  # Bonus for new business
+        score += 1.0
         reasons.append("New business (preferred)")
-        
-    # If critical failures, mark as OUT
-    if critical_failures:
-        return "OUT", critical_failures, 1.0, max(0.1, base_score * 0.2)
     
-    # === STATE SCORING ===
-    st = str(row.get("primary_risk_state", "") or "").strip().upper()
+    # === CORE FACTORS ===
+    # State scoring
+    st = str(row.get("primary_risk_state", "")).strip().upper()
     if st in TARGET_STATES:
-        base_score += 2.0
-        multipliers.append(1.2)
+        score += 2.0
+        multiplier *= 1.2
         reasons.append(f"Target state: {st}")
     elif st in ACCEPT_STATES:
-        base_score += 1.0
+        score += 1.0
         reasons.append(f"Acceptable state: {st}")
     else:
-        base_score -= 1.5
+        score -= 2.0
         reasons.append(f"Non-preferred state: {st}")
     
-    # === TIV SCORING ===
+    # TIV scoring
     tiv = row.get("tiv", np.nan)
     if pd.notna(tiv):
-        if 50_000_000 <= tiv <= 100_000_000:  # Target range
-            base_score += 2.0
-            multipliers.append(1.15)
-            reasons.append("TIV in target range (50M-100M)")
-        elif tiv <= 150_000_000:  # Acceptable range
-            base_score += 1.0
-            reasons.append("TIV within acceptable limits")
-        elif tiv > 150_000_000:  # Over limit
-            base_score -= 2.0
-            reasons.append("TIV exceeds 150M limit")
-    else:
-        base_score -= 0.5
-        reasons.append("TIV data missing")
+        if 50_000_000 <= tiv <= 100_000_000:
+            score += 2.0
+            multiplier *= 1.15
+            reasons.append("TIV in target range")
+        elif tiv <= 150_000_000:
+            score += 0.5
+            reasons.append("TIV acceptable")
+        else:
+            score -= 2.0
+            reasons.append("TIV exceeds limit")
     
-    # === PREMIUM SCORING ===
+    # Premium scoring
     premium = row.get("total_premium", np.nan)
-    premium_multiplier = 1.0
     if pd.notna(premium):
-        if 75_000 <= premium <= 100_000:  # Target range
-            base_score += 2.0
-            premium_multiplier = 1.3
-            reasons.append("Premium in target range (75K-100K)")
-        elif 50_000 <= premium <= 175_000:  # Acceptable range
-            base_score += 1.0
-            premium_multiplier = 1.1
-            reasons.append("Premium in acceptable range")
-        elif premium < 50_000:
-            base_score -= 1.0
-            reasons.append("Premium below minimum (50K)")
-        else:  # > 175K
-            base_score -= 1.0
-            reasons.append("Premium above preferred maximum")
+        if 75_000 <= premium <= 100_000:
+            score += 2.0
+            multiplier *= 1.3
+            reasons.append("Premium in target range")
+        elif 50_000 <= premium <= 175_000:
+            score += 0.5
+            reasons.append("Premium acceptable")
+        else:
+            score -= 1.0
+            reasons.append("Premium outside range")
         
-        # Additional premium size bonus
+        # High value bonus
         if premium >= 1_000_000:
-            base_score += 1.5
-            premium_multiplier *= 1.2
-            reasons.append("High-value premium (1M+)")
-        elif premium >= 500_000:
-            base_score += 0.5
-            reasons.append("Substantial premium (500K+)")
-    else:
-        base_score -= 1.0
-        reasons.append("Premium data missing")
+            score += 1.0
+            multiplier *= 1.1
+            reasons.append("High-value premium")
     
-    # === BUILDING AGE SCORING ===
-    age = row.get("building_age", np.nan)
+    # Building age scoring
     year = row.get("oldest_building", np.nan)
-    
     if pd.notna(year):
-        try:
-            y = int(float(year))
-            current_age = CURRENT_YEAR - y
-            if y > 2010:  # Less than ~14 years old
-                base_score += 2.0
-                multipliers.append(1.1)
-                reasons.append("Modern building (post-2010)")
-            elif y > 1990:  # Less than ~34 years old
-                base_score += 1.0
-                reasons.append("Acceptable building age (post-1990)")
-            else:  # Older than 34 years
-                base_score -= 1.5
-                reasons.append("Older building construction (pre-1990)")
-        except Exception:
-            base_score -= 0.5
-            reasons.append("Building age data unclear")
-    elif pd.notna(age):
-        if age < 14:  # Equivalent to post-2010
-            base_score += 2.0
-            multipliers.append(1.1)
-            reasons.append("Modern building (< 14 years)")
-        elif age <= 34:  # Equivalent to post-1990
-            base_score += 1.0
+        y = int(float(year)) if not pd.isna(year) else 0
+        if y > 2010:
+            score += 1.5
+            reasons.append("Modern building")
+        elif y > 1990:
+            score += 0.5
             reasons.append("Acceptable building age")
         else:
-            base_score -= 1.5
-            reasons.append("Older building (> 34 years)")
-    else:
-        base_score -= 0.5
-        reasons.append("Building age unknown")
+            score -= 1.5
+            reasons.append("Older building")
     
-    # === CONSTRUCTION TYPE SCORING ===
-    ctype = str(row.get("construction_type", "") or "").strip()
+    # Construction type
+    ctype = str(row.get("construction_type", "")).strip()
     if ctype in ACCEPT_CONSTRUCTION:
-        base_score += 1.0
-        reasons.append(f"Preferred construction: {ctype}")
-    else:
-        base_score -= 0.5
-        reasons.append(f"Non-preferred construction type")
+        score += 0.5
+        reasons.append("Preferred construction")
     
-    # === LOSS HISTORY SCORING ===
+    # Loss history
     loss = row.get("loss_value", np.nan)
     if pd.notna(loss):
-        if loss < 25_000:  # Very low losses
-            base_score += 1.5
-            multipliers.append(1.1)
-            reasons.append("Excellent loss history (< 25K)")
-        elif loss < 100_000:  # Acceptable losses
-            base_score += 0.5
-            reasons.append("Acceptable loss history (< 100K)")
-        else:  # High losses
-            base_score -= 2.0
-            reasons.append("Concerning loss history (≥ 100K)")
-    else:
-        # No loss data - assume neutral
-        reasons.append("Loss history unknown")
+        if loss < 100_000:
+            score += 1.0 if loss < 25_000 else 0.5
+            reasons.append("Good loss history")
+        else:
+            score -= 2.0
+            reasons.append("High loss history")
     
-    # === WINNABILITY FACTOR ===
-    w = row.get("winnability", np.nan)
+    # Winnability
+    w = row.get("winnability", 0.5)
     if pd.notna(w):
-        if isinstance(w, (int, float)) and w > 1:
-            w = w / 100.0  # Convert percentage to decimal
+        w = w / 100.0 if w > 1 else w
         w = max(0.0, min(1.0, float(w)))
-        
-        if w >= 0.8:  # 80%+ win probability
-            base_score += 1.5
-            multipliers.append(1.2)
-            reasons.append("Very high win probability (80%+)")
-        elif w >= 0.6:  # 60%+ win probability
-            base_score += 1.0
-            reasons.append("High win probability (60%+)")
-        elif w >= 0.4:  # 40%+ win probability
-            base_score += 0.5
-            reasons.append("Moderate win probability")
-        else:  # Low win probability
-            base_score -= 0.5
-            reasons.append("Lower win probability")
+        if w >= 0.8:
+            score += 1.0
+            multiplier *= 1.15
+            reasons.append("High win probability")
+        elif w >= 0.6:
+            score += 0.5
+            reasons.append("Good win probability")
     else:
-        w = 0.5  # Default assumption
-        reasons.append("Win probability unknown (assumed 50%)")
+        w = 0.5
     
-    # === CALCULATE FINAL SCORES ===
+    # === FINAL CALCULATION ===
+    appetite_score = max(1.0, min(10.0, score * multiplier))
     
-    # Apply multipliers to base score
-    appetite_score = base_score
-    for mult in multipliers:
-        appetite_score *= mult
+    # Composite priority score: appetite (50%) + winnability (30%) + premium factor (20%)
+    premium_factor = min(premium / 150_000, 1.0) if pd.notna(premium) else 0.5
+    priority_score = max(0.1, min(10.0, 
+        appetite_score * 0.5 + 
+        w * 10.0 * 0.3 + 
+        premium_factor * 10.0 * 0.2
+    ))
     
-    # Ensure appetite score is in reasonable range
-    appetite_score = max(1.0, min(10.0, appetite_score))
+    # === STATUS DETERMINATION ===
+    severe_issues = sum(1 for r in reasons if any(word in r.lower() 
+                       for word in ['exceeds', 'outside', 'non-preferred', 'high loss']))
     
-    # Calculate composite priority score
-    # 40% appetite alignment, 30% winnability, 20% premium size, 10% freshness
-    freshness_factor = 1.0  # Could be enhanced with submission date analysis
-    
-    priority_score = (
-        appetite_score * 0.4 +
-        (w * 10.0) * 0.3 +  # Scale winnability to 0-10 range
-        (min(premium / 200_000, 1.0) * 10.0 if pd.notna(premium) else 5.0) * 0.2 +  # Premium factor
-        freshness_factor * 10.0 * 0.1
-    )
-    
-    # Apply premium multiplier to final score
-    priority_score *= premium_multiplier
-    
-    # Ensure priority score is in 0-10 range
-    priority_score = max(0.1, min(10.0, priority_score))
-    
-    # === DETERMINE STATUS ===
-    severe_issues = [r for r in reasons if any(keyword in r.lower() for keyword in 
-                    ['exceeds', 'below minimum', 'above preferred maximum', 'concerning', 'non-preferred state'])]
-    
-    if len(severe_issues) >= 3 or appetite_score < 3.0:
+    if severe_issues >= 2 or appetite_score < 3.0:
         status = "OUT"
-    elif (st in TARGET_STATES and 
-          appetite_score >= 7.0 and 
-          priority_score >= 7.0 and
-          len(severe_issues) == 0):
+    elif st in TARGET_STATES and appetite_score >= 7.0 and priority_score >= 7.0:
         status = "TARGET"
     else:
         status = "IN"
@@ -1166,165 +1076,6 @@ def api_mode_blend():
         return jsonify({"ok": True, "mode": "blend", "blended": to_builtin(blended)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
-
-
-@app.route("/api/chat", methods=["POST"])
-def api_chat():
-    """Chat with the AI assistant"""
-    try:
-        data = request.get_json(silent=True) or {}
-        message = data.get("message", "").strip()
-        session_id = data.get("session_id", "default")
-        
-        if not message:
-            return jsonify({"ok": False, "error": "No message provided"}), 400
-        
-        result = chatbot.chat(message, session_id)
-        return jsonify({"ok": True, **result})
-        
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/stream")
-def api_chat_stream():
-    """Server-sent events for streaming chat responses"""
-    from flask import Response
-    
-    message = request.args.get("message", "").strip()
-    session_id = request.args.get("session_id", "default")
-    
-    if not message:
-        return Response("data: " + json.dumps({"type": "error", "content": "No message provided"}) + "\n\n", 
-                       mimetype="text/plain")
-    
-    def generate():
-        try:
-            for chunk in chatbot.get_streaming_response(message, session_id):
-                yield f"data: {json.dumps(chunk)}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-    
-    return Response(generate(), mimetype="text/event-stream")
-
-
-@app.route("/api/chat/execute", methods=["POST"])
-def api_chat_execute():
-    """Execute an action suggested by the chatbot"""
-    try:
-        data = request.get_json(silent=True) or {}
-        action = data.get("action", {})
-        
-        if not action or "type" not in action:
-            return jsonify({"ok": False, "error": "No valid action provided"}), 400
-        
-        action_type = action["type"]
-        params = action.get("params", {})
-        
-        # Build URL parameters for the action
-        url_params = []
-        
-        if action_type == "filter":
-            for key, value in params.items():
-                if value is not None:
-                    url_params.append(f"{key}={value}")
-        
-        elif action_type == "mode":
-            url_params.append(f"mode={params.get('mode', 'balanced')}")
-        
-        elif action_type == "search":
-            url_params.append(f"q={params.get('q', '')}")
-        
-        elif action_type == "sort":
-            url_params.append(f"sort_by={params.get('sort_by', 'priority_score')}")
-            url_params.append(f"sort_dir={params.get('sort_dir', 'desc')}")
-        
-        # Return the URL parameters for the frontend to apply
-        return jsonify({
-            "ok": True,
-            "action_type": action_type,
-            "url_params": "&".join(url_params),
-            "message": f"Applied {action_type} action successfully"
-        })
-        
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/context", methods=["POST"])
-def api_chat_context():
-    """Update chatbot with current dashboard context"""
-    try:
-        data = request.get_json(silent=True) or {}
-        
-        # Update chatbot with current dashboard state
-        context_info = {
-            "current_mode": data.get("mode", "balanced"),
-            "active_filters": data.get("filters", {}),
-            "current_page": data.get("page", "dashboard"),
-            "visible_submissions": data.get("submission_count", 0),
-            "user_action": data.get("last_action", ""),
-        }
-        
-        # Store context in chatbot (you could extend this)
-        if hasattr(chatbot, 'current_context'):
-            chatbot.current_context = context_info
-        
-        return jsonify({"ok": True, "message": "Context updated"})
-        
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/chat/suggestions")
-def api_chat_suggestions():
-    """Get contextual suggestions based on current dashboard state"""
-    try:
-        df = load_df("data.json")
-        if df.empty:
-            return jsonify({"suggestions": []})
-        
-        suggestions = []
-        
-        # Analyze current data to provide smart suggestions
-        if "total_premium" in df.columns:
-            high_premium_count = len(df[df["total_premium"] > df["total_premium"].quantile(0.9)])
-            if high_premium_count > 0:
-                suggestions.append({
-                    "text": f"Show me the {high_premium_count} highest premium submissions",
-                    "action": "filter",
-                    "icon": "💰"
-                })
-        
-        if "primary_risk_state" in df.columns:
-            top_state = df["primary_risk_state"].value_counts().index[0]
-            state_count = df["primary_risk_state"].value_counts().iloc[0]
-            suggestions.append({
-                "text": f"Focus on {state_count} submissions in {top_state}",
-                "action": "filter",
-                "icon": "📍"
-            })
-        
-        if "fresh_days" in df.columns:
-            fresh_count = len(df[df["fresh_days"] <= 7])
-            if fresh_count > 0:
-                suggestions.append({
-                    "text": f"Show me {fresh_count} submissions from this week",
-                    "action": "filter",
-                    "icon": "🆕"
-                })
-        
-        # Mode suggestions
-        suggestions.extend([
-            {"text": "Switch to unicorn mode for premium opportunities", "action": "mode", "icon": "🦄"},
-            {"text": "Explain current filtering criteria", "action": "explain", "icon": "💡"},
-            {"text": "What are the trends in my portfolio?", "action": "analyze", "icon": "📈"}
-        ])
-        
-        return jsonify({"suggestions": suggestions[:6]})  # Limit to 6 suggestions
-        
-    except Exception as e:
-        return jsonify({"suggestions": [], "error": str(e)})
 
 
 @app.route("/api/ai-sort", methods=["POST"])
