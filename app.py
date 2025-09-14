@@ -1126,6 +1126,180 @@ def api_chat_suggestions():
         return jsonify({"suggestions": [], "error": str(e)})
 
 
+@app.route("/api/ai-sort", methods=["POST"])
+def api_ai_sort():
+    """AI-powered sorting based on selected categories"""
+    try:
+        data = request.get_json(silent=True) or {}
+        categories = data.get("categories", [])
+        current_filters = data.get("current_filters", {})
+        sort_preferences = data.get("sort_preferences", {})
+        
+        if not categories:
+            return jsonify({
+                "ok": False, 
+                "error": "No categories provided for AI sorting"
+            }), 400
+        
+        # Load and filter data based on current filters
+        df, _ = refreshCache()
+        if df.empty:
+            return jsonify({
+                "ok": True,
+                "data": [],
+                "ai_used": False,
+                "ai_summary": "No data available for sorting"
+            })
+        
+        # Apply current filters
+        filtered_df = df.copy()
+        
+        # Apply basic filters
+        if current_filters.get("state"):
+            filtered_df = filtered_df[
+                filtered_df["primary_risk_state"].astype(str).str.upper() == 
+                current_filters["state"].upper()
+            ]
+        
+        if current_filters.get("status"):
+            filtered_df = filtered_df[
+                filtered_df["appetite_status"] == current_filters["status"]
+            ]
+        
+        if current_filters.get("min_premium"):
+            min_p = float(current_filters["min_premium"])
+            filtered_df = filtered_df[filtered_df["total_premium"] >= min_p]
+        
+        if current_filters.get("max_premium"):
+            max_p = float(current_filters["max_premium"])
+            filtered_df = filtered_df[filtered_df["total_premium"] <= max_p]
+        
+        if current_filters.get("q"):
+            query = current_filters["q"]
+            mask = filtered_df["account_name"].astype(str).str.contains(
+                query, case=False, na=False
+            )
+            filtered_df = filtered_df[mask.fillna(False)]
+        
+        # Apply category-specific filters and create AI-powered sorting strategy
+        category_weights = {}
+        category_filters = {}
+        ai_strategy_parts = []
+        
+        for category in categories:
+            if category == "targets":
+                category_filters["targets"] = filtered_df["appetite_status"] == "TARGET"
+                category_weights["priority_score"] = category_weights.get("priority_score", 0) + 0.4
+                category_weights["appetite_alignment"] = category_weights.get("appetite_alignment", 0) + 0.3
+                ai_strategy_parts.append("prioritizing TARGET status submissions")
+                
+            elif category == "in-appetite":
+                category_filters["in_appetite"] = filtered_df["appetite_status"] == "IN"
+                category_weights["appetite_alignment"] = category_weights.get("appetite_alignment", 0) + 0.25
+                ai_strategy_parts.append("including IN-APPETITE submissions")
+                
+            elif category == "high-value":
+                high_value_threshold = filtered_df["total_premium"].quantile(0.75)
+                category_filters["high_value"] = filtered_df["total_premium"] >= high_value_threshold
+                category_weights["premium_size"] = category_weights.get("premium_size", 0) + 0.35
+                ai_strategy_parts.append(f"emphasizing high-value premiums (${high_value_threshold:,.0f}+)")
+                
+            elif category == "new-business":
+                category_filters["new_business"] = (
+                    filtered_df["renewal_or_new_business"].astype(str).str.upper() == "NEW_BUSINESS"
+                )
+                category_weights["business_type"] = category_weights.get("business_type", 0) + 0.2
+                ai_strategy_parts.append("favoring new business opportunities")
+                
+            elif category == "recent":
+                if "created_at" in filtered_df.columns:
+                    recent_threshold = pd.Timestamp.utcnow() - pd.Timedelta(days=7)
+                    category_filters["recent"] = filtered_df["created_at"] >= recent_threshold
+                    category_weights["freshness"] = category_weights.get("freshness", 0) + 0.15
+                    ai_strategy_parts.append("prioritizing recent submissions (last 7 days)")
+                
+            elif category == "geographic":
+                target_states = {"OH", "PA", "MD", "CO", "CA", "FL"}
+                category_filters["geographic"] = filtered_df["primary_risk_state"].isin(target_states)
+                category_weights["geographic_preference"] = category_weights.get("geographic_preference", 0) + 0.2
+                ai_strategy_parts.append("focusing on target geographic regions")
+        
+        # Create AI-powered composite score
+        ai_scores = []
+        explanations = []
+        
+        for _, row in filtered_df.iterrows():
+            composite_score = row.get("priority_score", 0.0)
+            score_components = []
+            
+            # Apply category-specific scoring
+            for category, condition in category_filters.items():
+                if condition.loc[row.name] if hasattr(condition, 'loc') else condition:
+                    if category == "targets":
+                        composite_score += 3.0
+                        score_components.append("TARGET status (+3.0)")
+                    elif category == "in_appetite":
+                        composite_score += 1.5
+                        score_components.append("IN-APPETITE (+1.5)")
+                    elif category == "high_value":
+                        premium_bonus = min(2.0, (row.get("total_premium", 0) / 100000) * 0.5)
+                        composite_score += premium_bonus
+                        score_components.append(f"High premium (+{premium_bonus:.1f})")
+                    elif category == "new_business":
+                        composite_score += 1.0
+                        score_components.append("New business (+1.0)")
+                    elif category == "recent":
+                        composite_score += 0.8
+                        score_components.append("Recent submission (+0.8)")
+                    elif category == "geographic":
+                        composite_score += 1.2
+                        score_components.append("Target geography (+1.2)")
+            
+            # Winnability boost
+            winnability = row.get("winnability", 0.5)
+            if isinstance(winnability, (int, float)) and winnability > 1:
+                winnability = winnability / 100.0
+            winnability_bonus = winnability * 2.0
+            composite_score += winnability_bonus
+            score_components.append(f"Winnability (+{winnability_bonus:.1f})")
+            
+            ai_scores.append(composite_score)
+            explanations.append("; ".join(score_components))
+        
+        # Add AI scores to dataframe
+        filtered_df = filtered_df.copy()
+        filtered_df["ai_composite_score"] = ai_scores
+        filtered_df["ai_score_explanation"] = explanations
+        
+        # Sort by AI composite score
+        filtered_df = filtered_df.sort_values("ai_composite_score", ascending=False)
+        
+        # Convert to response format
+        response_data = dfToDict(filtered_df)
+        
+        # Generate AI summary
+        ai_summary = f"Applied intelligent sorting strategy: {', '.join(ai_strategy_parts)}. " \
+                    f"Analyzed {len(filtered_df)} submissions with composite scoring algorithm."
+        
+        return jsonify({
+            "ok": True,
+            "data": response_data,
+            "ai_used": True,
+            "ai_summary": ai_summary,
+            "categories_applied": categories,
+            "total_submissions": len(response_data),
+            "strategy_components": ai_strategy_parts
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "ai_used": False,
+            "ai_summary": f"AI sorting failed: {str(e)}"
+        }), 500
+
+
 def apply_hard_filters(df, f):
     d = df.copy()
     if "lob_in" in f:
