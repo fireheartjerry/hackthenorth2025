@@ -770,6 +770,10 @@
                 const _closePersona = () => { document.getElementById('persona_modal')?.classList?.add('hidden'); };
                 const _btnPersona = document.getElementById('btn_persona_global'); if (_btnPersona) _btnPersona.onclick = _openPersona;
                 const _btnPersonaClose = document.getElementById('persona_close'); if (_btnPersonaClose) _btnPersonaClose.onclick = _closePersona;
+                
+                // Make persona functions globally available
+                window._openPersona = _openPersona;
+                window._closePersona = _closePersona;
 
                 // Persona Step Management
                 let currentStep = 1;
@@ -1211,6 +1215,9 @@
                   document.body.classList.add('vibe-'+v);
                   document.getElementById('vibe_label')?.replaceChildren(document.createTextNode(v.charAt(0).toUpperCase()+v.slice(1)));
                 };
+                
+                // Global vibe function for compatibility
+                window.vibe = applyVibe;
                 const getSat = () => Number(localStorage.getItem('VIBE_SAT') || '120');
                 const setSat = (n) => { localStorage.setItem('VIBE_SAT', String(n)); document.documentElement.style.setProperty('--v-sat', n+'%'); };
 
@@ -1249,6 +1256,56 @@
                 // Initial apply
                 applyVibe();
                 setSat(getSat());
+                
+                // Add progress step styles
+                const progressStyles = `
+                    .progress-steps {
+                        display: flex;
+                        width: 100%;
+                        height: 100%;
+                        align-items: center;
+                        justify-content: space-between;
+                        position: relative;
+                    }
+                    
+                    .progress-step {
+                        width: 12px;
+                        height: 12px;
+                        border-radius: 50%;
+                        background: rgba(255, 255, 255, 0.3);
+                        border: 2px solid rgba(255, 255, 255, 0.5);
+                        transition: all 0.3s ease;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    
+                    .progress-step.active {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border-color: #667eea;
+                        box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+                    }
+                    
+                    .progress-step.completed {
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        border-color: #10b981;
+                    }
+                    
+                    .progress-steps::before {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        left: 6px;
+                        right: 6px;
+                        height: 2px;
+                        background: rgba(255, 255, 255, 0.2);
+                        z-index: 1;
+                        transform: translateY(-50%);
+                    }
+                `;
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.textContent = progressStyles;
+                document.head.appendChild(styleSheet);
 
                 // User name / greeting
                 const getName = () => localStorage.getItem('USER_NAME') || '';
