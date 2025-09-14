@@ -650,30 +650,72 @@ def insights():
 
 @app.route("/detail/<int:pid>")
 def detail(pid):
-    mode = request.args.get("mode")
-    if mode and mode in MODES:
-        try:
-            ddf = load_df("data.json")
-            dd = ddf[ddf["id"] == pid]
-            if dd.empty:
-                return render_template("detail.html", item=None)
-            scounts = Counter(ddf["primary_risk_state"].fillna("UNK"))
+    """Detail view for a single submission.
+
+    If a `?mode=` query param is present, we re-classify the row using the
+    same mode-aware logic that powers the dashboard lists so the badge shown
+    here matches what the user saw on the previous page. Otherwise we fall
+    back to the strict appetite classification cached in memory.
+    """
+    mode = (request.args.get("mode") or "").strip()
+    print("Mode: " + mode)
+
+    # When a mode is provided, mirror /api/classified_mode classification
+    if mode:
+        ddf = load_df("data.json")
+        dd = ddf[ddf["id"] == pid]
+        if dd.empty:
+            return render_template("detail.html", item=None)
+        # Resolve filters/weights for this mode (support legacy aliases)
+        name_map = {
+            "unicorn_hunting": "unicorn",
+            "balanced_growth": "balanced",
+            "loose_fits": "loose",
+            "turnaround_bets": "turnaround",
+            "unicorn": "unicorn",
+            "balanced": "balanced",
+            "loose": "loose",
+            "turnaround": "turnaround",
+        }
+        if mode in MODES:
             preset = MODES[mode]
-            r = dd.iloc[0].to_dict()
-            status, reasons, s, pscore = classify_for_mode_row(
-                r, preset["weights"], preset["filters"], scounts
+            filters = (preset or {}).get("filters", {})
+            weights = (preset or {}).get(
+                "weights", MODES.get("balanced_growth", {}).get("weights", {})
             )
-            r["appetite_status"] = status
-            r["appetite_reasons"] = reasons
-            r["priority_score"] = float(pscore)
-            return render_template("detail.html", item=r)
+        else:
+            # Fallback to percentile-driven defaults identical to list view
+            from percentile_modes import build_percentile_filters
+            kind = name_map.get(mode, "balanced")
+            filters, _ = build_percentile_filters(ddf, kind=kind, overrides=None)
+            weights = MODES.get("balanced_growth", {}).get("weights", {})
+        scounts = Counter(ddf["primary_risk_state"].fillna("UNK"))
+        r = dd.iloc[0].to_dict()
+        status, reasons, s, pscore = classify_for_mode_row(
+            r, weights, filters, scounts
+        )
+        r["appetite_status"] = status
+        r["appetite_reasons"] = reasons if isinstance(reasons, list) else []
+        # Safely convert to float, fallback to 0.0 if missing or not a number
+        import pandas as pd
+        try:
+            r["priority_score"] = float(pscore) if pscore is not None and not pd.isna(pscore) else 0.0
         except Exception:
-            pass
+            r["priority_score"] = 0.0
+        try:
+            r["mode_score"] = float(s) if s is not None and not pd.isna(s) else 0.0
+        except Exception:
+            r["mode_score"] = 0.0
+        print("Item:", r)
+        return render_template("detail.html", item=r)
+
+    # Default strict rules (cached classification)
     df, _ = refreshCache()
     d = df[df["id"] == pid]
     if d.empty:
         return render_template("detail.html", item=None)
     item = dfToDict(d)[0]
+    print(item)
     return render_template("detail.html", item=item)
 
 

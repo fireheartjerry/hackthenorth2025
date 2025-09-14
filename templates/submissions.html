@@ -738,8 +738,9 @@
 
         // Pagination slice
         const pageRows = updatePagination(rows);
+        const activeMode = (typeof getActiveMode === 'function') ? getActiveMode() : (document.getElementById('f_mode')?.value || localStorage.getItem('ACTIVE_MODE') || '');
         cardsGrid.innerHTML = pageRows.map(r => `
-            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')} ${r.target_opportunity ? 'target-opportunity-glow' : ''}" href="/detail/${r.id}">
+            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')} ${r.target_opportunity ? 'target-opportunity-glow' : ''}" href="/detail/${r.id}?mode=${encodeURIComponent(activeMode)}">
                 <div class=\"flex items-start justify-between mb-1\">
                     <div class=\"font-medium\">${r.account_name || '-'}</div>
                     ${r.appetite_status ? `<span class=\"pill ${r.appetite_status==='TARGET'?'pill-indigo': (r.appetite_status==='IN'?'pill-emerald':'pill-rose')}\">${r.appetite_status}</span>` : ''}

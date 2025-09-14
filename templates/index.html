@@ -1042,7 +1042,10 @@
 
     // Priority account actions
     function viewAccountDetail(accountId) {
-        window.location.href = `/detail/${accountId}`;
+        // Pass active mode so detail view uses same classification logic
+        const mode = (typeof getActiveMode === 'function') ? getActiveMode() : (localStorage.getItem('ACTIVE_MODE') || '');
+        const suffix = mode ? `?mode=${encodeURIComponent(mode)}` : '';
+        window.location.href = `/detail/${accountId}${suffix}`;
     }
 
     function explainAccount(accountId) {

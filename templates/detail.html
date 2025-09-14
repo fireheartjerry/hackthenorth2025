@@ -104,10 +104,9 @@
                 <div class="kv">
                     <span>Submission Type</span>
                     <b
-                        class="{% if item.renewal_or_new_business == 'NEW_BUSINESS' %}text-emerald-300{% else %}text-orange-300{% endif %}"
+                        class="{% if item.renewal_or_new_business == 'NEW_BUSINESS' %}text-emerald-300{% elif item.renewal_or_new_business == 'RENEWAL' %}text-orange-300{% else %}text-gray-300{% endif %}"
                     >
-                        {{ 'New Business' if item.renewal_or_new_business ==
-                        'NEW_BUSINESS' else 'Renewal' }}
+                        {% if item.renewal_or_new_business == 'NEW_BUSINESS' %}New Business{% elif item.renewal_or_new_business == 'RENEWAL' %}Renewal{% else %}—{% endif %}
                     </b>
                 </div>
                 <div class="kv">
@@ -116,7 +115,13 @@
                 </div>
                 <div class="kv">
                     <span>Building Age</span>
-                    <b>{{ (item.building_age | round(0)) or '—' }} years</b>
+                    <b>
+                        {% if item.oldest_building is number and item.oldest_building > 0 %}
+                            {{ 2025 - item.oldest_building | round(0) }} years
+                        {% else %}
+                            —
+                        {% endif %}
+                    </b>
                 </div>
                 <div class="kv">
                     <span>Loss Value</span>
@@ -135,6 +140,26 @@
                         100) if item.total_premium else 0) }}%
                     </b>
                 </div>
+                <div class="kv">
+                    <span>Fresh Days</span>
+                    <b>
+                        {% if item.fresh_days is number and item.fresh_days == item.fresh_days %}
+                            {{ '%.0f'|format(item.fresh_days) }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </b>
+                </div>
+                <div class="kv">
+                    <span>Good Construction</span>
+                    <b class="{% if item.is_good_construction %}text-emerald-300{% else %}text-rose-300{% endif %}">
+                        {{ 'Yes' if item.is_good_construction else 'No' }}
+                    </b>
+                </div>
+                <div class="kv">
+                    <span>Mode Score</span>
+                    <b>{{ '%.1f'|format(item.mode_score or 0) }}</b>
+                </div>
             </div>
         </div>
 
@@ -144,17 +169,33 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div class="kv">
                     <span>Created Date</span>
-                    <b>{{ item.created_at|dateformat }}</b>
+                    <b>
+                        {% if item.created_at is not none and item.created_at != 'NaT' %}
+                            {{ item.created_at }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </b>
                 </div>
                 <div class="kv">
                     <span>Effective Date</span>
-                    <b class="text-emerald-300"
-                        >{{ item.effective_date|dateformat }}</b
-                    >
+                    <b class="text-emerald-300">
+                        {% if item.effective_date and item.effective_date != 'NaT' %}
+                            {{ item.effective_date }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </b>
                 </div>
                 <div class="kv">
                     <span>Expiration Date</span>
-                    <b>{{ item.expiration_date|dateformat }}</b>
+                    <b>
+                        {% if item.expiration_date and item.expiration_date != 'NaT' %}
+                            {{ item.expiration_date }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </b>
                 </div>
             </div>
         </div>
@@ -196,6 +237,25 @@
 
     <!-- Right: Actions & Analysis -->
     <div class="space-y-4">
+        <!-- AI Insights -->
+        <div class="glass-panel">
+            <h3 class="text-lg font-semibold mb-4">AI Insights</h3>
+            <div id="ai_insights" class="text-sm opacity-90">
+                <div class="text-center py-4 opacity-60">
+                    Click "Get AI Explanation" to see detailed analysis
+                </div>
+            </div>
+            <div class="mt-4 space-y-2">
+                <button id="btn_explain" class="w-full quick-action">🤖 Get AI Explanation</button>
+                <button id="btn_similar" class="w-full quick-action">🔍 Find Similar Risks</button>
+                <button id="btn_compare" class="w-full quick-action">📊 Compare to Portfolio</button>
+                <button id="btn_refer" class="w-full quick-action">👥 Refer to Specialist</button>
+                <div class="flex gap-2">
+                    <button id="btn_approve" class="flex-1 quick-action bg-emerald-600 hover:bg-emerald-700">✅ Approve</button>
+                    <button id="btn_decline" class="flex-1 quick-action bg-rose-600 hover:bg-rose-700">❌ Decline</button>
+                </div>
+            </div>
+        </div>
 
 
         <!-- AI Summary Widget for Detail Page -->
@@ -241,16 +301,6 @@
                             <!-- Last used timestamp -->
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI Insights -->
-        <div class="glass-panel">
-            <h3 class="text-lg font-semibold mb-4">AI Insights</h3>
-            <div id="ai_insights" class="text-sm opacity-90">
-                <div class="text-center py-4 opacity-60">
-                    Click "Get AI Explanation" to see detailed analysis
                 </div>
             </div>
         </div>
