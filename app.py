@@ -801,20 +801,23 @@ def apiPriorityAccounts():
     # Focus on in-appetite submissions (TARGET and IN) for priority review
     d = d[d["appetite_status"].isin(["TARGET", "IN"])]
 
-    # Apply sorting
+    # Apply sorting - TARGET submissions first, then IN submissions
     ascending = sort_dir.lower() == "asc"
-    # Mark target opportunities and sort them first
     try:
         d = mark_target_opportunities_df(d)
         d = d.copy()
-        d["__top"] = d["target_opportunity"].astype(int)
+        # Create priority ranking: TARGET=2, IN=1 for sorting
+        d["__appetite_rank"] = d["appetite_status"].map({"TARGET": 2, "IN": 1}).fillna(0)
+        
         if sort_by in d.columns:
-            d = d.sort_values(["__top", sort_by], ascending=[False, ascending])
+            # Sort by appetite status first (TARGET then IN), then by requested sort field
+            d = d.sort_values(["__appetite_rank", sort_by], ascending=[False, ascending])
         else:
-            d = d.sort_values(["__top", "priority_score"], ascending=[False, False])
-        d = d.drop(columns=["__top"])
+            # Default sort by appetite status first, then by priority score
+            d = d.sort_values(["__appetite_rank", "priority_score"], ascending=[False, False])
+        d = d.drop(columns=["__appetite_rank"])
     except Exception as e:
-        print(f"Error in target opportunity sorting: {e}")
+        print(f"Error in appetite status sorting: {e}")
         if sort_by in d.columns:
             d = d.sort_values([sort_by], ascending=ascending)
         else:
