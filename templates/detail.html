@@ -93,7 +93,7 @@
         <div class="kv">
           <span>Loss Value</span>
           <b class="{% if item.loss_value > 100000 %}text-rose-300{% else %}text-emerald-300{% endif %}">
-            ${{ item.loss_value | commafy }}
+            ${{ item.loss_value | commafy(2) }}
           </b>
         </div>
         <div class="kv">

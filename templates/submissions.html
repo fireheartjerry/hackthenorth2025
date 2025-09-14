@@ -513,14 +513,25 @@
             return res.json();
         }
     }
-    
+
+    function formatCurrency(v){
+        const n = Number(v || 0);
+        const opts = n % 1 === 0
+            ? {minimumFractionDigits:0, maximumFractionDigits:0}
+            : {minimumFractionDigits:2, maximumFractionDigits:2};
+        return '$' + n.toLocaleString(undefined, opts);
+    }
+
     // Money short format for compact columns
     function fmtMoneyShort(v){
         const n = Number(v || 0);
-        if (n >= 1e9) return '$' + (n/1e9).toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) + 'B';
-        if (n >= 1e6) return '$' + (n/1e6).toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) + 'M';
-        if (n >= 1e3) return '$' + Math.round(n/1e3).toLocaleString() + 'K';
-        return '$' + Math.round(n).toLocaleString();
+        const fmt = (num) => num % 1 === 0
+            ? num.toLocaleString()
+            : num.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        if (n >= 1e9) return '$' + fmt(n/1e9) + 'B';
+        if (n >= 1e6) return '$' + fmt(n/1e6) + 'M';
+        if (n >= 1e3) return '$' + fmt(n/1e3) + 'K';
+        return '$' + fmt(n);
     }
     
     if (typeof window.withLoading === 'undefined') {
@@ -711,7 +722,7 @@
                     <div class=\"font-medium\">${r.account_name || '-'}</div>
                     ${r.appetite_status ? `<span class=\"pill ${r.appetite_status==='TARGET'?'pill-indigo': (r.appetite_status==='IN'?'pill-emerald':'pill-rose')}\">${r.appetite_status}</span>` : ''}
                 </div>
-                <div class=\"text-sm opacity-80 mb-2\">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'} · $${Math.round(r.total_premium||0).toLocaleString()}</div>
+                <div class=\"text-sm opacity-80 mb-2\">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'} · ${formatCurrency(r.total_premium)}</div>
                 <div class=\"flex items-center justify-between text-xs opacity-90\">
                     <span>Score ${Number(r.priority_score||0).toFixed(1)}</span>
                     <span>Win ${Number((r.winnability>1?r.winnability:(r.winnability||0)*100)).toFixed(0)}%</span>
