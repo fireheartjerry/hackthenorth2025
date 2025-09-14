@@ -17,10 +17,10 @@
 
 <div class="glass-panel p-2">
     <div class="flex gap-2 text-sm">
-        {% for t in tabs[:1] %} {% set is_disabled = (t.protected and role not in
+        {% for t in tabs[:6] %} {% set is_disabled = (t.protected and role not in
         ['leader','admin']) %}
         <button
-            class="pill pill-indigo tabbtn"
+            class="pill {% if loop.first %}pill-indigo{% else %}pill-sub{% endif %} tabbtn"
             data-tab="{{ t.id }}"
             {%
             if
@@ -39,11 +39,6 @@
 
 <div id="tab_content" class="mt-4 space-y-6"></div>
 
-<!-- US Map Section - Always Visible -->
-<div class="mt-8 mb-6">
-    <h2 class="text-lg font-semibold mb-4">Geographic Overview</h2>
-    <div id="us_map_container" class="space-y-6"></div>
-</div>
 
 <!-- Fullscreen overlay -->
 <div id="fs_overlay" class="overlay hidden">
@@ -245,7 +240,7 @@
                 paper_bgcolor: "transparent",
                 plot_bgcolor: "transparent",
                 font: { color: "#e2e8f0" },
-                margin: { t: 30, r: 10, b: 40, l: 40 },
+                margin: { t: 30, r: 10, b: 250, l: 40 },
             };
             if (opts.type !== "pie") {
                 layout.xaxis = { gridcolor: "rgba(255,255,255,.08)" };
@@ -669,6 +664,1695 @@
         return card;
     }
 
+    // Pricing Chart with hardcoded data
+    function createPricingChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Pricing Analysis</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data for pricing analysis
+        const pricingData = [
+            {account_name: "Acme Corp", tiv: 45000000, total_premium: 125000, loss_value: 25000, winnability: 85, primary_risk_state: "CA", construction_type: "Fire Resistive"},
+            {account_name: "Beta Industries", tiv: 32000000, total_premium: 98000, loss_value: 15000, winnability: 72, primary_risk_state: "TX", construction_type: "Masonry Non-Combustible"},
+            {account_name: "Gamma Manufacturing", tiv: 78000000, total_premium: 185000, loss_value: 55000, winnability: 45, primary_risk_state: "FL", construction_type: "Non-Combustible/Steel"},
+            {account_name: "Delta Logistics", tiv: 28000000, total_premium: 87000, loss_value: 8000, winnability: 91, primary_risk_state: "OH", construction_type: "Fire Resistive"},
+            {account_name: "Epsilon Tech", tiv: 125000000, total_premium: 275000, loss_value: 95000, winnability: 38, primary_risk_state: "NY", construction_type: "Joisted Masonry"},
+            {account_name: "Zeta Retail", tiv: 15000000, total_premium: 65000, loss_value: 12000, winnability: 67, primary_risk_state: "GA", construction_type: "Masonry Non-Combustible"},
+            {account_name: "Eta Energy", tiv: 89000000, total_premium: 210000, loss_value: 42000, winnability: 55, primary_risk_state: "PA", construction_type: "Fire Resistive"},
+            {account_name: "Theta Holdings", tiv: 67000000, total_premium: 155000, loss_value: 18000, winnability: 78, primary_risk_state: "CO", construction_type: "Non-Combustible/Steel"},
+            {account_name: "Iota Systems", tiv: 95000000, total_premium: 225000, loss_value: 78000, winnability: 42, primary_risk_state: "MD", construction_type: "Joisted Masonry"},
+            {account_name: "Kappa Services", tiv: 22000000, total_premium: 75000, loss_value: 5000, winnability: 88, primary_risk_state: "VA", construction_type: "Fire Resistive"},
+            {account_name: "Lambda Corp", tiv: 156000000, total_premium: 320000, loss_value: 125000, winnability: 31, primary_risk_state: "IL", construction_type: "Wood Frame"},
+            {account_name: "Mu Enterprises", tiv: 38000000, total_premium: 112000, loss_value: 22000, winnability: 73, primary_risk_state: "SC", construction_type: "Masonry Non-Combustible"},
+            {account_name: "Nu Industries", tiv: 71000000, total_premium: 168000, loss_value: 35000, winnability: 59, primary_risk_state: "NC", construction_type: "Fire Resistive"},
+            {account_name: "Xi Manufacturing", tiv: 43000000, total_premium: 118000, loss_value: 14000, winnability: 82, primary_risk_state: "UT", construction_type: "Non-Combustible/Steel"},
+            {account_name: "Omicron Group", tiv: 102000000, total_premium: 245000, loss_value: 88000, winnability: 48, primary_risk_state: "WA", construction_type: "Joisted Masonry"},
+            // Additional data points for better trend analysis
+            {account_name: "Pi Technologies", tiv: 55000000, total_premium: 145000, loss_value: 28000, winnability: 65, primary_risk_state: "TX", construction_type: "Fire Resistive"},
+            {account_name: "Rho Manufacturing", tiv: 82000000, total_premium: 195000, loss_value: 45000, winnability: 52, primary_risk_state: "OH", construction_type: "Masonry Non-Combustible"},
+            {account_name: "Sigma Corp", tiv: 34000000, total_premium: 92000, loss_value: 18000, winnability: 76, primary_risk_state: "FL", construction_type: "Fire Resistive"},
+            {account_name: "Tau Industries", tiv: 118000000, total_premium: 285000, loss_value: 68000, winnability: 44, primary_risk_state: "CA", construction_type: "Non-Combustible/Steel"},
+            {account_name: "Upsilon Group", tiv: 29000000, total_premium: 81000, loss_value: 12000, winnability: 84, primary_risk_state: "GA", construction_type: "Fire Resistive"}
+        ];
+
+        // Calculate loss ratios and cap at 0-200%
+        const processedData = pricingData.map(d => ({
+            ...d,
+            loss_ratio: Math.min((d.loss_value / d.total_premium) * 100, 200) // Cap at 200%
+        }));
+
+        // Create scatter trace
+        const trace = {
+            x: processedData.map(d => d.tiv),
+            y: processedData.map(d => d.total_premium),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 8,
+                color: processedData.map(d => d.loss_ratio),
+                colorscale: [
+                    [0, '#22c55e'],    // Green for low loss ratios (0%)
+                    [0.25, '#84cc16'], // Light green
+                    [0.5, '#eab308'],  // Yellow (50%)
+                    [0.75, '#f97316'], // Orange (100%)
+                    [1, '#ef4444']     // Red for high loss ratios (200%)
+                ],
+                colorbar: {
+                    title: 'Loss Ratio (%)',
+                    titlefont: { color: '#e2e8f0' },
+                    tickfont: { color: '#e2e8f0' },
+                    x: 1.02
+                },
+                cmin: 0,
+                cmax: 200,
+                opacity: 0.7,
+                line: {
+                    color: 'rgba(255,255,255,0.2)',
+                    width: 1
+                }
+            },
+            text: processedData.map(d => {
+                return `<b>${d.account_name}</b><br>` +
+                       `TIV: $${(d.tiv/1000000).toFixed(1)}M<br>` +
+                       `Premium: $${d.total_premium.toLocaleString()}<br>` +
+                       `Loss Value: $${d.loss_value.toLocaleString()}<br>` +
+                       `Loss Ratio: ${d.loss_ratio.toFixed(1)}%<br>` +
+                       `Winnability: ${d.winnability}%<br>` +
+                       `State: ${d.primary_risk_state}<br>` +
+                       `Construction: ${d.construction_type}`;
+            }),
+            hovertemplate: '%{text}<extra></extra>',
+            name: 'Submissions'
+        };
+
+        // Calculate linear trendline
+        const xValues = processedData.map(d => d.tiv);
+        const yValues = processedData.map(d => d.total_premium);
+        
+        // Simple linear regression
+        const n = xValues.length;
+        const sumX = xValues.reduce((a, b) => a + b, 0);
+        const sumY = yValues.reduce((a, b) => a + b, 0);
+        const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+        const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        
+        const minX = Math.min(...xValues);
+        const maxX = Math.max(...xValues);
+        
+        const trendline = {
+            x: [minX, maxX],
+            y: [slope * minX + intercept, slope * maxX + intercept],
+            mode: 'lines',
+            type: 'scatter',
+            name: 'Trend Line',
+            line: {
+                color: '#94a3b8',
+                width: 2,
+                dash: 'dash'
+            },
+            hovertemplate: 'Trendline<extra></extra>'
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 120, b: 150, l: 100 },
+            xaxis: {
+                title: 'Total Insured Value ($)',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'linear'
+            },
+            yaxis: {
+                title: 'Total Premium ($)',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1,
+                font: { color: "#e2e8f0" }
+            }
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [trace, trendline], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("pricing_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load pricing chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Premium vs Losses Chart with hardcoded data
+    function createPremiumVsLossesChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card mt-6";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Premium vs Losses (Break-Even Line)</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data for premium vs losses analysis
+        const lossData = [
+            {account_name: "Acme Corp", total_premium: 125000, loss_value: 25000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Beta Industries", total_premium: 98000, loss_value: 15000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Gamma Manufacturing", total_premium: 185000, loss_value: 55000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Delta Logistics", total_premium: 87000, loss_value: 8000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Epsilon Tech", total_premium: 275000, loss_value: 95000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Zeta Retail", total_premium: 65000, loss_value: 12000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Eta Energy", total_premium: 210000, loss_value: 42000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Theta Holdings", total_premium: 155000, loss_value: 18000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Iota Systems", total_premium: 225000, loss_value: 78000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Kappa Services", total_premium: 75000, loss_value: 5000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Lambda Corp", total_premium: 320000, loss_value: 125000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Mu Enterprises", total_premium: 112000, loss_value: 22000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Nu Industries", total_premium: 168000, loss_value: 35000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Xi Manufacturing", total_premium: 118000, loss_value: 14000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Omicron Group", total_premium: 245000, loss_value: 88000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Pi Technologies", total_premium: 145000, loss_value: 28000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Rho Manufacturing", total_premium: 195000, loss_value: 45000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Sigma Corp", total_premium: 92000, loss_value: 18000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Tau Industries", total_premium: 285000, loss_value: 68000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Upsilon Group", total_premium: 81000, loss_value: 12000, line_of_business: "COMMERCIAL PROPERTY"}
+        ];
+
+        // Calculate loss ratios
+        const processedLossData = lossData.map(d => ({
+            ...d,
+            loss_ratio: ((d.loss_value / d.total_premium) * 100).toFixed(1)
+        }));
+
+        // Color mapping for line of business
+        const colorMap = {
+            "COMMERCIAL PROPERTY": "#818cf8"
+        };
+
+        // Create scatter trace
+        const trace = {
+            x: processedLossData.map(d => d.total_premium),
+            y: processedLossData.map(d => d.loss_value),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 8,
+                color: processedLossData.map(d => colorMap[d.line_of_business] || "#06b6d4"),
+                opacity: 0.7,
+                line: {
+                    color: 'rgba(255,255,255,0.2)',
+                    width: 1
+                }
+            },
+            text: processedLossData.map(d => {
+                return `<b>${d.account_name}</b><br>` +
+                       `Loss Ratio: ${d.loss_ratio}%`;
+            }),
+            hovertemplate: '%{text}<extra></extra>',
+            name: 'Submissions'
+        };
+
+        // Create break-even line (y = x)
+        const maxValue = Math.max(
+            Math.max(...processedLossData.map(d => d.total_premium)),
+            Math.max(...processedLossData.map(d => d.loss_value))
+        );
+        
+        const breakEvenLine = {
+            x: [0, maxValue],
+            y: [0, maxValue],
+            mode: 'lines',
+            type: 'scatter',
+            name: 'Break-Even Line (y = x)',
+            line: {
+                color: '#f59e0b',
+                width: 2,
+                dash: 'dash'
+            },
+            hovertemplate: 'Break-Even Point<br>Premium = Loss<extra></extra>'
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 150, l: 100 },
+            xaxis: {
+                title: 'Total Premium ($)',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'linear'
+            },
+            yaxis: {
+                title: 'Loss Value ($)',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1,
+                font: { color: "#e2e8f0" }
+            },
+            annotations: [
+                {
+                    x: 0.7,
+                    y: 0.15,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Points above line:<br>Losses > Premiums<br>(Unprofitable)',
+                    showarrow: false,
+                    font: { color: '#f87171', size: 10 },
+                    align: 'center'
+                },
+                {
+                    x: 0.3,
+                    y: 0.85,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Points below line:<br>Losses < Premiums<br>(Profitable)',
+                    showarrow: false,
+                    font: { color: '#4ade80', size: 10 },
+                    align: 'center'
+                }
+            ]
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [trace, breakEvenLine], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("premium_vs_losses_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load premium vs losses chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Premium per TIV Box Plot with hardcoded data
+    function createPremiumPerTIVBoxPlot() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card mt-6";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Premium per TIV by LOB</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data with multiple LOBs for box plot analysis
+        const boxPlotData = [
+            // Commercial Property submissions
+            {account_name: "Acme Corp", total_premium: 125000, tiv: 45000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Beta Industries", total_premium: 98000, tiv: 32000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Gamma Manufacturing", total_premium: 185000, tiv: 78000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Delta Logistics", total_premium: 87000, tiv: 28000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Epsilon Tech", total_premium: 275000, tiv: 125000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Zeta Retail", total_premium: 65000, tiv: 15000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Eta Energy", total_premium: 210000, tiv: 89000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Theta Holdings", total_premium: 155000, tiv: 67000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Iota Systems", total_premium: 225000, tiv: 95000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Kappa Services", total_premium: 75000, tiv: 22000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Lambda Corp", total_premium: 320000, tiv: 156000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Mu Enterprises", total_premium: 112000, tiv: 38000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Nu Industries", total_premium: 168000, tiv: 71000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Xi Manufacturing", total_premium: 118000, tiv: 43000000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Omicron Group", total_premium: 245000, tiv: 102000000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // General Liability submissions
+            {account_name: "Alpha GL Corp", total_premium: 45000, tiv: 25000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Beta GL Inc", total_premium: 38000, tiv: 18000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Gamma GL Ltd", total_premium: 52000, tiv: 35000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Delta GL Group", total_premium: 41000, tiv: 22000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Epsilon GL Co", total_premium: 48000, tiv: 28000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Zeta GL Corp", total_premium: 35000, tiv: 16000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Eta GL Inc", total_premium: 44000, tiv: 26000000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Theta GL Ltd", total_premium: 39000, tiv: 20000000, line_of_business: "GENERAL LIABILITY"},
+            
+            // Umbrella/Excess submissions
+            {account_name: "Umbrella One", total_premium: 85000, tiv: 120000000, line_of_business: "UMBRELLA"},
+            {account_name: "Umbrella Two", total_premium: 92000, tiv: 145000000, line_of_business: "UMBRELLA"},
+            {account_name: "Umbrella Three", total_premium: 78000, tiv: 98000000, line_of_business: "UMBRELLA"},
+            {account_name: "Umbrella Four", total_premium: 88000, tiv: 135000000, line_of_business: "UMBRELLA"},
+            {account_name: "Umbrella Five", total_premium: 95000, tiv: 165000000, line_of_business: "UMBRELLA"},
+            {account_name: "Umbrella Six", total_premium: 82000, tiv: 115000000, line_of_business: "UMBRELLA"},
+            
+            // Cyber Liability submissions
+            {account_name: "Cyber Safe Corp", total_premium: 125000, tiv: 35000000, line_of_business: "CYBER"},
+            {account_name: "Cyber Guard Inc", total_premium: 148000, tiv: 42000000, line_of_business: "CYBER"},
+            {account_name: "Cyber Shield Ltd", total_premium: 135000, tiv: 38000000, line_of_business: "CYBER"},
+            {account_name: "Cyber Protect Co", total_premium: 152000, tiv: 45000000, line_of_business: "CYBER"},
+            {account_name: "Cyber Secure Group", total_premium: 142000, tiv: 41000000, line_of_business: "CYBER"},
+            {account_name: "Cyber Defense Corp", total_premium: 138000, tiv: 39000000, line_of_business: "CYBER"}
+        ];
+
+        // Calculate premium per TIV (as a rate per $1000 TIV for readability)
+        const processedData = boxPlotData.map(d => ({
+            ...d,
+            premium_per_tiv: (d.total_premium / d.tiv) * 1000 // Rate per $1000 TIV
+        }));
+
+        // Group data by line of business
+        const groupedData = {};
+        processedData.forEach(d => {
+            if (!groupedData[d.line_of_business]) {
+                groupedData[d.line_of_business] = [];
+            }
+            groupedData[d.line_of_business].push(d);
+        });
+
+        // Calculate medians for sorting
+        const medians = {};
+        Object.keys(groupedData).forEach(lob => {
+            const values = groupedData[lob].map(d => d.premium_per_tiv).sort((a, b) => a - b);
+            const mid = Math.floor(values.length / 2);
+            medians[lob] = values.length % 2 !== 0 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+        });
+
+        // Sort LOBs by median descending
+        const sortedLOBs = Object.keys(groupedData).sort((a, b) => medians[b] - medians[a]);
+
+        // Color mapping for different LOBs
+        const colorMap = {
+            "COMMERCIAL PROPERTY": "#818cf8",
+            "GENERAL LIABILITY": "#22c55e", 
+            "UMBRELLA": "#f59e0b",
+            "CYBER": "#ef4444"
+        };
+
+        // Calculate statistics for each LOB
+        function calculateStats(values) {
+            const sorted = values.sort((a, b) => a - b);
+            const n = sorted.length;
+            const q1Index = Math.floor(n * 0.25);
+            const q3Index = Math.floor(n * 0.75);
+            const medianIndex = Math.floor(n * 0.5);
+            
+            return {
+                q1: sorted[q1Index],
+                median: n % 2 !== 0 ? sorted[medianIndex] : (sorted[medianIndex - 1] + sorted[medianIndex]) / 2,
+                q3: sorted[q3Index],
+                min: sorted[0],
+                max: sorted[n - 1],
+                count: n,
+                iqr: sorted[q3Index] - sorted[q1Index]
+            };
+        }
+
+        // Create box plot traces
+        const traces = sortedLOBs.map(lob => {
+            const lobData = groupedData[lob];
+            const values = lobData.map(d => d.premium_per_tiv);
+            const stats = calculateStats(values);
+            
+            return {
+                y: values,
+                type: 'box',
+                name: lob,
+                marker: { color: colorMap[lob] || "#06b6d4" },
+                line: { color: colorMap[lob] || "#06b6d4" },
+                boxpoints: 'outliers',
+                jitter: 0.3,
+                pointpos: -1.8,
+                hovertemplate: 
+                    `<b>${lob}</b><br>` +
+                    `Median: $%{median:.2f}<br>` +
+                    `IQR: $${stats.iqr.toFixed(2)}<br>` +
+                    `Sample Size: ${stats.count}<br>` +
+                    `<extra></extra>`,
+                customdata: Array(values.length).fill({
+                    median: stats.median,
+                    iqr: stats.iqr,
+                    count: stats.count
+                })
+            };
+        });
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 200, l: 80 },
+            xaxis: {
+                title: 'Line of Business',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            yaxis: {
+                title: 'Premium per $1000 TIV ($)',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            showlegend: false,
+            annotations: [
+                {
+                    x: 0.5,
+                    y: -0.15,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Sorted by median premium rate (descending)',
+                    showarrow: false,
+                    font: { color: '#94a3b8', size: 10 },
+                    align: 'center'
+                }
+            ]
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, traces, layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("premium_per_tiv_boxplot.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load premium per TIV box plot: " + e.message, "error"));
+        return card;
+    }
+
+    // Exposure Choropleth Map with hardcoded data
+    function createExposureChoropleth() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Exposure by State</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <div class="pill pill-indigo" id="portfolio-totals">
+                        <span class="font-medium">Portfolio:</span>
+                        <span id="total-tiv">$0</span> TIV |
+                        <span id="total-accounts">0</span> Accounts |
+                        <span id="total-premium">$0</span> Premium
+                    </div>
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 600px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample exposure data by state
+        const exposureData = [
+            // California - High exposure
+            {account_name: "Acme Corp", primary_risk_state: "CA", tiv: 45000000, total_premium: 125000},
+            {account_name: "Tau Industries", primary_risk_state: "CA", tiv: 118000000, total_premium: 285000},
+            {account_name: "West Coast Logistics", primary_risk_state: "CA", tiv: 67000000, total_premium: 178000},
+            {account_name: "Silicon Valley Tech", primary_risk_state: "CA", tiv: 89000000, total_premium: 215000},
+            
+            // Texas - Medium-high exposure
+            {account_name: "Beta Industries", primary_risk_state: "TX", tiv: 32000000, total_premium: 98000},
+            {account_name: "Pi Technologies", primary_risk_state: "TX", tiv: 55000000, total_premium: 145000},
+            {account_name: "Lone Star Energy", primary_risk_state: "TX", tiv: 72000000, total_premium: 189000},
+            {account_name: "Dallas Manufacturing", primary_risk_state: "TX", tiv: 41000000, total_premium: 112000},
+            
+            // Florida - Medium exposure
+            {account_name: "Gamma Manufacturing", primary_risk_state: "FL", tiv: 78000000, total_premium: 185000},
+            {account_name: "Sigma Corp", primary_risk_state: "FL", tiv: 34000000, total_premium: 92000},
+            {account_name: "Miami Holdings", primary_risk_state: "FL", tiv: 52000000, total_premium: 138000},
+            
+            // Ohio - Medium exposure
+            {account_name: "Delta Logistics", primary_risk_state: "OH", tiv: 28000000, total_premium: 87000},
+            {account_name: "Rho Manufacturing", primary_risk_state: "OH", tiv: 82000000, total_premium: 195000},
+            {account_name: "Cleveland Industries", primary_risk_state: "OH", tiv: 38000000, total_premium: 103000},
+            
+            // Pennsylvania - Medium exposure
+            {account_name: "Eta Energy", primary_risk_state: "PA", tiv: 89000000, total_premium: 210000},
+            {account_name: "Philadelphia Corp", primary_risk_state: "PA", tiv: 45000000, total_premium: 125000},
+            
+            // Other states - Lower exposure
+            {account_name: "Zeta Retail", primary_risk_state: "GA", tiv: 15000000, total_premium: 65000},
+            {account_name: "Upsilon Group", primary_risk_state: "GA", tiv: 29000000, total_premium: 81000},
+            {account_name: "Theta Holdings", primary_risk_state: "CO", tiv: 67000000, total_premium: 155000},
+            {account_name: "Iota Systems", primary_risk_state: "MD", tiv: 95000000, total_premium: 225000},
+            {account_name: "Kappa Services", primary_risk_state: "VA", tiv: 22000000, total_premium: 75000},
+            {account_name: "Mu Enterprises", primary_risk_state: "SC", tiv: 38000000, total_premium: 112000},
+            {account_name: "Nu Industries", primary_risk_state: "NC", tiv: 71000000, total_premium: 168000},
+            {account_name: "Xi Manufacturing", primary_risk_state: "UT", tiv: 43000000, total_premium: 118000},
+            {account_name: "Lambda Corp", primary_risk_state: "IL", tiv: 156000000, total_premium: 320000},
+            {account_name: "Omicron Group", primary_risk_state: "WA", tiv: 102000000, total_premium: 245000},
+            {account_name: "Epsilon Tech", primary_risk_state: "NY", tiv: 125000000, total_premium: 275000}
+        ];
+
+        // Aggregate data by state
+        const stateAggregates = {};
+        exposureData.forEach(record => {
+            const state = record.primary_risk_state;
+            if (!stateAggregates[state]) {
+                stateAggregates[state] = {
+                    state: state,
+                    total_tiv: 0,
+                    total_premium: 0,
+                    account_count: 0
+                };
+            }
+            stateAggregates[state].total_tiv += record.tiv;
+            stateAggregates[state].total_premium += record.total_premium;
+            stateAggregates[state].account_count += 1;
+        });
+
+        // Convert to arrays for Plotly
+        const states = Object.keys(stateAggregates);
+        const tivValues = states.map(state => stateAggregates[state].total_tiv);
+        const premiumValues = states.map(state => stateAggregates[state].total_premium);
+        const accountCounts = states.map(state => stateAggregates[state].account_count);
+
+        // Calculate portfolio totals
+        const portfolioTotals = {
+            total_tiv: exposureData.reduce((sum, record) => sum + record.tiv, 0),
+            total_accounts: exposureData.length,
+            total_premium: exposureData.reduce((sum, record) => sum + record.total_premium, 0)
+        };
+
+        // Update portfolio totals badge
+        const formatMoney = (amount) => {
+            if (amount >= 1000000000) return `$${(amount / 1000000000).toFixed(1)}B`;
+            if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+            if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+            return `$${amount.toLocaleString()}`;
+        };
+
+        card.querySelector("#total-tiv").textContent = formatMoney(portfolioTotals.total_tiv);
+        card.querySelector("#total-accounts").textContent = portfolioTotals.total_accounts.toLocaleString();
+        card.querySelector("#total-premium").textContent = formatMoney(portfolioTotals.total_premium);
+
+        // Create choropleth trace
+        const trace = {
+            type: "choropleth",
+            locationmode: "USA-states",
+            locations: states,
+            z: tivValues,
+            colorscale: [
+                [0, '#1e293b'],        // Dark slate for low values
+                [0.2, '#3b82f6'],      // Blue
+                [0.4, '#06b6d4'],      // Cyan
+                [0.6, '#10b981'],      // Emerald
+                [0.8, '#f59e0b'],      // Amber
+                [1, '#ef4444']         // Red for high values
+            ],
+            colorbar: {
+                title: {
+                    text: 'Total TIV ($)',
+                    font: { color: '#e2e8f0' }
+                },
+                titleside: 'right',
+                tickfont: { color: '#e2e8f0' },
+                x: 1.02
+            },
+            hovertemplate: 
+                '<b>%{location}</b><br>' +
+                'Total TIV: $%{z:,.0f}<br>' +
+                'Accounts: %{customdata[0]:,.0f}<br>' +
+                'Total Premium: $%{customdata[1]:,.0f}<br>' +
+                '<extra></extra>',
+            customdata: states.map(state => [
+                stateAggregates[state].account_count,
+                stateAggregates[state].total_premium
+            ]),
+            name: 'Exposure'
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 40, r: 120, b: 40, l: 40 },
+            geo: {
+                scope: 'usa',
+                projection: { type: 'albers usa' },
+                showlakes: true,
+                lakecolor: 'rgba(255,255,255,0.1)',
+                bgcolor: 'transparent',
+                showland: true,
+                landcolor: 'rgba(255,255,255,0.05)',
+                showcoastlines: true,
+                coastlinecolor: 'rgba(255,255,255,0.2)',
+                showframe: false
+            },
+            title: {
+                text: '',
+                font: { color: '#e2e8f0' }
+            }
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [trace], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("exposure_choropleth.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load exposure choropleth: " + e.message, "error"));
+        return card;
+    }
+
+    // Building Age Analysis Chart with hardcoded data  
+    function createBuildingAgeChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card mt-6";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Building Age vs TIV Analysis</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data with building ages and construction types
+        const buildingData = [
+            {account_name: "Acme Corp", oldest_building: 1995, tiv: 45000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Beta Industries", oldest_building: 2005, tiv: 32000000, construction_type: "Masonry Non-Combustible", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Gamma Manufacturing", oldest_building: 1988, tiv: 78000000, construction_type: "Non-Combustible/Steel", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Delta Logistics", oldest_building: 2012, tiv: 28000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Epsilon Tech", oldest_building: 1975, tiv: 125000000, construction_type: "Joisted Masonry", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Zeta Retail", oldest_building: 2018, tiv: 15000000, construction_type: "Masonry Non-Combustible", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Eta Energy", oldest_building: 1992, tiv: 89000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Theta Holdings", oldest_building: 2008, tiv: 67000000, construction_type: "Non-Combustible/Steel", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Iota Systems", oldest_building: 1983, tiv: 95000000, construction_type: "Joisted Masonry", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Kappa Services", oldest_building: 2015, tiv: 22000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Lambda Corp", oldest_building: 1968, tiv: 156000000, construction_type: "Wood Frame", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Mu Enterprises", oldest_building: 2003, tiv: 38000000, construction_type: "Masonry Non-Combustible", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Nu Industries", oldest_building: 1997, tiv: 71000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Xi Manufacturing", oldest_building: 2011, tiv: 43000000, construction_type: "Non-Combustible/Steel", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Omicron Group", oldest_building: 1979, tiv: 102000000, construction_type: "Joisted Masonry", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Pi Technologies", oldest_building: 2020, tiv: 55000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Rho Manufacturing", oldest_building: 1985, tiv: 82000000, construction_type: "Masonry Non-Combustible", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Sigma Corp", oldest_building: 2016, tiv: 34000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Tau Industries", oldest_building: 1990, tiv: 118000000, construction_type: "Non-Combustible/Steel", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Upsilon Group", oldest_building: 2013, tiv: 29000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            // Additional data points for better trend analysis
+            {account_name: "Phi Enterprises", oldest_building: 1972, tiv: 92000000, construction_type: "Wood Frame", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Chi Corp", oldest_building: 2009, tiv: 48000000, construction_type: "Fire Resistive", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Psi Industries", oldest_building: 1999, tiv: 65000000, construction_type: "Masonry Non-Combustible", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Omega Manufacturing", oldest_building: 2017, tiv: 37000000, construction_type: "Non-Combustible/Steel", line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Alpha Prime", oldest_building: 1986, tiv: 73000000, construction_type: "Joisted Masonry", line_of_business: "COMMERCIAL PROPERTY"}
+        ];
+
+        // Color mapping for construction types
+        const constructionColorMap = {
+            "Fire Resistive": "#22c55e",
+            "Non-Combustible/Steel": "#3b82f6", 
+            "Masonry Non-Combustible": "#f59e0b",
+            "Joisted Masonry": "#ef4444",
+            "Wood Frame": "#8b5cf6"
+        };
+
+        // Add jitter to x-axis (±0.5 years)
+        const processedData = buildingData.map(d => ({
+            ...d,
+            jittered_year: d.oldest_building + (Math.random() - 0.5) * 1
+        }));
+
+        // Group by construction type for separate traces
+        const constructionGroups = {};
+        processedData.forEach(d => {
+            if (!constructionGroups[d.construction_type]) {
+                constructionGroups[d.construction_type] = [];
+            }
+            constructionGroups[d.construction_type].push(d);
+        });
+
+        // Create scatter traces for each construction type
+        const scatterTraces = Object.keys(constructionGroups).map(constructionType => ({
+            x: constructionGroups[constructionType].map(d => d.jittered_year),
+            y: constructionGroups[constructionType].map(d => d.tiv),
+            mode: 'markers',
+            type: 'scatter',
+            name: constructionType,
+            marker: {
+                size: 8,
+                color: constructionColorMap[constructionType] || "#06b6d4",
+                opacity: 0.7,
+                line: {
+                    color: 'rgba(255,255,255,0.2)',
+                    width: 1
+                }
+            },
+            text: constructionGroups[constructionType].map(d => 
+                `<b>${d.account_name}</b><br>` +
+                `Line of Business: ${d.line_of_business}<br>` +
+                `Building Year: ${d.oldest_building}<br>` +
+                `Construction: ${d.construction_type}<br>` +
+                `TIV: $${(d.tiv/1000000).toFixed(1)}M`
+            ),
+            hovertemplate: '%{text}<extra></extra>'
+        }));
+
+        // Calculate rolling mean line (5-year window)
+        const sortedData = [...processedData].sort((a, b) => a.oldest_building - b.oldest_building);
+        const rollingMeanData = [];
+        const windowSize = 5;
+        
+        for (let i = windowSize - 1; i < sortedData.length; i++) {
+            const window = sortedData.slice(i - windowSize + 1, i + 1);
+            const avgYear = window.reduce((sum, d) => sum + d.oldest_building, 0) / window.length;
+            const avgTiv = window.reduce((sum, d) => sum + d.tiv, 0) / window.length;
+            rollingMeanData.push({year: avgYear, tiv: avgTiv});
+        }
+
+        // Rolling mean trace
+        const rollingMeanTrace = {
+            x: rollingMeanData.map(d => d.year),
+            y: rollingMeanData.map(d => d.tiv),
+            mode: 'lines',
+            type: 'scatter',
+            name: 'Rolling Mean (5yr)',
+            line: {
+                color: '#94a3b8',
+                width: 3,
+                dash: 'solid'
+            },
+            hovertemplate: 'Year: %{x:.0f}<br>Avg TIV: $%{y:,.0f}<extra></extra>'
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 150, l: 100 },
+            xaxis: {
+                title: 'Oldest Building Year',
+                gridcolor: "rgba(255,255,255,.08)",
+                range: [1965, 2025]
+            },
+            yaxis: {
+                title: 'Total Insured Value ($)',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'linear'
+            },
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1,
+                font: { color: "#e2e8f0", size: 10 }
+            }
+        };
+
+        async function render() {
+            const allTraces = [...scatterTraces, rollingMeanTrace];
+            await Plotly.react(plotDiv, allTraces, layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("building_age_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load building age chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Premium Up for Renewal Chart with hardcoded data
+    function createRenewalsChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Premium Up for Renewal by Month</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample renewal data for next 18 months
+        const renewalData = [
+            // October 2024
+            {account_name: "Acme Corp", expiration_date: "2024-10-31", total_premium: 125000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Beta Industries", expiration_date: "2024-10-15", total_premium: 98000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Alpha GL Corp", expiration_date: "2024-10-22", total_premium: 45000, line_of_business: "GENERAL LIABILITY"},
+            
+            // November 2024
+            {account_name: "Gamma Manufacturing", expiration_date: "2024-11-30", total_premium: 185000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Delta Logistics", expiration_date: "2024-11-12", total_premium: 87000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Umbrella One", expiration_date: "2024-11-08", total_premium: 85000, line_of_business: "UMBRELLA"},
+            {account_name: "Cyber Safe Corp", expiration_date: "2024-11-25", total_premium: 125000, line_of_business: "CYBER"},
+            
+            // December 2024
+            {account_name: "Epsilon Tech", expiration_date: "2024-12-31", total_premium: 275000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Zeta Retail", expiration_date: "2024-12-15", total_premium: 65000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Beta GL Inc", expiration_date: "2024-12-10", total_premium: 38000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Umbrella Two", expiration_date: "2024-12-20", total_premium: 92000, line_of_business: "UMBRELLA"},
+            
+            // January 2025
+            {account_name: "Eta Energy", expiration_date: "2025-01-28", total_premium: 210000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Theta Holdings", expiration_date: "2025-01-15", total_premium: 155000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Gamma GL Ltd", expiration_date: "2025-01-05", total_premium: 52000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Cyber Guard Inc", expiration_date: "2025-01-22", total_premium: 148000, line_of_business: "CYBER"},
+            
+            // February 2025
+            {account_name: "Iota Systems", expiration_date: "2025-02-14", total_premium: 225000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Kappa Services", expiration_date: "2025-02-28", total_premium: 75000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Delta GL Group", expiration_date: "2025-02-18", total_premium: 41000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Umbrella Three", expiration_date: "2025-02-08", total_premium: 78000, line_of_business: "UMBRELLA"},
+            
+            // March 2025
+            {account_name: "Lambda Corp", expiration_date: "2025-03-31", total_premium: 320000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Mu Enterprises", expiration_date: "2025-03-12", total_premium: 112000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Epsilon GL Co", expiration_date: "2025-03-25", total_premium: 48000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Cyber Shield Ltd", expiration_date: "2025-03-06", total_premium: 135000, line_of_business: "CYBER"},
+            
+            // April 2025
+            {account_name: "Nu Industries", expiration_date: "2025-04-30", total_premium: 168000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Xi Manufacturing", expiration_date: "2025-04-15", total_premium: 118000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Zeta GL Corp", expiration_date: "2025-04-08", total_premium: 35000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Umbrella Four", expiration_date: "2025-04-22", total_premium: 88000, line_of_business: "UMBRELLA"},
+            
+            // May 2025
+            {account_name: "Omicron Group", expiration_date: "2025-05-31", total_premium: 245000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Pi Technologies", expiration_date: "2025-05-14", total_premium: 145000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Eta GL Inc", expiration_date: "2025-05-28", total_premium: 44000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Cyber Protect Co", expiration_date: "2025-05-11", total_premium: 152000, line_of_business: "CYBER"},
+            
+            // June 2025
+            {account_name: "Rho Manufacturing", expiration_date: "2025-06-30", total_premium: 195000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Sigma Corp", expiration_date: "2025-06-18", total_premium: 92000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Theta GL Ltd", expiration_date: "2025-06-05", total_premium: 39000, line_of_business: "GENERAL LIABILITY"},
+            {account_name: "Umbrella Five", expiration_date: "2025-06-25", total_premium: 95000, line_of_business: "UMBRELLA"},
+            
+            // July 2025
+            {account_name: "Tau Industries", expiration_date: "2025-07-31", total_premium: 285000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Upsilon Group", expiration_date: "2025-07-20", total_premium: 81000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Cyber Secure Group", expiration_date: "2025-07-08", total_premium: 142000, line_of_business: "CYBER"},
+            
+            // August 2025
+            {account_name: "West Coast Logistics", expiration_date: "2025-08-15", total_premium: 178000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Silicon Valley Tech", expiration_date: "2025-08-28", total_premium: 215000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Umbrella Six", expiration_date: "2025-08-12", total_premium: 82000, line_of_business: "UMBRELLA"},
+            
+            // September 2025
+            {account_name: "Lone Star Energy", expiration_date: "2025-09-30", total_premium: 189000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Dallas Manufacturing", expiration_date: "2025-09-18", total_premium: 112000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Cyber Defense Corp", expiration_date: "2025-09-06", total_premium: 138000, line_of_business: "CYBER"},
+            
+            // October 2025
+            {account_name: "Sunshine Industries", expiration_date: "2025-10-31", total_premium: 128000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Buckeye Corp", expiration_date: "2025-10-22", total_premium: 118000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // November 2025
+            {account_name: "Keystone Industries", expiration_date: "2025-11-15", total_premium: 95000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Phi Enterprises", expiration_date: "2025-11-28", total_premium: 92000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // December 2025
+            {account_name: "Chi Corp", expiration_date: "2025-12-31", total_premium: 48000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Psi Industries", expiration_date: "2025-12-18", total_premium: 65000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // January 2026
+            {account_name: "Omega Manufacturing", expiration_date: "2026-01-31", total_premium: 37000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Alpha Prime", expiration_date: "2026-01-15", total_premium: 73000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // February 2026
+            {account_name: "Beta Prime Corp", expiration_date: "2026-02-28", total_premium: 156000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Gamma Prime Inc", expiration_date: "2026-02-14", total_premium: 89000, line_of_business: "COMMERCIAL PROPERTY"},
+            
+            // March 2026
+            {account_name: "Delta Prime Ltd", expiration_date: "2026-03-31", total_premium: 174000, line_of_business: "COMMERCIAL PROPERTY"},
+            {account_name: "Epsilon Prime Co", expiration_date: "2026-03-20", total_premium: 203000, line_of_business: "COMMERCIAL PROPERTY"}
+        ];
+
+        // Group data by month and line of business
+        const monthlyData = {};
+        renewalData.forEach(d => {
+            const date = new Date(d.expiration_date);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = {};
+            }
+            if (!monthlyData[monthKey][d.line_of_business]) {
+                monthlyData[monthKey][d.line_of_business] = 0;
+            }
+            monthlyData[monthKey][d.line_of_business] += d.total_premium;
+        });
+
+        // Get sorted months
+        const months = Object.keys(monthlyData).sort();
+        
+        // Get all line of business types
+        const allLOBs = [...new Set(renewalData.map(d => d.line_of_business))];
+        
+        // Color mapping for LOBs
+        const lobColorMap = {
+            "COMMERCIAL PROPERTY": "#818cf8",
+            "GENERAL LIABILITY": "#22c55e",
+            "UMBRELLA": "#f59e0b",
+            "CYBER": "#ef4444"
+        };
+
+        // Create area traces for each LOB
+        const traces = allLOBs.map(lob => {
+            const yValues = months.map(month => monthlyData[month][lob] || 0);
+            return {
+                x: months.map(month => {
+                    const [year, monthNum] = month.split('-');
+                    return new Date(year, monthNum - 1, 1).toISOString().slice(0, 7);
+                }),
+                y: yValues,
+                name: lob,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tonexty',
+                line: { 
+                    color: lobColorMap[lob] || "#06b6d4",
+                    width: 2
+                },
+                fillcolor: `${lobColorMap[lob] || "#06b6d4"}40`, // Add transparency
+                hovertemplate: 
+                    `<b>${lob}</b><br>` +
+                    `Month: %{x}<br>` +
+                    `Premium: $%{y:,.0f}<br>` +
+                    `<extra></extra>`
+            };
+        });
+
+        // Calculate 3-month moving average for total premiums
+        const totalsByMonth = months.map(month => 
+            Object.values(monthlyData[month]).reduce((sum, val) => sum + val, 0)
+        );
+        
+        const movingAverage = [];
+        for (let i = 0; i < totalsByMonth.length; i++) {
+            if (i < 2) {
+                // For first two months, use available data
+                const sum = totalsByMonth.slice(0, i + 1).reduce((a, b) => a + b, 0);
+                movingAverage.push(sum / (i + 1));
+            } else {
+                // 3-month moving average
+                const sum = totalsByMonth.slice(i - 2, i + 1).reduce((a, b) => a + b, 0);
+                movingAverage.push(sum / 3);
+            }
+        }
+
+        // Add moving average trace
+        const movingAverageTrace = {
+            x: months.map(month => {
+                const [year, monthNum] = month.split('-');
+                return new Date(year, monthNum - 1, 1).toISOString().slice(0, 7);
+            }),
+            y: movingAverage,
+            name: '3-Month Moving Average',
+            type: 'scatter',
+            mode: 'lines',
+            line: {
+                color: '#94a3b8',
+                width: 3,
+                dash: 'dash'
+            },
+            hovertemplate: 
+                `<b>3-Month Moving Average</b><br>` +
+                `Month: %{x}<br>` +
+                `Avg Premium: $%{y:,.0f}<br>` +
+                `<extra></extra>`
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 140, l: 100 },
+            xaxis: {
+                title: 'Expiration Month',
+                gridcolor: "rgba(255,255,255,.08)",
+                type: 'date'
+            },
+            yaxis: {
+                title: 'Total Premium ($)',
+                gridcolor: "rgba(255,255,255,.08)"
+            },
+            showlegend: true,
+            legend: {
+                x: 0,
+                y: 1,
+                font: { color: "#e2e8f0", size: 10 }
+            },
+            hovermode: 'x unified'
+        };
+
+        async function render() {
+            const allTraces = [...traces, movingAverageTrace];
+            await Plotly.react(plotDiv, allTraces, layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("renewals_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load renewals chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Mix Chart with hardcoded data showing share of premium vs share of losses by LOB
+    function createMixChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Premium vs Loss Mix by LOB</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data with multiple LOBs
+        const mixData = [
+            // Commercial Property
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 125000, loss_value: 25000, account_name: "Acme Corp"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 98000, loss_value: 15000, account_name: "Beta Industries"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 185000, loss_value: 55000, account_name: "Gamma Manufacturing"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 87000, loss_value: 8000, account_name: "Delta Logistics"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 275000, loss_value: 95000, account_name: "Epsilon Tech"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 65000, loss_value: 12000, account_name: "Zeta Retail"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 210000, loss_value: 42000, account_name: "Eta Energy"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 155000, loss_value: 18000, account_name: "Theta Holdings"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 225000, loss_value: 78000, account_name: "Iota Systems"},
+            {line_of_business: "COMMERCIAL PROPERTY", total_premium: 75000, loss_value: 5000, account_name: "Kappa Services"},
+            
+            // General Liability
+            {line_of_business: "GENERAL LIABILITY", total_premium: 45000, loss_value: 38000, account_name: "Alpha GL Corp"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 38000, loss_value: 28000, account_name: "Beta GL Inc"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 52000, loss_value: 45000, account_name: "Gamma GL Ltd"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 41000, loss_value: 32000, account_name: "Delta GL Group"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 48000, loss_value: 41000, account_name: "Epsilon GL Co"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 35000, loss_value: 29000, account_name: "Zeta GL Corp"},
+            {line_of_business: "GENERAL LIABILITY", total_premium: 44000, loss_value: 38000, account_name: "Eta GL Inc"},
+            
+            // Umbrella/Excess
+            {line_of_business: "UMBRELLA", total_premium: 85000, loss_value: 15000, account_name: "Umbrella One"},
+            {line_of_business: "UMBRELLA", total_premium: 92000, loss_value: 18000, account_name: "Umbrella Two"},
+            {line_of_business: "UMBRELLA", total_premium: 78000, loss_value: 12000, account_name: "Umbrella Three"},
+            {line_of_business: "UMBRELLA", total_premium: 88000, loss_value: 16000, account_name: "Umbrella Four"},
+            {line_of_business: "UMBRELLA", total_premium: 95000, loss_value: 19000, account_name: "Umbrella Five"},
+            {line_of_business: "UMBRELLA", total_premium: 82000, loss_value: 14000, account_name: "Umbrella Six"},
+            
+            // Cyber Liability
+            {line_of_business: "CYBER", total_premium: 125000, loss_value: 95000, account_name: "Cyber Safe Corp"},
+            {line_of_business: "CYBER", total_premium: 148000, loss_value: 118000, account_name: "Cyber Guard Inc"},
+            {line_of_business: "CYBER", total_premium: 135000, loss_value: 108000, account_name: "Cyber Shield Ltd"},
+            {line_of_business: "CYBER", total_premium: 152000, loss_value: 125000, account_name: "Cyber Protect Co"},
+            {line_of_business: "CYBER", total_premium: 142000, loss_value: 115000, account_name: "Cyber Secure Group"},
+            {line_of_business: "CYBER", total_premium: 138000, loss_value: 112000, account_name: "Cyber Defense Corp"},
+            
+            // Professional Liability
+            {line_of_business: "PROFESSIONAL LIABILITY", total_premium: 95000, loss_value: 68000, account_name: "Professional One"},
+            {line_of_business: "PROFESSIONAL LIABILITY", total_premium: 88000, loss_value: 62000, account_name: "Professional Two"},
+            {line_of_business: "PROFESSIONAL LIABILITY", total_premium: 102000, loss_value: 74000, account_name: "Professional Three"},
+            {line_of_business: "PROFESSIONAL LIABILITY", total_premium: 91000, loss_value: 65000, account_name: "Professional Four"}
+        ];
+
+        // Aggregate by line of business
+        const lobAggregates = {};
+        let totalPremiumOverall = 0;
+        let totalLossOverall = 0;
+        
+        mixData.forEach(d => {
+            if (!lobAggregates[d.line_of_business]) {
+                lobAggregates[d.line_of_business] = {
+                    total_premium: 0,
+                    total_loss: 0
+                };
+            }
+            lobAggregates[d.line_of_business].total_premium += d.total_premium;
+            lobAggregates[d.line_of_business].total_loss += d.loss_value;
+            totalPremiumOverall += d.total_premium;
+            totalLossOverall += d.loss_value;
+        });
+
+        // Calculate shares and sort by share of losses descending
+        const lobShares = Object.keys(lobAggregates).map(lob => ({
+            line_of_business: lob,
+            share_of_premium: (lobAggregates[lob].total_premium / totalPremiumOverall) * 100,
+            share_of_losses: (lobAggregates[lob].total_loss / totalLossOverall) * 100,
+            total_premium: lobAggregates[lob].total_premium,
+            total_loss: lobAggregates[lob].total_loss
+        })).sort((a, b) => b.share_of_losses - a.share_of_losses);
+
+        // Color mapping for different LOBs
+        const colorMap = {
+            "COMMERCIAL PROPERTY": "#818cf8",
+            "GENERAL LIABILITY": "#22c55e",
+            "UMBRELLA": "#f59e0b",
+            "CYBER": "#ef4444",
+            "PROFESSIONAL LIABILITY": "#8b5cf6"
+        };
+
+        // Create grouped bar traces
+        const premiumTrace = {
+            x: lobShares.map(d => d.line_of_business),
+            y: lobShares.map(d => d.share_of_premium),
+            name: 'Share of Premium',
+            type: 'bar',
+            marker: { 
+                color: lobShares.map(d => colorMap[d.line_of_business] || "#06b6d4"),
+                opacity: 0.8
+            },
+            text: lobShares.map(d => `${d.share_of_premium.toFixed(1)}%`),
+            textposition: 'outside',
+            hovertemplate: 
+                '<b>%{x}</b><br>' +
+                'Share of Premium: %{y:.1f}%<br>' +
+                'Total Premium: $%{customdata.total_premium:,}<br>' +
+                '<extra></extra>',
+            customdata: lobShares.map(d => ({
+                total_premium: d.total_premium
+            }))
+        };
+
+        const lossTrace = {
+            x: lobShares.map(d => d.line_of_business),
+            y: lobShares.map(d => d.share_of_losses),
+            name: 'Share of Losses',
+            type: 'bar',
+            marker: { 
+                color: lobShares.map(d => colorMap[d.line_of_business] || "#06b6d4"),
+                opacity: 0.5,
+                line: {
+                    color: lobShares.map(d => colorMap[d.line_of_business] || "#06b6d4"),
+                    width: 2
+                }
+            },
+            text: lobShares.map(d => `${d.share_of_losses.toFixed(1)}%`),
+            textposition: 'outside',
+            hovertemplate: 
+                '<b>%{x}</b><br>' +
+                'Share of Losses: %{y:.1f}%<br>' +
+                'Total Loss: $%{customdata.total_loss:,}<br>' +
+                '<extra></extra>',
+            customdata: lobShares.map(d => ({
+                total_loss: d.total_loss
+            }))
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 260, l: 60 },
+            xaxis: {
+                title: 'Line of Business',
+                gridcolor: "rgba(255,255,255,.08)",
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Percentage Share (%)',
+                gridcolor: "rgba(255,255,255,.08)",
+                range: [0, Math.max(...lobShares.map(d => Math.max(d.share_of_premium, d.share_of_losses))) * 1.2]
+            },
+            barmode: 'group',
+            showlegend: true,
+            legend: {
+                x: 0.02,
+                y: 0.98,
+                font: { color: "#e2e8f0" },
+                bgcolor: "rgba(0,0,0,0.3)"
+            },
+            annotations: [
+                {
+                    x: 0.5,
+                    y: -0.25,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Sorted by Share of Losses (descending)',
+                    showarrow: false,
+                    font: { color: '#94a3b8', size: 10 }
+                }
+            ]
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [premiumTrace, lossTrace], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("mix_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load mix chart: " + e.message, "error"));
+        return card;
+    }
+
+    // Risk Signals Chart with hardcoded data showing loss rates by construction type
+    function createRiskSignalsChart() {
+        const card = document.createElement("div");
+        card.className = "glass-panel chart-card";
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-lg font-semibold">Risk Signals by Construction Type</div>
+                <div class="flex items-center gap-2 text-xs">
+                    <button class="pill pill-sub act-full">Fullscreen</button>
+                    <button class="pill pill-sub act-share">Share</button>
+                    <button class="pill pill-sub act-dl-img">PNG</button>
+                </div>
+            </div>
+            <div class="mt-3 chart-canvas-host">
+                <div class="plotly-host" style="height: 500px;"></div>
+            </div>
+        `;
+
+        const plotDiv = card.querySelector(".plotly-host");
+        
+        // Hardcoded sample data with construction types, TIV, and loss values
+        const riskData = [
+            // Wood Frame - Higher risk
+            {account_name: "Lambda Corp", construction_type: "Wood Frame", tiv: 156000000, loss_value: 125000, total_premium: 320000},
+            {account_name: "Timber Buildings Inc", construction_type: "Wood Frame", tiv: 45000000, loss_value: 85000, total_premium: 145000},
+            {account_name: "Forest Construction", construction_type: "Wood Frame", tiv: 32000000, loss_value: 68000, total_premium: 92000},
+            {account_name: "Pine Valley Corp", construction_type: "Wood Frame", tiv: 28000000, loss_value: 72000, total_premium: 85000},
+            {account_name: "Cedar Point Industries", construction_type: "Wood Frame", tiv: 38000000, loss_value: 95000, total_premium: 112000},
+            
+            // Joisted Masonry - Medium-high risk
+            {account_name: "Epsilon Tech", construction_type: "Joisted Masonry", tiv: 125000000, loss_value: 95000, total_premium: 275000},
+            {account_name: "Iota Systems", construction_type: "Joisted Masonry", tiv: 95000000, loss_value: 78000, total_premium: 225000},
+            {account_name: "Omicron Group", construction_type: "Joisted Masonry", tiv: 102000000, loss_value: 88000, total_premium: 245000},
+            {account_name: "Brick & Stone LLC", construction_type: "Joisted Masonry", tiv: 67000000, loss_value: 45000, total_premium: 168000},
+            {account_name: "Heritage Buildings", construction_type: "Joisted Masonry", tiv: 54000000, loss_value: 38000, total_premium: 135000},
+            {account_name: "Classic Construction", construction_type: "Joisted Masonry", tiv: 41000000, loss_value: 32000, total_premium: 98000},
+            
+            // Masonry Non-Combustible - Medium risk
+            {account_name: "Beta Industries", construction_type: "Masonry Non-Combustible", tiv: 32000000, loss_value: 15000, total_premium: 98000},
+            {account_name: "Zeta Retail", construction_type: "Masonry Non-Combustible", tiv: 15000000, loss_value: 12000, total_premium: 65000},
+            {account_name: "Mu Enterprises", construction_type: "Masonry Non-Combustible", tiv: 38000000, loss_value: 22000, total_premium: 112000},
+            {account_name: "Sigma Corp", construction_type: "Masonry Non-Combustible", tiv: 34000000, loss_value: 18000, total_premium: 92000},
+            {account_name: "Stone Works Inc", construction_type: "Masonry Non-Combustible", tiv: 47000000, loss_value: 24000, total_premium: 125000},
+            {account_name: "Brick Industries", construction_type: "Masonry Non-Combustible", tiv: 29000000, loss_value: 16000, total_premium: 85000},
+            {account_name: "Concrete Corp", construction_type: "Masonry Non-Combustible", tiv: 63000000, loss_value: 28000, total_premium: 158000},
+            
+            // Non-Combustible/Steel - Lower risk  
+            {account_name: "Gamma Manufacturing", construction_type: "Non-Combustible/Steel", tiv: 78000000, loss_value: 55000, total_premium: 185000},
+            {account_name: "Theta Holdings", construction_type: "Non-Combustible/Steel", tiv: 67000000, loss_value: 18000, total_premium: 155000},
+            {account_name: "Xi Manufacturing", construction_type: "Non-Combustible/Steel", tiv: 43000000, loss_value: 14000, total_premium: 118000},
+            {account_name: "Tau Industries", construction_type: "Non-Combustible/Steel", tiv: 118000000, loss_value: 68000, total_premium: 285000},
+            {account_name: "Steel Works Corp", construction_type: "Non-Combustible/Steel", tiv: 85000000, loss_value: 32000, total_premium: 195000},
+            {account_name: "Metal Industries", construction_type: "Non-Combustible/Steel", tiv: 72000000, loss_value: 28000, total_premium: 178000},
+            {account_name: "Iron & Steel LLC", construction_type: "Non-Combustible/Steel", tiv: 56000000, loss_value: 22000, total_premium: 142000},
+            {account_name: "Alloy Corp", construction_type: "Non-Combustible/Steel", tiv: 91000000, loss_value: 35000, total_premium: 215000},
+            
+            // Fire Resistive - Lowest risk
+            {account_name: "Acme Corp", construction_type: "Fire Resistive", tiv: 45000000, loss_value: 25000, total_premium: 125000},
+            {account_name: "Delta Logistics", construction_type: "Fire Resistive", tiv: 28000000, loss_value: 8000, total_premium: 87000},
+            {account_name: "Eta Energy", construction_type: "Fire Resistive", tiv: 89000000, loss_value: 42000, total_premium: 210000},
+            {account_name: "Kappa Services", construction_type: "Fire Resistive", tiv: 22000000, loss_value: 5000, total_premium: 75000},
+            {account_name: "Nu Industries", construction_type: "Fire Resistive", tiv: 71000000, loss_value: 35000, total_premium: 168000},
+            {account_name: "Upsilon Group", construction_type: "Fire Resistive", tiv: 29000000, loss_value: 12000, total_premium: 81000},
+            {account_name: "Fire Safe Corp", construction_type: "Fire Resistive", tiv: 134000000, loss_value: 48000, total_premium: 295000},
+            {account_name: "Flame Guard Industries", construction_type: "Fire Resistive", tiv: 76000000, loss_value: 25000, total_premium: 185000},
+            {account_name: "Heat Shield LLC", construction_type: "Fire Resistive", tiv: 103000000, loss_value: 38000, total_premium: 235000},
+            {account_name: "Fireproof Buildings", construction_type: "Fire Resistive", tiv: 58000000, loss_value: 18000, total_premium: 145000}
+        ];
+
+        // Aggregate data by construction type
+        const constructionAggregates = {};
+        
+        riskData.forEach(d => {
+            if (!constructionAggregates[d.construction_type]) {
+                constructionAggregates[d.construction_type] = {
+                    total_loss_value: 0,
+                    total_tiv: 0,
+                    count: 0,
+                    loss_rates: []
+                };
+            }
+            const agg = constructionAggregates[d.construction_type];
+            agg.total_loss_value += d.loss_value;
+            agg.total_tiv += d.tiv;
+            agg.count += 1;
+            agg.loss_rates.push(d.loss_value / d.tiv);
+        });
+
+        // Calculate loss rates and confidence intervals
+        const constructionStats = Object.keys(constructionAggregates).map(type => {
+            const agg = constructionAggregates[type];
+            const loss_rate = agg.total_loss_value / agg.total_tiv;
+            const loss_rates = agg.loss_rates;
+            
+            // Calculate 95% confidence interval
+            const n = loss_rates.length;
+            const mean = loss_rates.reduce((sum, rate) => sum + rate, 0) / n;
+            const variance = loss_rates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / (n - 1);
+            const stdError = Math.sqrt(variance / n);
+            const tValue = 1.96; // 95% CI for large samples (approximation)
+            const marginOfError = tValue * stdError;
+            
+            return {
+                construction_type: type,
+                loss_rate: loss_rate,
+                total_loss_value: agg.total_loss_value,
+                total_tiv: agg.total_tiv,
+                count: agg.count,
+                ci_lower: Math.max(0, loss_rate - marginOfError),
+                ci_upper: loss_rate + marginOfError,
+                margin_of_error: marginOfError
+            };
+        }).sort((a, b) => b.loss_rate - a.loss_rate); // Sort descending by loss rate
+
+        // Color mapping for construction types (risk-based gradient)
+        const colorMap = {
+            "Wood Frame": "#ef4444",              // Red - Highest risk
+            "Joisted Masonry": "#f97316",         // Orange - High risk
+            "Masonry Non-Combustible": "#eab308", // Yellow - Medium risk
+            "Non-Combustible/Steel": "#22c55e",   // Green - Lower risk
+            "Fire Resistive": "#3b82f6"          // Blue - Lowest risk
+        };
+
+        // Create bar trace with error bars
+        const trace = {
+            x: constructionStats.map(d => d.construction_type),
+            y: constructionStats.map(d => d.loss_rate * 100), // Convert to percentage
+            type: 'bar',
+            name: 'Loss Rate (%)',
+            marker: { 
+                color: constructionStats.map(d => colorMap[d.construction_type] || "#06b6d4"),
+                opacity: 0.8,
+                line: {
+                    color: 'rgba(255,255,255,0.2)',
+                    width: 1
+                }
+            },
+            error_y: {
+                type: 'data',
+                array: constructionStats.map(d => d.margin_of_error * 100), // Convert to percentage
+                visible: true,
+                color: 'rgba(255,255,255,0.6)',
+                thickness: 2,
+                width: 4
+            },
+            text: constructionStats.map(d => `${(d.loss_rate * 100).toFixed(2)}%`),
+            textposition: 'outside',
+            hovertemplate: 
+                '<b>%{x}</b><br>' +
+                'Loss Rate: %{y:.2f}%<br>' +
+                'Total Loss Value: $%{customdata.total_loss_value:,}<br>' +
+                'Total TIV: $%{customdata.total_tiv:,}<br>' +
+                'Count: %{customdata.count}<br>' +
+                '95% CI: ±%{customdata.margin_of_error_pct:.2f}%' +
+                '<extra></extra>',
+            customdata: constructionStats.map(d => ({
+                total_loss_value: d.total_loss_value,
+                total_tiv: d.total_tiv,
+                count: d.count,
+                margin_of_error_pct: d.margin_of_error * 100
+            }))
+        };
+
+        const layout = {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "transparent",
+            font: { color: "#e2e8f0" },
+            margin: { t: 50, r: 40, b: 180, l: 80 },
+            xaxis: {
+                title: 'Construction Type',
+                gridcolor: "rgba(255,255,255,.08)",
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Loss Rate (% of TIV)',
+                gridcolor: "rgba(255,255,255,.08)",
+                range: [0, Math.max(...constructionStats.map(d => (d.loss_rate + d.margin_of_error) * 100)) * 1.15]
+            },
+            showlegend: false,
+            annotations: [
+                {
+                    x: 0.5,
+                    y: -0.35,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Error bars show 95% confidence intervals • Sorted by loss rate (descending)',
+                    showarrow: false,
+                    font: { color: '#94a3b8', size: 10 }
+                },
+                {
+                    x: 0.02,
+                    y: 0.98,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: 'Loss Rate = Loss Value ÷ Total Insured Value',
+                    showarrow: false,
+                    font: { color: '#94a3b8', size: 10 },
+                    bgcolor: "rgba(0,0,0,0.3)",
+                    bordercolor: "#94a3b8",
+                    borderwidth: 1
+                }
+            ]
+        };
+
+        async function render() {
+            await Plotly.react(plotDiv, [trace], layout, { displayModeBar: false, responsive: true });
+        }
+
+        // Actions
+        card.querySelector(".act-full").onclick = () => {
+            document.querySelectorAll(".chart-card").forEach((c) => (c.dataset.active = "false"));
+            card.dataset.active = "true";
+            const node = card.querySelector(".chart-canvas-host");
+            openFullscreen(node);
+            setTimeout(() => {
+                const div = document.getElementById("fs_host").querySelector(".plotly-host");
+                if (div) Plotly.Plots.resize(div);
+            }, 100);
+        };
+        
+        card.querySelector(".act-share").onclick = () => {
+            copyToClipboard(location.href);
+            toast("Link copied", "success");
+        };
+        
+        card.querySelector(".act-dl-img").onclick = async () => {
+            try {
+                const url = await Plotly.toImage(plotDiv, { format: "png" });
+                downloadBlob("risk_signals_chart.png", await (await fetch(url)).blob(), "image/png");
+            } catch (e) {
+                toast("Download failed", "error");
+            }
+        };
+
+        // Initial render
+        render().catch((e) => toast("Failed to load risk signals chart: " + e.message, "error"));
+        return card;
+    }
+
     function loadTabs() {
         const host = document.getElementById("tab_content");
 
@@ -680,6 +2364,35 @@
                 );
                 host.appendChild(
                     createIntakeAgingChart()
+                );
+            } else if (tab === "premium_by_state") {
+                host.appendChild(
+                    createPricingChart()
+                );
+                host.appendChild(
+                    createPremiumVsLossesChart()
+                );
+                host.appendChild(
+                    createPremiumPerTIVBoxPlot()
+                );
+            } else if (tab === "status_mix") {
+                host.appendChild(
+                    createExposureChoropleth()
+                );
+                host.appendChild(
+                    createBuildingAgeChart()
+                );
+            } else if (tab === "tiv_bands") {
+                host.appendChild(
+                    createRenewalsChart()
+                );
+            } else if (tab === "mix") {
+                host.appendChild(
+                    createMixChart()
+                );
+            } else if (tab === "risk_signals") {
+                host.appendChild(
+                    createRiskSignalsChart()
                 );
             }
         }

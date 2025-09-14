@@ -521,10 +521,12 @@ def insights():
     # Portfolio Insights landing with simple role-based access for tabs
     role = get_role()
     tabs = [
-        {"id": "overview", "title": "Overview", "protected": False},
-        {"id": "premium_by_state", "title": "Premium by State", "protected": False},
-        {"id": "status_mix", "title": "Status Mix", "protected": False},
-        {"id": "tiv_bands", "title": "TIV Bands", "protected": True},
+        {"id": "overview", "title": "Triage", "protected": False},
+        {"id": "premium_by_state", "title": "Pricing", "protected": False},
+        {"id": "status_mix", "title": "Exposure", "protected": False},
+        {"id": "tiv_bands", "title": "Renewals", "protected": False},
+        {"id": "mix", "title": "Mix", "protected": False},
+        {"id": "risk_signals", "title": "Risk Signals", "protected": False},
         {"id": "geo", "title": "US Map", "protected": False},
         {"id": "scatter3d", "title": "3D Scatter", "protected": False},
         {"id": "flows", "title": "Flows (Sankey)", "protected": False},
