@@ -709,7 +709,7 @@ def apiClassified():
 def apiPriorityAccounts():
     """API endpoint for Priority Account Review - returns top priority submissions"""
     df, _ = refreshCache()
-    
+
     # Get query parameters
     state = request.args.get("state")
     status = request.args.get("status")
@@ -720,10 +720,9 @@ def apiPriorityAccounts():
     per_page = request.args.get("per_page", default=20, type=int)
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
-    
-    # Apply filters
+
+    # Apply initial filters to cached dataframe
     d = df.copy()
-    
     if state:
         d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
     if status:
@@ -735,64 +734,78 @@ def apiPriorityAccounts():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
-    
+
+    # Re-score rows using balanced growth mode for consistency
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+    preset = MODES.get("balanced_growth", {})
+    weights = preset.get("weights", {})
+    filters_cfg = preset.get("filters", {})
+    rows = []
+    for r in d.to_dict(orient="records"):
+        stat, reasons, mscore, pscore = classify_for_mode_row(r, weights, filters_cfg, scounts)
+        r["appetite_status"] = stat
+        r["appetite_reasons"] = reasons
+        r["mode_score"] = mscore
+        r["priority_score"] = pscore
+        rows.append(r)
+
     # Focus on higher-priority submissions for priority review
-    # Show submissions with priority_score >= 1.0 and preferably IN or TARGET status
-    d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
-    
+    rows = [
+        r for r in rows
+        if r.get("priority_score", 0) >= 1.0
+        and r.get("appetite_status") in {"TARGET", "IN", "OUT"}
+    ]
+
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
-    if sort_by in d.columns:
-        d = d.sort_values([sort_by], ascending=ascending)
-    else:
-        d = d.sort_values(["priority_score"], ascending=False)
-    
+    valid_keys = {
+        "id", "account_name", "primary_risk_state", "line_of_business",
+        "total_premium", "tiv", "winnability", "appetite_status",
+        "priority_score", "mode_score",
+    }
+    key = sort_by if sort_by in valid_keys else "priority_score"
+    rows.sort(
+        key=lambda r: r.get(key) if r.get(key) is not None else -float("inf"),
+        reverse=not ascending,
+    )
+
     # Calculate pagination
-    total_count = len(d)
+    total_count = len(rows)
     total_pages = (total_count + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
-    
-    # Get paginated data
-    paginated_data = d.iloc[start_idx:end_idx]
-    
+    paginated_rows = rows[start_idx:end_idx]
+
     # Convert to response format
     response_data = []
-    for _, row in paginated_data.iterrows():
+    for r in paginated_rows:
+        r = sanitize_row(r)
         response_data.append({
-            "id": int(row["id"]),
-            "account_name": str(row["account_name"]),
-            "appetite_status": str(row["appetite_status"]),
-            "total_premium": float(row["total_premium"]),
-            "primary_risk_state": str(row["primary_risk_state"]),
-            "winnability": float(row["winnability"]) if pd.notna(row["winnability"]) else 0.0,
-            "priority_score": float(row["priority_score"]) if pd.notna(row["priority_score"]) else 0.0,
-            "tiv": float(row["tiv"]) if pd.notna(row["tiv"]) else 0.0,
-            "line_of_business": str(row["line_of_business"]) if pd.notna(row["line_of_business"]) else "",
-            "appetite_reasons": row.get("appetite_reasons", []) if isinstance(row.get("appetite_reasons"), list) else [],
-            "created_at": str(row["created_at"]) if pd.notna(row["created_at"]) else "",
-            "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else "",
+            "id": r.get("id"),
+            "account_name": r.get("account_name"),
+            "appetite_status": r.get("appetite_status"),
+            "total_premium": r.get("total_premium"),
+            "primary_risk_state": r.get("primary_risk_state"),
+            "winnability": r.get("winnability") or 0.0,
+            "priority_score": r.get("priority_score") or 0.0,
+            "mode_score": r.get("mode_score") or 0.0,
+            "tiv": r.get("tiv") or 0.0,
+            "line_of_business": r.get("line_of_business", ""),
+            "appetite_reasons": r.get("appetite_reasons", []),
+            "created_at": r.get("created_at"),
+            "effective_date": r.get("effective_date"),
         })
-    
+
     return jsonify({
         "data": response_data,
         "pagination": {
             "page": page,
             "per_page": per_page,
-            "total_count": total_count,
             "total_pages": total_pages,
+            "total_count": total_count,
+            "has_prev": page > 1,
             "has_next": page < total_pages,
-            "has_prev": page > 1
         },
-        "filters": {
-            "state": state,
-            "status": status,
-            "min_premium": min_p,
-            "max_premium": max_p,
-            "search": q,
-            "sort_by": sort_by,
-            "sort_dir": sort_dir
-        }
     })
 
 

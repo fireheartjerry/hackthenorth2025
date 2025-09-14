@@ -421,6 +421,12 @@
                                 <span class="sort-icon">↕</span>
                             </div>
                         </th>
+                        <th class="th sortable" data-sort="mode_score">
+                            <div class="th-content">
+                                <span>Mode</span>
+                                <span class="sort-icon">↕</span>
+                            </div>
+                        </th>
                         <th class="th sortable" data-sort="priority_score">
                             <div class="th-content">
                                 <span>Priority</span>
@@ -433,7 +439,7 @@
                 <tbody id="acct_body" class="table-body">
                     <!-- Loading skeleton -->
                     <tr class="loading-row">
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="loading-content">
                                 <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
                                 <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
@@ -770,7 +776,7 @@
             // Show loading
             tbody.innerHTML = `
                 <tr class="loading-row">
-                    <td colspan="7">
+                    <td colspan="8">
                         <div class="loading-content">
                             <div class="skeleton-row" style="width: 100%; height: 3rem;"></div>
                             <div class="skeleton-row" style="width: 95%; height: 2.5rem;"></div>
@@ -801,7 +807,7 @@
             console.error('Error loading priority accounts:', error);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center text-red-400 py-8">
+                    <td colspan="8" class="text-center text-red-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-2xl">⚠️</span>
                             <span>Failed to load priority accounts</span>
@@ -822,7 +828,7 @@
         if (!PRIORITY_ACCOUNTS_DATA.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center text-gray-400 py-8">
+                    <td colspan="8" class="text-center text-gray-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-3xl">🎯</span>
                             <span class="text-lg">No priority accounts found</span>
@@ -870,6 +876,9 @@
                     </td>
                     <td class="table-cell">
                         <span class="font-medium">${Math.round(account.winnability * 100)}%</span>
+                    </td>
+                    <td class="table-cell">
+                        <span class="font-medium">${account.mode_score.toFixed(1)}</span>
                     </td>
                     <td class="table-cell">
                         <span class="priority-score ${priorityClass} px-2 py-1 rounded-md text-xs font-bold">
