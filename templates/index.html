@@ -225,49 +225,6 @@
     </div>
 </div>
 
-<!-- Quick Actions Bar -->
-<div class="quick-actions-bar glass-panel p-4 mb-6">
-    <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <h3 class="text-lg font-semibold">Quick Actions</h3>
-            <span class="chip">Workflow shortcuts</span>
-        </div>
-        <button id="customize_actions" class="pill pill-sub hover-glow">Customize</button>
-    </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
-        <button class="action-button hover-lift" onclick="window.location.href='/submissions?status=TARGET'">
-            <div class="action-icon">🎯</div>
-            <div class="action-label">Review Targets</div>
-            <div class="action-count" id="qa_targets_count">{{ tgt_ct }}</div>
-        </button>
-        <button class="action-button hover-lift" onclick="exportOpportunities()">
-            <div class="action-icon">📊</div>
-            <div class="action-label">Export Data</div>
-            <div class="action-count" id="qa_export_count">CSV/Excel</div>
-        </button>
-        <button class="action-button hover-lift" onclick="showBulkActions()">
-            <div class="action-icon">⚡</div>
-            <div class="action-label">Bulk Actions</div>
-            <div class="action-count" id="qa_bulk_count">Multi-edit</div>
-        </button>
-        <button class="action-button hover-lift" onclick="showAnalytics()">
-            <div class="action-icon">📈</div>
-            <div class="action-label">Analytics</div>
-            <div class="action-count" id="qa_analytics_count">Deep dive</div>
-        </button>
-        <button class="action-button hover-lift" onclick="openCommandPalette()">
-            <div class="action-icon">⌘</div>
-            <div class="action-label">Command</div>
-            <div class="action-count">⌘K</div>
-        </button>
-        <button class="action-button hover-lift" onclick="showHelp()">
-            <div class="action-icon">❓</div>
-            <div class="action-label">Help</div>
-            <div class="action-count">Guide</div>
-        </button>
-    </div>
-</div>
-
 <!-- Modern Workload Management -->
 <div class="workload-section mb-6">
     <!-- Prioritized Submissions - Full Width -->
@@ -555,48 +512,7 @@
     </div>
 </div>
 
-<!-- Command Palette -->
-<div id="command_palette" class="command-palette hidden">
-    <div class="command-overlay"></div>
-    <div class="command-container">
-        <div class="command-input-section">
-            <span class="command-icon">⌘</span>
-            <input type="text" id="command_input" class="command-input" placeholder="Type a command or search...">
-            <kbd class="command-shortcut">ESC</kbd>
-        </div>
-        <div class="command-results" id="command_results">
-            <div class="command-group">
-                <div class="command-group-title">Quick Actions</div>
-                <div class="command-item" data-action="goto-targets">
-                    <span class="command-item-icon">🎯</span>
-                    <span class="command-item-text">Review Target Opportunities</span>
-                    <span class="command-item-shortcut">⌘T</span>
-                </div>
-                <div class="command-item" data-action="export-data">
-                    <span class="command-item-icon">📊</span>
-                    <span class="command-item-text">Export Current Data</span>
-                    <span class="command-item-shortcut">⌘E</span>
-                </div>
-                <div class="command-item" data-action="refresh-data">
-                    <span class="command-item-icon">🔄</span>
-                    <span class="command-item-text">Refresh Dashboard</span>
-                    <span class="command-item-shortcut">⌘R</span>
-                </div>
-            </div>
-            <div class="command-group">
-                <div class="command-group-title">Navigation</div>
-                <div class="command-item" data-action="goto-submissions">
-                    <span class="command-item-icon">📋</span>
-                    <span class="command-item-text">Go to Submissions</span>
-                </div>
-                <div class="command-item" data-action="goto-insights">
-                    <span class="command-item-icon">📈</span>
-                    <span class="command-item-text">Portfolio Insights</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Persona Modal: removed (use global in base.html) -->
 
@@ -1177,213 +1093,10 @@
         document.body.appendChild(modal);
     }
 
-    // Enhanced utility functions for modern UI
-    function exportOpportunities() {
-        const modal = createExportModal();
-        document.body.appendChild(modal);
-    }
 
-    function showBulkActions() {
-        const modal = createBulkActionsModal();
-        document.body.appendChild(modal);
-    }
 
-    function showAnalytics() {
-        window.location.href = '/insights';
-    }
-    
-    function openCommandPalette() {
-        const palette = document.getElementById('command_palette');
-        const input = document.getElementById('command_input');
-        if (palette) {
-            palette.classList.remove('hidden');
-            input.focus();
-        }
-    }
-    
-    function showHelp() {
-        const modal = createHelpModal();
-        document.body.appendChild(modal);
-    }
-    
-    // Modern modal creators
-    function createExportModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 export-modal';
-        modal.innerHTML = `
-            <div class="glass-panel max-w-md mx-4 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>📊</span>
-                        Export Data
-                    </h3>
-                    <button class="close-modal text-2xl hover:text-red-400">×</button>
-                </div>
-                <div class="space-y-4">
-                    <div class="export-option active" data-format="csv">
-                        <span class="option-icon">📄</span>
-                        <span class="option-text">CSV Spreadsheet</span>
-                        <span class="option-desc">For Excel analysis</span>
-                    </div>
-                    <div class="export-option" data-format="excel">
-                        <span class="option-icon">📊</span>
-                        <span class="option-text">Excel Workbook</span>
-                        <span class="option-desc">With charts and formatting</span>
-                    </div>
-                    <div class="export-option" data-format="pdf">
-                        <span class="option-icon">📋</span>
-                        <span class="option-text">PDF Report</span>
-                        <span class="option-desc">Executive summary</span>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-6">
-                    <button class="btn-cancel close-modal">Cancel</button>
-                    <button class="btn-primary" onclick="performExport()">Export</button>
-                </div>
-            </div>
-        `;
-        
-        modal.querySelectorAll('.close-modal').forEach(btn => {
-            btn.onclick = () => modal.remove();
-        });
-        
-        modal.querySelectorAll('.export-option').forEach(option => {
-            option.onclick = () => {
-                modal.querySelectorAll('.export-option').forEach(o => o.classList.remove('active'));
-                option.classList.add('active');
-            };
-        });
-        
-        return modal;
-    }
-    
-    function createBulkActionsModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 bulk-modal';
-        modal.innerHTML = `
-            <div class="glass-panel max-w-lg mx-4 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>⚡</span>
-                        Bulk Actions
-                    </h3>
-                    <button class="close-modal text-2xl hover:text-red-400">×</button>
-                </div>
-                <div class="bulk-actions-grid">
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">✅</span>
-                        <span class="action-text">Mark as Reviewed</span>
-                    </button>
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">🎯</span>
-                        <span class="action-text">Add to Targets</span>
-                    </button>
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">📧</span>
-                        <span class="action-text">Send Notifications</span>
-                    </button>
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">📊</span>
-                        <span class="action-text">Generate Reports</span>
-                    </button>
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">🏷️</span>
-                        <span class="action-text">Apply Tags</span>
-                    </button>
-                    <button class="bulk-action-btn">
-                        <span class="action-icon">🗂️</span>
-                        <span class="action-text">Archive Items</span>
-                    </button>
-                </div>
-                <div class="flex justify-end mt-6">
-                    <button class="btn-cancel close-modal">Close</button>
-                </div>
-            </div>
-        `;
-        
-        modal.querySelectorAll('.close-modal').forEach(btn => {
-            btn.onclick = () => modal.remove();
-        });
-        
-        modal.querySelectorAll('.bulk-action-btn').forEach(btn => {
-            btn.onclick = () => {
-                toast('Bulk action executed', 'success');
-                modal.remove();
-            };
-        });
-        
-        return modal;
-    }
-    
-    function createHelpModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 help-modal';
-        modal.innerHTML = `
-            <div class="glass-panel max-w-2xl mx-4 p-6 max-h-[80vh] overflow-y-auto">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>❓</span>
-                        Help & Shortcuts
-                    </h3>
-                    <button class="close-modal text-2xl hover:text-red-400">×</button>
-                </div>
-                <div class="help-content space-y-6">
-                    <div class="help-section">
-                        <h4 class="font-semibold mb-2">Keyboard Shortcuts</h4>
-                        <div class="shortcut-list">
-                            <div class="shortcut-item">
-                                <kbd>⌘K</kbd>
-                                <span>Open command palette</span>
-                            </div>
-                            <div class="shortcut-item">
-                                <kbd>⌘T</kbd>
-                                <span>View target opportunities</span>
-                            </div>
-                            <div class="shortcut-item">
-                                <kbd>⌘E</kbd>
-                                <span>Export data</span>
-                            </div>
-                            <div class="shortcut-item">
-                                <kbd>⌘R</kbd>
-                                <span>Refresh dashboard</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="help-section">
-                        <h4 class="font-semibold mb-2">Dashboard Features</h4>
-                        <ul class="feature-list">
-                            <li>🎯 Priority scoring based on appetite and winnability</li>
-                            <li>📊 Real-time portfolio analytics</li>
-                            <li>🔍 Smart filtering and search</li>
-                            <li>📈 Performance goal tracking</li>
-                            <li>🤖 AI-powered insights</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="flex justify-end mt-6">
-                    <button class="btn-primary close-modal">Got it</button>
-                </div>
-            </div>
-        `;
-        
-        modal.querySelectorAll('.close-modal').forEach(btn => {
-            btn.onclick = () => modal.remove();
-        });
-        
-        return modal;
-    }
 
-    
-    function performExport() {
-        const activeFormat = document.querySelector('.export-option.active')?.dataset.format || 'csv';
-        toast(`Exporting as ${activeFormat.toUpperCase()}...`, 'info');
-        
-        // Simulate export
-        setTimeout(() => {
-            toast(`Export completed: portfolio_data.${activeFormat}`, 'success');
-            document.querySelector('.export-modal')?.remove();
-        }, 2000);
-    }
+
 
     async function populateHomeModes() {
         try {
@@ -1556,102 +1269,10 @@
     }
 
     // Enhanced keyboard shortcuts and command palette
-    document.addEventListener('keydown', (e) => {
-        // Command/Ctrl key combinations
-        if (e.metaKey || e.ctrlKey) {
-            switch(e.key) {
-                case 'k':
-                    e.preventDefault();
-                    openCommandPalette();
-                    break;
-                case 't':
-                    e.preventDefault();
-                    window.location.href = '/submissions?status=TARGET';
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    exportOpportunities();
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    fetchJSON("/api/refresh", { method: "POST" })
-                        .then(() => {
-                            toast("Data refreshed", "success");
-                            loadHome();
-                        })
-                        .catch((err) => toast("Refresh failed: " + err.message, "error"));
-                    break;
-            }
-        }
-        
-        // ESC key to close command palette
-        if (e.key === 'Escape') {
-            const palette = document.getElementById('command_palette');
-            if (palette && !palette.classList.contains('hidden')) {
-                palette.classList.add('hidden');
-            }
-        }
-    });
+
+
     
-    // Command palette functionality
-    function setupCommandPalette() {
-        const input = document.getElementById('command_input');
-        const results = document.getElementById('command_results');
-        
-        if (!input || !results) return;
-        
-        input.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            filterCommandResults(query);
-        });
-        
-        // Handle command execution
-        results.addEventListener('click', (e) => {
-            const item = e.target.closest('.command-item');
-            if (item) {
-                const action = item.dataset.action;
-                executeCommand(action);
-                document.getElementById('command_palette').classList.add('hidden');
-                input.value = '';
-            }
-        });
-    }
-    
-    function filterCommandResults(query) {
-        const items = document.querySelectorAll('.command-item');
-        items.forEach(item => {
-            const text = item.querySelector('.command-item-text').textContent.toLowerCase();
-            const visible = text.includes(query) || query === '';
-            item.style.display = visible ? 'flex' : 'none';
-        });
-    }
-    
-    function executeCommand(action) {
-        switch(action) {
-            case 'goto-targets':
-                window.location.href = '/submissions?status=TARGET';
-                break;
-            case 'export-data':
-                exportOpportunities();
-                break;
-            case 'refresh-data':
-                fetchJSON("/api/refresh", { method: "POST" })
-                    .then(() => {
-                        toast("Data refreshed", "success");
-                        loadHome();
-                    })
-                    .catch((err) => toast("Refresh failed: " + err.message, "error"));
-                break;
-            case 'goto-submissions':
-                window.location.href = '/submissions';
-                break;
-            case 'goto-insights':
-                window.location.href = '/insights';
-                break;
-            default:
-                toast('Command executed: ' + action, 'info');
-        }
-    }
+
     
     // Enhanced UI interactions
     function setupModernInteractions() {
@@ -1925,7 +1546,6 @@
     updatePrioritySortInfo();
 
     // Initialize everything
-    setupCommandPalette();
     setupModernInteractions();
     startAuto();
     
