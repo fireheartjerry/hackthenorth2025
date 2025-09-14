@@ -47,25 +47,3 @@ def score_row(r, weights, state_counts):
     )
     penalty = geo_penalty(state_counts, r.get("primary_risk_state"))
     return max(0.0, base - penalty)
-
-
-def compute_priority_score(appetite: float, win_norm: float, prem_norm: float, fresh_norm: float) -> float:
-    """Blend core components into a 0-10 priority score.
-
-    Args:
-        appetite: Appetite or mode score on a 0-10 scale.
-        win_norm: Winnability normalized to 0-1.
-        prem_norm: Premium factor normalized to 0-1.
-        fresh_norm: Freshness factor normalized to 0-1.
-
-    Returns:
-        Priority score clamped to the 0-10 range.
-    """
-
-    priority = (
-        appetite * 0.4
-        + win_norm * 10.0 * 0.3
-        + prem_norm * 10.0 * 0.2
-        + fresh_norm * 10.0 * 0.1
-    )
-    return max(0.1, min(10.0, priority))
