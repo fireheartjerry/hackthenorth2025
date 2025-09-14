@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>AppetizerIQ Dashboard</title>
+        <title>Appetizer-IQ Dashboard</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -46,8 +46,8 @@
                 class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between"
             >
                 <div class="flex items-center gap-3">
-                    <div class="logo">R</div>
-                    <div class="text-xl font-bold tracking-tight">AppetizerIQ</div>
+                    <div class="logo">A</div>
+                    <div class="text-xl font-bold tracking-tight">Appetizer-IQ</div>
                 </div>
                 <nav class="flex items-center gap-6 text-sm">
                     <a href="{{ url_for('home') }}" class="nav-link"
@@ -118,8 +118,8 @@
         <footer class="site-footer glass">
             <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="logo">R</div>
-                    <div class="text-sm opacity-90">AppetizerIQ • Underwriting Dashboard</div>
+                    <div class="logo">A</div>
+                    <div class="text-sm opacity-90">Appetizer-IQ • Underwriting Dashboard</div>
                 </div>
                 <nav class="flex items-center gap-4 text-xs">
                     <a href="{{ url_for('home') }}" class="nav-link">Overview</a>
@@ -130,6 +130,97 @@
             </div>
         </footer>
         <div id="toasts" class="toasts"></div>
+        
+        <!-- Floating AI Chat Assistant -->
+        <div id="ai_assistant_float" class="ai-assistant-float">
+            <div class="ai-pulse"></div>
+            <i class="ai-icon fa-solid fa-robot"></i>
+        </div>
+        
+        <!-- AI Chat Modal -->
+        <div id="ai_chat_modal" class="ai-chat-modal">
+            <div class="ai-chat-container">
+                <div class="ai-chat-header">
+                    <div class="ai-chat-header-left">
+                        <div class="ai-chat-avatar">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <div class="ai-chat-title">Appetizer-IQ Assistant</div>
+                            <div class="ai-chat-subtitle">Powered by Gemini Flash 2.0</div>
+                        </div>
+                    </div>
+                    <button class="ai-chat-close" id="ai_chat_close">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="ai-chat-messages" id="ai_chat_messages">
+                    <div class="ai-message">
+                        <div class="ai-message-avatar ai">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="ai-message-content">
+                            <div class="ai-message-bubble ai">
+                                Hi! I'm your Appetizer-IQ assistant. I can help you with underwriting analysis, explain risk assessments, and answer questions about your submissions. What would you like to know?
+                            </div>
+                            <div class="ai-message-time">Just now</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Suggested Prompts -->
+                    <div class="ai-suggested-prompts" id="ai_suggested_prompts">
+                        <div class="ai-suggestions-title">Try asking:</div>
+                        <div class="ai-suggestions-grid">
+                            <button class="ai-suggestion-chip" data-prompt="Show me high-value targets in CA over $100k premium">
+                                <i class="fa-solid fa-search"></i>
+                                High-value CA targets
+                            </button>
+                            <button class="ai-suggestion-chip" data-prompt="Explain why submission #883 is out of appetite">
+                                <i class="fa-solid fa-question-circle"></i>
+                                Explain appetite status
+                            </button>
+                            <button class="ai-suggestion-chip" data-prompt="What are the top 5 priority submissions this week?">
+                                <i class="fa-solid fa-star"></i>
+                                Top priorities
+                            </button>
+                            <button class="ai-suggestion-chip" data-prompt="Analyze portfolio performance by state">
+                                <i class="fa-solid fa-chart-bar"></i>
+                                Portfolio analysis
+                            </button>
+                            <button class="ai-suggestion-chip" data-prompt="Show trends in new business submissions">
+                                <i class="fa-solid fa-trending-up"></i>
+                                New business trends
+                            </button>
+                            <button class="ai-suggestion-chip" data-prompt="Compare this month vs last month performance">
+                                <i class="fa-solid fa-calendar-alt"></i>
+                                Monthly comparison
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-chat-input-area">
+                    <div class="ai-chat-input-group">
+                        <textarea 
+                            id="ai_chat_input" 
+                            class="ai-chat-input" 
+                            placeholder="Ask me about submissions, risk analysis, or underwriting..."
+                            rows="1"></textarea>
+                        <button id="ai_chat_send" class="ai-chat-send" title="Send message (Enter)">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="ai-chat-hint">
+                        <span class="ai-chat-shortcut">Press <kbd>Enter</kbd> to send • <kbd>Shift + Enter</kbd> for new line</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Drag Helper -->
+        <div id="ai_drag_helper" class="ai-drag-helper">Drag to move assistant</div>
+        
         <!-- Global Persona Modal (available on all pages) -->
         <div id="persona_modal" class="overlay hidden">
             <div class="overlay-inner max-w-2xl flex flex-col max-h-[calc(100vh-2rem)]">
@@ -653,7 +744,330 @@
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
         <script src="{{ url_for('static', filename='js/shortcuts.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+        
+        <!-- AI Assistant Functionality -->
+        <script>
+            (function initAIAssistant() {
+                const aiFloat = document.getElementById('ai_assistant_float');
+                const aiModal = document.getElementById('ai_chat_modal');
+                const aiClose = document.getElementById('ai_chat_close');
+                const aiInput = document.getElementById('ai_chat_input');
+                const aiSend = document.getElementById('ai_chat_send');
+                const aiMessages = document.getElementById('ai_chat_messages');
+                const dragHelper = document.getElementById('ai_drag_helper');
+                
+                let isDragging = false;
+                let dragStartX = 0;
+                let dragStartY = 0;
+                let elementStartX = 0;
+                let elementStartY = 0;
+                let hasDragged = false;
+                
+                // Load saved position
+                function loadPosition() {
+                    const saved = localStorage.getItem('ai_assistant_position');
+                    if (saved) {
+                        try {
+                            const pos = JSON.parse(saved);
+                            aiFloat.style.left = pos.x + 'px';
+                            aiFloat.style.bottom = pos.y + 'px';
+                        } catch (e) {
+                            // Use default position
+                        }
+                    }
+                }
+                
+                // Save position
+                function savePosition() {
+                    const rect = aiFloat.getBoundingClientRect();
+                    const pos = {
+                        x: rect.left,
+                        y: window.innerHeight - rect.bottom
+                    };
+                    localStorage.setItem('ai_assistant_position', JSON.stringify(pos));
+                }
+                
+                // Constrain position to viewport
+                function constrainToViewport() {
+                    const rect = aiFloat.getBoundingClientRect();
+                    const margin = 10;
+                    
+                    let newLeft = Math.max(margin, Math.min(window.innerWidth - rect.width - margin, rect.left));
+                    let newBottom = Math.max(margin, Math.min(window.innerHeight - rect.height - margin, window.innerHeight - rect.bottom));
+                    
+                    aiFloat.style.left = newLeft + 'px';
+                    aiFloat.style.bottom = newBottom + 'px';
+                    savePosition();
+                }
+                
+                // Mouse/Touch event handlers
+                function getEventCoords(e) {
+                    if (e.touches && e.touches.length > 0) {
+                        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    }
+                    return { x: e.clientX, y: e.clientY };
+                }
+                
+                function startDrag(e) {
+                    e.preventDefault();
+                    isDragging = true;
+                    hasDragged = false;
+                    
+                    const coords = getEventCoords(e);
+                    const rect = aiFloat.getBoundingClientRect();
+                    
+                    dragStartX = coords.x;
+                    dragStartY = coords.y;
+                    elementStartX = rect.left;
+                    elementStartY = window.innerHeight - rect.bottom;
+                    
+                    aiFloat.classList.add('dragging');
+                    document.body.style.userSelect = 'none';
+                    
+                    // Show drag helper
+                    dragHelper.style.left = (coords.x + 20) + 'px';
+                    dragHelper.style.top = (coords.y - 30) + 'px';
+                    dragHelper.classList.add('visible');
+                    
+                    document.addEventListener('mousemove', handleDrag);
+                    document.addEventListener('mouseup', stopDrag);
+                    document.addEventListener('touchmove', handleDrag, { passive: false });
+                    document.addEventListener('touchend', stopDrag);
+                }
+                
+                function handleDrag(e) {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    
+                    const coords = getEventCoords(e);
+                    const deltaX = coords.x - dragStartX;
+                    const deltaY = coords.y - dragStartY;
+                    
+                    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                        hasDragged = true;
+                    }
+                    
+                    const newX = elementStartX + deltaX;
+                    const newY = elementStartY - deltaY; // Invert Y for bottom positioning
+                    
+                    aiFloat.style.left = newX + 'px';
+                    aiFloat.style.bottom = newY + 'px';
+                    
+                    // Update drag helper position
+                    dragHelper.style.left = (coords.x + 20) + 'px';
+                    dragHelper.style.top = (coords.y - 30) + 'px';
+                }
+                
+                function stopDrag(e) {
+                    if (!isDragging) return;
+                    
+                    isDragging = false;
+                    aiFloat.classList.remove('dragging');
+                    document.body.style.userSelect = '';
+                    dragHelper.classList.remove('visible');
+                    
+                    document.removeEventListener('mousemove', handleDrag);
+                    document.removeEventListener('mouseup', stopDrag);
+                    document.removeEventListener('touchmove', handleDrag);
+                    document.removeEventListener('touchend', stopDrag);
+                    
+                    constrainToViewport();
+                    
+                    // If we haven't dragged much, treat it as a click
+                    setTimeout(() => {
+                        if (!hasDragged) {
+                            openAIChat();
+                        }
+                        hasDragged = false;
+                    }, 10);
+                }
+                
+                // Chat functionality
+                function openAIChat() {
+                    aiModal.classList.add('open');
+                    
+                    // Show suggested prompts if no user messages exist yet
+                    const suggestedPrompts = document.getElementById('ai_suggested_prompts');
+                    const userMessages = aiMessages.querySelectorAll('.ai-message.user');
+                    if (suggestedPrompts && userMessages.length === 0) {
+                        suggestedPrompts.style.display = 'block';
+                    }
+                    
+                    setTimeout(() => {
+                        aiInput.focus();
+                    }, 300);
+                }
+                
+                function closeAIChat() {
+                    aiModal.classList.remove('open');
+                }
+                
+                function addMessage(content, isUser = false) {
+                    const messageEl = document.createElement('div');
+                    messageEl.className = `ai-message${isUser ? ' user' : ''}`;
+                    
+                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    messageEl.innerHTML = `
+                        <div class="ai-message-avatar ${isUser ? 'user' : 'ai'}">
+                            <i class="fa-solid fa-${isUser ? 'user' : 'robot'}"></i>
+                        </div>
+                        <div class="ai-message-content">
+                            <div class="ai-message-bubble ${isUser ? 'user' : 'ai'}">
+                                ${content}
+                            </div>
+                            <div class="ai-message-time">${time}</div>
+                        </div>
+                    `;
+                    
+                    aiMessages.appendChild(messageEl);
+                    aiMessages.scrollTop = aiMessages.scrollHeight;
+                    
+                    // Hide suggested prompts when conversation starts
+                    const suggestedPrompts = document.getElementById('ai_suggested_prompts');
+                    if (suggestedPrompts && isUser) {
+                        suggestedPrompts.style.display = 'none';
+                    }
+                }
+                
+                function showTypingIndicator() {
+                    const typingEl = document.createElement('div');
+                    typingEl.className = 'ai-message';
+                    typingEl.id = 'ai_typing';
+                    typingEl.innerHTML = `
+                        <div class="ai-message-avatar ai">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="ai-message-content">
+                            <div class="ai-typing-indicator">
+                                <span>AI is thinking</span>
+                                <div class="ai-typing-dots">
+                                    <div class="ai-typing-dot"></div>
+                                    <div class="ai-typing-dot"></div>
+                                    <div class="ai-typing-dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    aiMessages.appendChild(typingEl);
+                    aiMessages.scrollTop = aiMessages.scrollHeight;
+                }
+                
+                function removeTypingIndicator() {
+                    const typingEl = document.getElementById('ai_typing');
+                    if (typingEl) {
+                        typingEl.remove();
+                    }
+                }
+                
+                async function sendMessage() {
+                    const message = aiInput.value.trim();
+                    if (!message) return;
+                    
+                    // Add user message
+                    addMessage(message, true);
+                    aiInput.value = '';
+                    aiSend.disabled = true;
+                    
+                    // Show typing indicator
+                    showTypingIndicator();
+                    
+                    try {
+                        // Call AI API (using existing NLQ endpoint as example)
+                        const response = await fetch('/api/nlq', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ q: message })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        removeTypingIndicator();
+                        
+                        if (result.ai_summary) {
+                            addMessage(result.ai_summary);
+                        } else {
+                            addMessage("I understand you're asking about: " + message + ". Let me help you with that!");
+                        }
+                        
+                    } catch (error) {
+                        removeTypingIndicator();
+                        addMessage("Sorry, I'm having trouble connecting right now. Please try again in a moment.");
+                        console.error('AI Chat error:', error);
+                    }
+                    
+                    aiSend.disabled = false;
+                }
+                
+                // Auto-resize textarea
+                function resizeTextarea() {
+                    aiInput.style.height = 'auto';
+                    aiInput.style.height = Math.min(aiInput.scrollHeight, 120) + 'px';
+                }
+                
+                // Event listeners
+                aiFloat.addEventListener('mousedown', startDrag);
+                aiFloat.addEventListener('touchstart', startDrag, { passive: false });
+                
+                aiClose.addEventListener('click', closeAIChat);
+                aiModal.addEventListener('click', (e) => {
+                    if (e.target === aiModal) closeAIChat();
+                });
+                
+                aiSend.addEventListener('click', sendMessage);
+                aiInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                
+                aiInput.addEventListener('input', resizeTextarea);
+                
+                // Handle suggested prompt clicks
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('ai-suggestion-chip') || e.target.closest('.ai-suggestion-chip')) {
+                        const chip = e.target.classList.contains('ai-suggestion-chip') ? e.target : e.target.closest('.ai-suggestion-chip');
+                        const prompt = chip.dataset.prompt;
+                        if (prompt) {
+                            // Set the prompt in the input
+                            aiInput.value = prompt;
+                            resizeTextarea();
+                            
+                            // Hide suggested prompts
+                            const suggestedPrompts = document.getElementById('ai_suggested_prompts');
+                            if (suggestedPrompts) {
+                                suggestedPrompts.style.display = 'none';
+                            }
+                            
+                            // Auto-send the message
+                            sendMessage();
+                        }
+                    }
+                });
+                
+                // Handle window resize
+                window.addEventListener('resize', constrainToViewport);
+                
+                // Escape key to close modal
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && aiModal.classList.contains('open')) {
+                        closeAIChat();
+                    }
+                });
+                
+                // Initialize
+                loadPosition();
+                
+                // Make functions globally available for integration
+                window.aiAssistant = {
+                    open: openAIChat,
+                    close: closeAIChat,
+                    addMessage: addMessage
+                };
+                
+            })();
+        </script>
         <script>
             // Global mode helpers
             function getActiveMode(){ return localStorage.getItem('ACTIVE_MODE') || 'balanced_growth'; }
