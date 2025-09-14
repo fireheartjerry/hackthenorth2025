@@ -250,6 +250,17 @@
     </div>
 </div>
 
+<!-- Target Accounts -->
+<div class="target-accounts-section glass-panel p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+            <span class="table-icon">🎯</span>
+            Target Accounts
+        </h3>
+    </div>
+    <div id="target_accounts_list" class="divide-y divide-slate-700"></div>
+</div>
+
 <!-- Modern Workload Management -->
 <div class="workload-section mb-6">
     <!-- Prioritized Submissions - Full Width -->
@@ -340,7 +351,7 @@
             <div class="table-header-left">
                 <h2 class="text-xl font-bold flex items-center gap-2">
                     <span class="table-icon">📊</span>
-                    Priority Account Review
+                    Target Account Review
                 </h2>
                 <div class="table-subtitle">
                     Top submissions ranked by appetite and urgency
@@ -727,9 +738,43 @@
         }</div>`;
     }
 
-    // Priority Accounts functionality
-    let PRIORITY_ACCOUNTS_DATA = [];
-    let PRIORITY_ACCOUNTS_PAGINATION = {
+    // Target Accounts functionality
+    async function loadTargetAccounts() {
+        const el = document.getElementById('target_accounts_list');
+        if (!el) return;
+        try {
+            const j = await fetchJSON('/api/target-accounts?limit=5');
+            renderTargetAccounts(j.data || []);
+        } catch (err) {
+            console.error('Error loading target accounts:', err);
+            el.innerHTML = '<div class="p-4 text-slate-400">Failed to load target accounts</div>';
+        }
+    }
+
+    function renderTargetAccounts(rows) {
+        const el = document.getElementById('target_accounts_list');
+        if (!el) return;
+        if (!rows.length) {
+            el.innerHTML = '<div class="p-4 text-slate-400">No target accounts found</div>';
+            return;
+        }
+        el.innerHTML = rows.map(r => `
+            <a href="/detail/${r.id}" class="flex items-center justify-between p-4 hover:bg-slate-800/50">
+              <div>
+                <div class="font-semibold">${r.account_name || '-'}</div>
+                <div class="text-xs opacity-75">${r.primary_risk_state || '-'} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${badge(r.appetite_status)}
+                <span class="priority-score">${Number(r.priority_score || 0).toFixed(1)}</span>
+              </div>
+            </a>
+        `).join('');
+    }
+
+    // Target Accounts functionality
+    let TARGET_ACCOUNTS_DATA = [];
+    let TARGET_ACCOUNTS_PAGINATION = {
         page: 1,
         per_page: 20,
         total_count: 0,
@@ -737,7 +782,7 @@
         has_next: false,
         has_prev: false
     };
-    let PRIORITY_ACCOUNTS_FILTERS = {
+    let TARGET_ACCOUNTS_FILTERS = {
         state: '',
         status: '',
         min_premium: null,
@@ -747,7 +792,7 @@
         sort_dir: 'desc'
     };
 
-    async function loadPriorityAccounts(page = 1) {
+    async function loadTargetAccountsTable(page = 1) {
         const tbody = document.getElementById("acct_body");
         if (!tbody) return;
 
@@ -755,17 +800,17 @@
             // Build query parameters
             const params = new URLSearchParams({
                 page: page,
-                per_page: PRIORITY_ACCOUNTS_PAGINATION.per_page,
-                sort_by: PRIORITY_ACCOUNTS_FILTERS.sort_by,
-                sort_dir: PRIORITY_ACCOUNTS_FILTERS.sort_dir
+                per_page: TARGET_ACCOUNTS_PAGINATION.per_page,
+                sort_by: TARGET_ACCOUNTS_FILTERS.sort_by,
+                sort_dir: TARGET_ACCOUNTS_FILTERS.sort_dir
             });
 
             // Add filters if they exist
-            if (PRIORITY_ACCOUNTS_FILTERS.state) params.append('state', PRIORITY_ACCOUNTS_FILTERS.state);
-            if (PRIORITY_ACCOUNTS_FILTERS.status) params.append('status', PRIORITY_ACCOUNTS_FILTERS.status);
-            if (PRIORITY_ACCOUNTS_FILTERS.min_premium) params.append('min_premium', PRIORITY_ACCOUNTS_FILTERS.min_premium);
-            if (PRIORITY_ACCOUNTS_FILTERS.max_premium) params.append('max_premium', PRIORITY_ACCOUNTS_FILTERS.max_premium);
-            if (PRIORITY_ACCOUNTS_FILTERS.search) params.append('q', PRIORITY_ACCOUNTS_FILTERS.search);
+            if (TARGET_ACCOUNTS_FILTERS.state) params.append('state', TARGET_ACCOUNTS_FILTERS.state);
+            if (TARGET_ACCOUNTS_FILTERS.status) params.append('status', TARGET_ACCOUNTS_FILTERS.status);
+            if (TARGET_ACCOUNTS_FILTERS.min_premium) params.append('min_premium', TARGET_ACCOUNTS_FILTERS.min_premium);
+            if (TARGET_ACCOUNTS_FILTERS.max_premium) params.append('max_premium', TARGET_ACCOUNTS_FILTERS.max_premium);
+            if (TARGET_ACCOUNTS_FILTERS.search) params.append('q', TARGET_ACCOUNTS_FILTERS.search);
 
             // Show loading
             tbody.innerHTML = `
@@ -783,29 +828,29 @@
             `;
 
             // Fetch data
-            const response = await fetchJSON(`/api/priority-accounts?${params}`);
+            const response = await fetchJSON(`/api/target-accounts?${params}`);
             
-            PRIORITY_ACCOUNTS_DATA = response.data || [];
-            PRIORITY_ACCOUNTS_PAGINATION = response.pagination || PRIORITY_ACCOUNTS_PAGINATION;
+            TARGET_ACCOUNTS_DATA = response.data || [];
+            TARGET_ACCOUNTS_PAGINATION = response.pagination || TARGET_ACCOUNTS_PAGINATION;
             
             // Render table
-            renderPriorityAccountsTable();
+            renderTargetAccountsTable();
             
             // Update pagination controls
-            updatePriorityAccountsPagination();
+            updateTargetAccountsPagination();
             
             // Update results count
-            updatePriorityAccountsCount();
+            updateTargetAccountsCount();
             
         } catch (error) {
-            console.error('Error loading priority accounts:', error);
+            console.error('Error loading target accounts:', error);
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="text-center text-red-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-2xl">⚠️</span>
-                            <span>Failed to load priority accounts</span>
-                            <button onclick="loadPriorityAccounts(1)" class="text-blue-400 hover:text-blue-300">
+                            <span>Failed to load target accounts</span>
+                            <button onclick="loadTargetAccountsTable(1)" class="text-blue-400 hover:text-blue-300">
                                 Try Again
                             </button>
                         </div>
@@ -815,17 +860,17 @@
         }
     }
 
-    function renderPriorityAccountsTable() {
+    function renderTargetAccountsTable() {
         const tbody = document.getElementById("acct_body");
         if (!tbody) return;
 
-        if (!PRIORITY_ACCOUNTS_DATA.length) {
+        if (!TARGET_ACCOUNTS_DATA.length) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="text-center text-gray-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-3xl">🎯</span>
-                            <span class="text-lg">No priority accounts found</span>
+                            <span class="text-lg">No target accounts found</span>
                             <span class="text-sm opacity-75">Try adjusting your filters</span>
                         </div>
                     </td>
@@ -834,7 +879,7 @@
             return;
         }
 
-        const rows = PRIORITY_ACCOUNTS_DATA.map(account => {
+        const rows = TARGET_ACCOUNTS_DATA.map(account => {
             const statusEmoji = account.appetite_status === 'TARGET' ? '🎯' : 
                                account.appetite_status === 'IN' ? '✅' : '❌';
             const statusClass = account.appetite_status === 'TARGET' ? 'text-purple-400' : 
@@ -899,40 +944,40 @@
         tbody.innerHTML = rows;
     }
 
-    function updatePriorityAccountsPagination() {
+    function updateTargetAccountsPagination() {
         const paginationInfo = document.querySelector('.pagination-info');
         const prevBtn = document.getElementById('prev_page');
         const nextBtn = document.getElementById('next_page');
         
         if (paginationInfo) {
-            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages}`;
+            paginationInfo.textContent = `Page ${TARGET_ACCOUNTS_PAGINATION.page} of ${TARGET_ACCOUNTS_PAGINATION.total_pages}`;
         }
         
         if (prevBtn) {
-            prevBtn.disabled = !PRIORITY_ACCOUNTS_PAGINATION.has_prev;
+            prevBtn.disabled = !TARGET_ACCOUNTS_PAGINATION.has_prev;
             prevBtn.onclick = () => {
-                if (PRIORITY_ACCOUNTS_PAGINATION.has_prev) {
-                    loadPriorityAccounts(PRIORITY_ACCOUNTS_PAGINATION.page - 1);
+                if (TARGET_ACCOUNTS_PAGINATION.has_prev) {
+                    loadTargetAccountsTable(TARGET_ACCOUNTS_PAGINATION.page - 1);
                 }
             };
         }
         
         if (nextBtn) {
-            nextBtn.disabled = !PRIORITY_ACCOUNTS_PAGINATION.has_next;
+            nextBtn.disabled = !TARGET_ACCOUNTS_PAGINATION.has_next;
             nextBtn.onclick = () => {
-                if (PRIORITY_ACCOUNTS_PAGINATION.has_next) {
-                    loadPriorityAccounts(PRIORITY_ACCOUNTS_PAGINATION.page + 1);
+                if (TARGET_ACCOUNTS_PAGINATION.has_next) {
+                    loadTargetAccountsTable(TARGET_ACCOUNTS_PAGINATION.page + 1);
                 }
             };
         }
     }
 
-    function updatePriorityAccountsCount() {
+    function updateTargetAccountsCount() {
         const resultsCount = document.getElementById('results_count');
         const lastUpdated = document.getElementById('last_updated');
         
         if (resultsCount) {
-            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count} priority accounts`;
+            resultsCount.textContent = `${TARGET_ACCOUNTS_PAGINATION.total_count} target accounts`;
         }
         
         if (lastUpdated) {
@@ -940,14 +985,14 @@
         }
     }
 
-    // Priority account actions
+    // Target account actions
     function viewAccountDetail(accountId) {
         window.location.href = `/detail/${accountId}`;
     }
 
     function explainAccount(accountId) {
         // Find the account data
-        const account = PRIORITY_ACCOUNTS_DATA.find(a => a.id === accountId);
+        const account = TARGET_ACCOUNTS_DATA.find(a => a.id === accountId);
         if (!account) return;
         
         toast(`Explaining account "${account.account_name}"...`, 'info');
@@ -1335,16 +1380,18 @@
     // Initialize page
     populateHomeModes().then(() => {
         loadHome();
-        loadPriorityAccounts(); // Load priority accounts table
+        loadTargetAccounts();
+        loadTargetAccountsTable(); // Load target accounts table
         updateModeChip();
     }).catch(() => {
         loadHome();
-        loadPriorityAccounts(); // Load priority accounts table even if modes fail
+        loadTargetAccounts();
+        loadTargetAccountsTable(); // Load target accounts table even if modes fail
         updateModeChip();
     });
 
-    // Priority Accounts Filter Controls
-    function setupPriorityAccountsFilters() {
+    // Target Accounts Filter Controls
+    function setupTargetAccountsFilters() {
         // Table filter toggle
         const filtersBtn = document.getElementById('table_filters');
         const filtersBar = document.getElementById('filters_bar');
@@ -1363,16 +1410,16 @@
 
         if (applyBtn) {
             applyBtn.addEventListener('click', () => {
-                PRIORITY_ACCOUNTS_FILTERS.status = statusFilter?.value || '';
-                PRIORITY_ACCOUNTS_FILTERS.state = stateFilter?.value || '';
-                PRIORITY_ACCOUNTS_FILTERS.search = searchFilter?.value || '';
-                loadPriorityAccounts(1); // Reset to first page
+                TARGET_ACCOUNTS_FILTERS.status = statusFilter?.value || '';
+                TARGET_ACCOUNTS_FILTERS.state = stateFilter?.value || '';
+                TARGET_ACCOUNTS_FILTERS.search = searchFilter?.value || '';
+                loadTargetAccountsTable(1); // Reset to first page
             });
         }
 
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
-                PRIORITY_ACCOUNTS_FILTERS = {
+                TARGET_ACCOUNTS_FILTERS = {
                     state: '',
                     status: '',
                     min_premium: null,
@@ -1384,7 +1431,7 @@
                 if (statusFilter) statusFilter.value = '';
                 if (stateFilter) stateFilter.value = '';
                 if (searchFilter) searchFilter.value = '';
-                loadPriorityAccounts(1);
+                loadTargetAccountsTable(1);
             });
         }
 
@@ -1392,8 +1439,8 @@
         if (searchFilter) {
             searchFilter.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    PRIORITY_ACCOUNTS_FILTERS.search = searchFilter.value || '';
-                    loadPriorityAccounts(1);
+                    TARGET_ACCOUNTS_FILTERS.search = searchFilter.value || '';
+                    loadTargetAccountsTable(1);
                 }
             });
         }
@@ -1405,11 +1452,11 @@
                 if (!sortKey) return;
 
                 // Toggle sort direction if same column
-                if (PRIORITY_ACCOUNTS_FILTERS.sort_by === sortKey) {
-                    PRIORITY_ACCOUNTS_FILTERS.sort_dir = PRIORITY_ACCOUNTS_FILTERS.sort_dir === 'desc' ? 'asc' : 'desc';
+                if (TARGET_ACCOUNTS_FILTERS.sort_by === sortKey) {
+                    TARGET_ACCOUNTS_FILTERS.sort_dir = TARGET_ACCOUNTS_FILTERS.sort_dir === 'desc' ? 'asc' : 'desc';
                 } else {
-                    PRIORITY_ACCOUNTS_FILTERS.sort_by = sortKey;
-                    PRIORITY_ACCOUNTS_FILTERS.sort_dir = 'desc'; // Default to desc for new column
+                    TARGET_ACCOUNTS_FILTERS.sort_by = sortKey;
+                    TARGET_ACCOUNTS_FILTERS.sort_dir = 'desc'; // Default to desc for new column
                 }
 
                 // Update sort indicators
@@ -1419,16 +1466,16 @@
                 
                 const sortIcon = th.querySelector('.sort-icon');
                 if (sortIcon) {
-                    sortIcon.textContent = PRIORITY_ACCOUNTS_FILTERS.sort_dir === 'desc' ? '↓' : '↑';
+                    sortIcon.textContent = TARGET_ACCOUNTS_FILTERS.sort_dir === 'desc' ? '↓' : '↑';
                 }
 
-                loadPriorityAccounts(1);
+                loadTargetAccountsTable(1);
             });
         });
     }
 
     // Call setup after DOM is ready
-    setTimeout(setupPriorityAccountsFilters, 100);
+    setTimeout(setupTargetAccountsFilters, 100);
 
     // Legacy persona functions for compatibility
     function gatherAnswers() {

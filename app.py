@@ -707,11 +707,11 @@ def apiClassified():
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 
-@app.route("/api/priority-accounts")
-def apiPriorityAccounts():
-    """API endpoint for Priority Account Review - returns top priority submissions"""
+@app.route("/api/target-accounts")
+def apiTargetAccounts():
+    """Return prioritized target accounts with filtering and pagination"""
     df, _ = refreshCache()
-    
+
     # Get query parameters
     state = request.args.get("state")
     status = request.args.get("status")
@@ -719,7 +719,10 @@ def apiPriorityAccounts():
     max_p = request.args.get("max_premium", type=float)
     q = request.args.get("q")
     page = request.args.get("page", default=1, type=int)
-    per_page = request.args.get("per_page", default=20, type=int)
+    per_page = request.args.get("per_page", type=int)
+    limit = request.args.get("limit", type=int)
+    if per_page is None:
+        per_page = limit if limit is not None else 20
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
     
@@ -738,8 +741,7 @@ def apiPriorityAccounts():
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
     
-    # Focus on higher-priority submissions for priority review
-    # Show submissions with priority_score >= 1.0 and preferably IN or TARGET status
+    # Focus on higher-priority submissions for review
     d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
     
     # Apply sorting

@@ -991,25 +991,25 @@ function applyPreset(preset) {
 
     async function load(params = {}) {
         console.log('load() called with params:', params);
-        // Always include an explicit mode so sorting/filtering doesn't change the cohort
         if (!params.mode) params.mode = getActiveMode();
+        params.per_page = params.per_page || 1000;
         LAST_PARAMS = params;
         const qs = new URLSearchParams(params).toString();
         console.log('Fetching data with query string:', qs);
         const tbody = document.getElementById("tbody");
-        
-        // Reset to first page when loading new data
+
         CURRENT_PAGE = 1;
-        
+
         try {
             await withLoading(tbody, async () => {
-                const response = await fetchJSON("/api/classified_mode?" + qs);
+                const response = await fetchJSON("/api/target-accounts?" + qs);
                 console.log('Received response with', response.data?.length || 0, 'items');
                 const modeExpl = document.getElementById("sub_mode_expl");
                 if (modeExpl) {
-                    modeExpl.textContent = response.mode_explanation || "";
+                    modeExpl.textContent = "Top target accounts";
                 }
                 ALL_SUBMISSIONS = response.data || [];
+                TOTAL_ITEMS = response.pagination?.total_count || ALL_SUBMISSIONS.length;
                 console.log('Updated ALL_SUBMISSIONS to', ALL_SUBMISSIONS.length, 'items');
                 renderTable(ALL_SUBMISSIONS);
             });
@@ -1728,9 +1728,10 @@ function applyPreset(preset) {
           mode: (typeof getActiveMode === 'function') ? getActiveMode() : (document.getElementById('f_mode').value || (localStorage.getItem('ACTIVE_MODE') || 'balanced_growth')),
           sort_by: window.SORT_BY,
           sort_dir: window.SORT_DIR,
+          per_page: 1000,
         };
         const qs = new URLSearchParams(p).toString();
-        return `/api/classified_mode?${qs}`;
+        return `/api/target-accounts?${qs}`;
     }
     function hashSelector(row){
       return {
