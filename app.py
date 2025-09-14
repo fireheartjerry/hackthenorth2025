@@ -1263,13 +1263,13 @@ def api_classified_mode():
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
-        stat, reasons, s, pscore = classify_for_mode_row(
+        stat, reasons, mscore, pscore = classify_for_mode_row(
             r, weights, filters, scounts
         )
         r["appetite_status"] = stat
         r["appetite_reasons"] = reasons
         r["priority_score"] = float(pscore)
-        r["mode_score"] = round(float(pscore), 4)
+        r["mode_score"] = round(float(mscore), 4)
         rows.append(sanitize_row(r))
 
     # Cut to top N% if provided in filters

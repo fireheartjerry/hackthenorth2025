@@ -1355,6 +1355,7 @@ function applyPreset(preset) {
                     "tiv",
                     "winnability",
                     "priority_score",
+                    "mode_score",
                 ];
                 SORT_DIR = numeric.includes(key) ? "desc" : "asc";
             }
@@ -1743,6 +1744,7 @@ function applyPreset(preset) {
         winnability: row.winnability,
         appetite_status: row.appetite_status,
         priority_score: row.priority_score,
+        mode_score: row.mode_score,
       };
     }
     const ctl = startAutoRefresh({
