@@ -1072,6 +1072,49 @@ body.vibe-ocean{ --v1: rgba(14,165,233,.24); --v2: rgba(20,184,166,.20); --v3: r
   color: inherit;
 }
 
+.mode-select option {
+  background: white;
+  color: #1e293b;
+  padding: 0.5rem;
+}
+
+.mode-select option:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Fix dropdown option text visibility for all select elements */
+select option {
+  background: white;
+  color: #1e293b;
+  padding: 0.5rem;
+}
+
+select option:hover,
+select option:focus {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+select option:checked {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Specific styling for different select types */
+.filter-select option,
+.sort-select option,
+.setting-select option,
+.page-size-select option {
+  background: white;
+  color: #1e293b;
+}
+
+.inp option {
+  background: white;
+  color: #1e293b;
+}
+
 .panel-controls {
   display: flex;
   align-items: center;
