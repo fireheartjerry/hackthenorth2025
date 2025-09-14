@@ -74,34 +74,41 @@
       function updateQuickStats() {
         // This will be populated by the main script
         const metrics = window._dashboardMetrics || {};
-        document.getElementById('active_targets').textContent = metrics.targets || '—';
+        document.getElementById('active_targets').textContent =
+          metrics.targets ? Number(metrics.targets).toLocaleString() : '—';
         document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
-        document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
-        document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
+        document.getElementById('avg_premium').textContent = metrics.avgPremium
+          ? '$' + Math.round(metrics.avgPremium / 1000).toLocaleString() + 'K'
+          : '—';
+        document.getElementById('opportunities_count').textContent =
+          metrics.opportunities ? Number(metrics.opportunities).toLocaleString() : '—';
       }
+      window.updateQuickStats = updateQuickStats;
       
-      function simulateActivityFeed() {
-        const activities = [
-          '📋 New submission from Acme Corp - $125K premium',
-          '🎯 High-priority target identified in CA',
-          '✅ Submission #1234 moved to In-Appetite',
-          '📊 Portfolio metrics updated',
-          '🔄 Data refresh completed'
-        ];
-        let currentIndex = 0;
-        
-        setInterval(() => {
-          const feed = document.getElementById('activity_feed');
-          if (feed) {
-            feed.innerHTML = `<span class="text-indigo-300">${activities[currentIndex]}</span>`;
-            currentIndex = (currentIndex + 1) % activities.length;
-          }
+      function updateActivityFeed(rows) {
+        const feed = document.getElementById('activity_feed');
+        if (!feed) return;
+        if (!rows || !rows.length) {
+          feed.innerHTML = '<span class="opacity-75">Monitoring submissions in real-time...</span>';
+          return;
+        }
+        const acts = rows.slice(0,5).map(r => {
+          const emoji = r.appetite_status === 'TARGET' ? '🎯' : (r.appetite_status === 'IN' ? '✅' : '❌');
+          return `${emoji} ${r.account_name || 'Account'} - $${Math.round(r.total_premium || 0).toLocaleString()} premium`;
+        });
+        let idx = 0;
+        clearInterval(window._feedTimer);
+        feed.innerHTML = `<span class="text-indigo-300">${acts[0]}</span>`;
+        window._feedTimer = setInterval(() => {
+          idx = (idx + 1) % acts.length;
+          feed.innerHTML = `<span class="text-indigo-300">${acts[idx]}</span>`;
         }, 3000);
       }
-      
+
+      window.updateActivityFeed = updateActivityFeed;
+
       greet();
       updateQuickStats();
-      simulateActivityFeed();
       
       window.addEventListener('storage', (e) => {
         if(e.key === 'USER_NAME') greet();
@@ -110,8 +117,8 @@
         e.preventDefault();
         if(typeof _openPersona !== 'undefined') _openPersona();
       });
-      greet(); vibe();
-      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
+      greet(); if(typeof applyVibe !== 'undefined') applyVibe();
+      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); if(typeof applyVibe !== 'undefined') applyVibe(); }});
     })();
   </script>
 </div>
@@ -220,7 +227,7 @@
         <button class="action-button hover-lift" onclick="window.location.href='/submissions?status=TARGET'">
             <div class="action-icon">🎯</div>
             <div class="action-label">Review Targets</div>
-            <div class="action-count">{{ tgt_ct }}</div>
+            <div class="action-count" id="action_target_count">{{ tgt_ct }}</div>
         </button>
         <button class="action-button hover-lift" onclick="exportOpportunities()">
             <div class="action-icon">📊</div>
@@ -248,6 +255,17 @@
             <div class="action-count">Guide</div>
         </button>
     </div>
+</div>
+
+<!-- Target Accounts -->
+<div class="target-accounts-section glass-panel p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+            <span class="table-icon">🎯</span>
+            Target Accounts
+        </h3>
+    </div>
+    <div id="target_accounts_list" class="divide-y divide-slate-700"></div>
 </div>
 
 <!-- Modern Workload Management -->
@@ -340,7 +358,7 @@
             <div class="table-header-left">
                 <h2 class="text-xl font-bold flex items-center gap-2">
                     <span class="table-icon">📊</span>
-                    Priority Account Review
+                    Target Account Review
                 </h2>
                 <div class="table-subtitle">
                     Top submissions ranked by appetite and urgency
@@ -377,9 +395,6 @@
                 </select>
                 <select class="filter-select" id="state_filter">
                     <option value="">All States</option>
-                    <option value="CA">California</option>
-                    <option value="FL">Florida</option>
-                    <option value="TX">Texas</option>
                 </select>
                 <input type="text" class="filter-input" id="search_filter" placeholder="Search accounts...">
                 <button class="filter-apply-btn">Apply</button>
@@ -576,6 +591,49 @@
         el.textContent = `Last updated ${hh}:${mm}`;
     }
 
+    function updateMetricCards(summary){
+        if(!summary) return;
+        const total = summary.total || 0;
+        const tgt = summary.target || 0;
+        const inCt = summary.in || 0;
+        const outCt = summary.out || 0;
+        const avgPrem = summary.avg_premium || 0;
+
+        const targetEl = document.querySelector('[data-metric="target"] .metric-value');
+        const inEl = document.querySelector('[data-metric="in"] .metric-value');
+        const totalEl = document.querySelector('[data-metric="total"] .metric-value');
+        const outEl = document.querySelector('[data-metric="out"] .metric-value');
+        if(targetEl) targetEl.dataset.target = tgt;
+        if(inEl) inEl.dataset.target = inCt;
+        if(totalEl) totalEl.dataset.target = total;
+        if(outEl) outEl.dataset.target = outCt;
+
+        const pctTgt = total ? Math.round((tgt/total)*100) : 0;
+        const pctIn = total ? Math.round((inCt/total)*100) : 0;
+        const pctOut = total ? Math.round((outCt/total)*100) : 0;
+
+        const tgtBar = document.querySelector('[data-metric="target"] .progress-fill');
+        const tgtText = document.querySelector('[data-metric="target"] .progress-text');
+        const inBar = document.querySelector('[data-metric="in"] .progress-fill');
+        const inText = document.querySelector('[data-metric="in"] .progress-text');
+        const outBar = document.querySelector('[data-metric="out"] .progress-fill');
+        const outText = document.querySelector('[data-metric="out"] .progress-text');
+        const totalText = document.querySelector('[data-metric="total"] .progress-text');
+
+        if(tgtBar) tgtBar.style.width = pctTgt + '%';
+        if(tgtText) tgtText.textContent = `${pctTgt}% of submissions`;
+        if(inBar) inBar.style.width = pctIn + '%';
+        if(inText) inText.textContent = `${pctIn}% of submissions`;
+        if(outBar) outBar.style.width = pctOut + '%';
+        if(outText) outText.textContent = `${pctOut}% of submissions`;
+        if(totalText) totalText.textContent = `Avg premium $${Math.round(avgPrem).toLocaleString()}`;
+
+        const quickTarget = document.getElementById('action_target_count');
+        if (quickTarget) quickTarget.textContent = tgt;
+
+        animateCounters();
+    }
+
     // Worklist view state helpers
     function getWorklistView(){
         try { return localStorage.getItem('WORKLIST_VIEW') || 'list'; } catch(e){ return 'list'; }
@@ -595,6 +653,15 @@
             const sel = document.getElementById("home_mode");
             const mode = (sel?.value && sel.value !== "") ? sel.value : getActiveMode();
             const j = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(mode)}`);
+            if (j.summary) {
+                updateMetricCards(j.summary);
+                window._dashboardMetrics = window._dashboardMetrics || {};
+                window._dashboardMetrics.targets = j.summary.target || 0;
+                window._dashboardMetrics.avgPremium = j.summary.avg_premium || 0;
+                window._dashboardMetrics.winRate = (j.summary.avg_win || 0) * 100;
+                window._dashboardMetrics.opportunities = (j.summary.target || 0) + (j.summary.in || 0);
+                if (typeof updateQuickStats === 'function') updateQuickStats();
+            }
             // Fallback if custom yields no rows
             if ((j.count || 0) === 0 && mode === "custom") {
                 const last = localStorage.getItem("LAST_NON_EMPTY_MODE") || "balanced_growth";
@@ -603,6 +670,7 @@
                 if (sel) sel.value = last;
                 const jj = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(last)}`);
                 renderWorklistRows(jj.data || [], last);
+                if (typeof updateActivityFeed === 'function') updateActivityFeed(jj.data || []);
                 return;
             }
             if ((j.count || 0) > 0) {
@@ -611,6 +679,7 @@
             // cache rows so view toggle can re-render without refetch
             window._worklistRows = j.data || [];
             renderWorklistRows(window._worklistRows, mode);
+            if (typeof updateActivityFeed === 'function') updateActivityFeed(window._worklistRows);
             updateModeChip();
             updateLastUpdated('worklist_last');
         });
@@ -733,9 +802,43 @@
         }</div>`;
     }
 
-    // Priority Accounts functionality
-    let PRIORITY_ACCOUNTS_DATA = [];
-    let PRIORITY_ACCOUNTS_PAGINATION = {
+    // Target Accounts functionality
+    async function loadTargetAccounts() {
+        const el = document.getElementById('target_accounts_list');
+        if (!el) return;
+        try {
+            const j = await fetchJSON('/api/target-accounts?limit=5');
+            renderTargetAccounts(j.data || []);
+        } catch (err) {
+            console.error('Error loading target accounts:', err);
+            el.innerHTML = '<div class="p-4 text-slate-400">Failed to load target accounts</div>';
+        }
+    }
+
+    function renderTargetAccounts(rows) {
+        const el = document.getElementById('target_accounts_list');
+        if (!el) return;
+        if (!rows.length) {
+            el.innerHTML = '<div class="p-4 text-slate-400">No target accounts found</div>';
+            return;
+        }
+        el.innerHTML = rows.map(r => `
+            <a href="/detail/${r.id}" class="flex items-center justify-between p-4 hover:bg-slate-800/50">
+              <div>
+                <div class="font-semibold">${r.account_name || '-'}</div>
+                <div class="text-xs opacity-75">${r.primary_risk_state || '-'} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${badge(r.appetite_status)}
+                <span class="priority-score">${Number(r.priority_score || 0).toFixed(1)}</span>
+              </div>
+            </a>
+        `).join('');
+    }
+
+    // Target Accounts functionality
+    let TARGET_ACCOUNTS_DATA = [];
+    let TARGET_ACCOUNTS_PAGINATION = {
         page: 1,
         per_page: 20,
         total_count: 0,
@@ -743,7 +846,7 @@
         has_next: false,
         has_prev: false
     };
-    let PRIORITY_ACCOUNTS_FILTERS = {
+    let TARGET_ACCOUNTS_FILTERS = {
         state: '',
         status: '',
         min_premium: null,
@@ -753,7 +856,7 @@
         sort_dir: 'desc'
     };
 
-    async function loadPriorityAccounts(page = 1) {
+    async function loadTargetAccountsTable(page = 1) {
         const tbody = document.getElementById("acct_body");
         if (!tbody) return;
 
@@ -761,17 +864,20 @@
             // Build query parameters
             const params = new URLSearchParams({
                 page: page,
-                per_page: PRIORITY_ACCOUNTS_PAGINATION.per_page,
-                sort_by: PRIORITY_ACCOUNTS_FILTERS.sort_by,
-                sort_dir: PRIORITY_ACCOUNTS_FILTERS.sort_dir
+                per_page: TARGET_ACCOUNTS_PAGINATION.per_page,
+                sort_by: TARGET_ACCOUNTS_FILTERS.sort_by,
+                sort_dir: TARGET_ACCOUNTS_FILTERS.sort_dir
             });
 
+            const mode = document.getElementById('home_mode')?.value || getActiveMode();
+            if (mode) params.append('mode', mode);
+
             // Add filters if they exist
-            if (PRIORITY_ACCOUNTS_FILTERS.state) params.append('state', PRIORITY_ACCOUNTS_FILTERS.state);
-            if (PRIORITY_ACCOUNTS_FILTERS.status) params.append('status', PRIORITY_ACCOUNTS_FILTERS.status);
-            if (PRIORITY_ACCOUNTS_FILTERS.min_premium) params.append('min_premium', PRIORITY_ACCOUNTS_FILTERS.min_premium);
-            if (PRIORITY_ACCOUNTS_FILTERS.max_premium) params.append('max_premium', PRIORITY_ACCOUNTS_FILTERS.max_premium);
-            if (PRIORITY_ACCOUNTS_FILTERS.search) params.append('q', PRIORITY_ACCOUNTS_FILTERS.search);
+            if (TARGET_ACCOUNTS_FILTERS.state) params.append('state', TARGET_ACCOUNTS_FILTERS.state);
+            if (TARGET_ACCOUNTS_FILTERS.status) params.append('status', TARGET_ACCOUNTS_FILTERS.status);
+            if (TARGET_ACCOUNTS_FILTERS.min_premium) params.append('min_premium', TARGET_ACCOUNTS_FILTERS.min_premium);
+            if (TARGET_ACCOUNTS_FILTERS.max_premium) params.append('max_premium', TARGET_ACCOUNTS_FILTERS.max_premium);
+            if (TARGET_ACCOUNTS_FILTERS.search) params.append('q', TARGET_ACCOUNTS_FILTERS.search);
 
             // Show loading
             tbody.innerHTML = `
@@ -789,29 +895,29 @@
             `;
 
             // Fetch data
-            const response = await fetchJSON(`/api/priority-accounts?${params}`);
+            const response = await fetchJSON(`/api/target-accounts?${params}`);
             
-            PRIORITY_ACCOUNTS_DATA = response.data || [];
-            PRIORITY_ACCOUNTS_PAGINATION = response.pagination || PRIORITY_ACCOUNTS_PAGINATION;
+            TARGET_ACCOUNTS_DATA = response.data || [];
+            TARGET_ACCOUNTS_PAGINATION = response.pagination || TARGET_ACCOUNTS_PAGINATION;
             
             // Render table
-            renderPriorityAccountsTable();
+            renderTargetAccountsTable();
             
             // Update pagination controls
-            updatePriorityAccountsPagination();
+            updateTargetAccountsPagination();
             
             // Update results count
-            updatePriorityAccountsCount();
+            updateTargetAccountsCount();
             
         } catch (error) {
-            console.error('Error loading priority accounts:', error);
+            console.error('Error loading target accounts:', error);
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="text-center text-red-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-2xl">⚠️</span>
-                            <span>Failed to load priority accounts</span>
-                            <button onclick="loadPriorityAccounts(1)" class="text-blue-400 hover:text-blue-300">
+                            <span>Failed to load target accounts</span>
+                            <button onclick="loadTargetAccountsTable(1)" class="text-blue-400 hover:text-blue-300">
                                 Try Again
                             </button>
                         </div>
@@ -821,17 +927,17 @@
         }
     }
 
-    function renderPriorityAccountsTable() {
+    function renderTargetAccountsTable() {
         const tbody = document.getElementById("acct_body");
         if (!tbody) return;
 
-        if (!PRIORITY_ACCOUNTS_DATA.length) {
+        if (!TARGET_ACCOUNTS_DATA.length) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="text-center text-gray-400 py-8">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-3xl">🎯</span>
-                            <span class="text-lg">No priority accounts found</span>
+                            <span class="text-lg">No target accounts found</span>
                             <span class="text-sm opacity-75">Try adjusting your filters</span>
                         </div>
                     </td>
@@ -840,7 +946,7 @@
             return;
         }
 
-        const rows = PRIORITY_ACCOUNTS_DATA.map(account => {
+        const rows = TARGET_ACCOUNTS_DATA.map(account => {
             const statusEmoji = account.appetite_status === 'TARGET' ? '🎯' : 
                                account.appetite_status === 'IN' ? '✅' : '❌';
             const statusClass = account.appetite_status === 'TARGET' ? 'text-purple-400' : 
@@ -908,40 +1014,40 @@
         tbody.innerHTML = rows;
     }
 
-    function updatePriorityAccountsPagination() {
+    function updateTargetAccountsPagination() {
         const paginationInfo = document.querySelector('.pagination-info');
         const prevBtn = document.getElementById('prev_page');
         const nextBtn = document.getElementById('next_page');
         
         if (paginationInfo) {
-            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages}`;
+            paginationInfo.textContent = `Page ${TARGET_ACCOUNTS_PAGINATION.page} of ${TARGET_ACCOUNTS_PAGINATION.total_pages}`;
         }
         
         if (prevBtn) {
-            prevBtn.disabled = !PRIORITY_ACCOUNTS_PAGINATION.has_prev;
+            prevBtn.disabled = !TARGET_ACCOUNTS_PAGINATION.has_prev;
             prevBtn.onclick = () => {
-                if (PRIORITY_ACCOUNTS_PAGINATION.has_prev) {
-                    loadPriorityAccounts(PRIORITY_ACCOUNTS_PAGINATION.page - 1);
+                if (TARGET_ACCOUNTS_PAGINATION.has_prev) {
+                    loadTargetAccountsTable(TARGET_ACCOUNTS_PAGINATION.page - 1);
                 }
             };
         }
         
         if (nextBtn) {
-            nextBtn.disabled = !PRIORITY_ACCOUNTS_PAGINATION.has_next;
+            nextBtn.disabled = !TARGET_ACCOUNTS_PAGINATION.has_next;
             nextBtn.onclick = () => {
-                if (PRIORITY_ACCOUNTS_PAGINATION.has_next) {
-                    loadPriorityAccounts(PRIORITY_ACCOUNTS_PAGINATION.page + 1);
+                if (TARGET_ACCOUNTS_PAGINATION.has_next) {
+                    loadTargetAccountsTable(TARGET_ACCOUNTS_PAGINATION.page + 1);
                 }
             };
         }
     }
 
-    function updatePriorityAccountsCount() {
+    function updateTargetAccountsCount() {
         const resultsCount = document.getElementById('results_count');
         const lastUpdated = document.getElementById('last_updated');
         
         if (resultsCount) {
-            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count} priority accounts`;
+            resultsCount.textContent = `${TARGET_ACCOUNTS_PAGINATION.total_count} target accounts`;
         }
         
         if (lastUpdated) {
@@ -949,14 +1055,14 @@
         }
     }
 
-    // Priority account actions
+    // Target account actions
     function viewAccountDetail(accountId) {
         window.location.href = `/detail/${accountId}`;
     }
 
     function explainAccount(accountId) {
         // Find the account data
-        const account = PRIORITY_ACCOUNTS_DATA.find(a => a.id === accountId);
+        const account = TARGET_ACCOUNTS_DATA.find(a => a.id === accountId);
         if (!account) return;
         
         toast(`Explaining account "${account.account_name}"...`, 'info');
@@ -1337,6 +1443,10 @@
                 setActiveMode(e.target.value);
                 updateModeChip();
                 loadHome();
+                PRIORITY_ACCOUNTS_FILTERS.state = '';
+                const sf = document.getElementById('state_filter');
+                if (sf) sf.value = '';
+                loadPriorityAccounts();
             }
         });
     }
@@ -1344,16 +1454,18 @@
     // Initialize page
     populateHomeModes().then(() => {
         loadHome();
-        loadPriorityAccounts(); // Load priority accounts table
+        loadTargetAccounts();
+        loadTargetAccountsTable(); // Load target accounts table
         updateModeChip();
     }).catch(() => {
         loadHome();
-        loadPriorityAccounts(); // Load priority accounts table even if modes fail
+        loadTargetAccounts();
+        loadTargetAccountsTable(); // Load target accounts table even if modes fail
         updateModeChip();
     });
 
-    // Priority Accounts Filter Controls
-    function setupPriorityAccountsFilters() {
+    // Target Accounts Filter Controls
+    function setupTargetAccountsFilters() {
         // Table filter toggle
         const filtersBtn = document.getElementById('table_filters');
         const filtersBar = document.getElementById('filters_bar');
@@ -1372,16 +1484,16 @@
 
         if (applyBtn) {
             applyBtn.addEventListener('click', () => {
-                PRIORITY_ACCOUNTS_FILTERS.status = statusFilter?.value || '';
-                PRIORITY_ACCOUNTS_FILTERS.state = stateFilter?.value || '';
-                PRIORITY_ACCOUNTS_FILTERS.search = searchFilter?.value || '';
-                loadPriorityAccounts(1); // Reset to first page
+                TARGET_ACCOUNTS_FILTERS.status = statusFilter?.value || '';
+                TARGET_ACCOUNTS_FILTERS.state = stateFilter?.value || '';
+                TARGET_ACCOUNTS_FILTERS.search = searchFilter?.value || '';
+                loadTargetAccountsTable(1); // Reset to first page
             });
         }
 
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
-                PRIORITY_ACCOUNTS_FILTERS = {
+                TARGET_ACCOUNTS_FILTERS = {
                     state: '',
                     status: '',
                     min_premium: null,
@@ -1393,7 +1505,7 @@
                 if (statusFilter) statusFilter.value = '';
                 if (stateFilter) stateFilter.value = '';
                 if (searchFilter) searchFilter.value = '';
-                loadPriorityAccounts(1);
+                loadTargetAccountsTable(1);
             });
         }
 
@@ -1401,8 +1513,8 @@
         if (searchFilter) {
             searchFilter.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    PRIORITY_ACCOUNTS_FILTERS.search = searchFilter.value || '';
-                    loadPriorityAccounts(1);
+                    TARGET_ACCOUNTS_FILTERS.search = searchFilter.value || '';
+                    loadTargetAccountsTable(1);
                 }
             });
         }
@@ -1414,11 +1526,11 @@
                 if (!sortKey) return;
 
                 // Toggle sort direction if same column
-                if (PRIORITY_ACCOUNTS_FILTERS.sort_by === sortKey) {
-                    PRIORITY_ACCOUNTS_FILTERS.sort_dir = PRIORITY_ACCOUNTS_FILTERS.sort_dir === 'desc' ? 'asc' : 'desc';
+                if (TARGET_ACCOUNTS_FILTERS.sort_by === sortKey) {
+                    TARGET_ACCOUNTS_FILTERS.sort_dir = TARGET_ACCOUNTS_FILTERS.sort_dir === 'desc' ? 'asc' : 'desc';
                 } else {
-                    PRIORITY_ACCOUNTS_FILTERS.sort_by = sortKey;
-                    PRIORITY_ACCOUNTS_FILTERS.sort_dir = 'desc'; // Default to desc for new column
+                    TARGET_ACCOUNTS_FILTERS.sort_by = sortKey;
+                    TARGET_ACCOUNTS_FILTERS.sort_dir = 'desc'; // Default to desc for new column
                 }
 
                 // Update sort indicators
@@ -1428,16 +1540,16 @@
                 
                 const sortIcon = th.querySelector('.sort-icon');
                 if (sortIcon) {
-                    sortIcon.textContent = PRIORITY_ACCOUNTS_FILTERS.sort_dir === 'desc' ? '↓' : '↑';
+                    sortIcon.textContent = TARGET_ACCOUNTS_FILTERS.sort_dir === 'desc' ? '↓' : '↑';
                 }
 
-                loadPriorityAccounts(1);
+                loadTargetAccountsTable(1);
             });
         });
     }
 
     // Call setup after DOM is ready
-    setTimeout(setupPriorityAccountsFilters, 100);
+    setTimeout(setupTargetAccountsFilters, 100);
 
     // Legacy persona functions for compatibility
     function gatherAnswers() {
@@ -1632,7 +1744,7 @@
                     current = target;
                     clearInterval(timer);
                 }
-                counter.textContent = Math.round(current);
+                counter.textContent = Math.round(current).toLocaleString();
             }, 16);
         });
     }

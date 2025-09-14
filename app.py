@@ -52,6 +52,16 @@ def dateformat(value, format='%b %d, %Y'):
     
     return '—'
 
+# Custom Jinja2 filter for comma formatting of large numbers
+@app.template_filter('commafy')
+def commafy(value, decimals=0):
+    """Format a number with thousands separators."""
+    try:
+        fmt = f"{float(value):,.{decimals}f}"
+        return fmt
+    except (TypeError, ValueError):
+        return value
+
 FEDERATO_TOKEN = os.environ.get("FEDERATO_TOKEN")
 CLIENT_ID = os.environ.get("FEDERATO_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("FEDERATO_CLIENT_SECRET")
@@ -705,9 +715,9 @@ def apiClassified():
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 
-@app.route("/api/priority-accounts")
-def apiPriorityAccounts():
-    """API endpoint for Priority Account Review - returns top priority submissions"""
+@app.route("/api/target-accounts")
+def apiTargetAccounts():
+    """Return prioritized target accounts with filtering and pagination"""
     df, _ = refreshCache()
 
     # Get query parameters
@@ -717,7 +727,10 @@ def apiPriorityAccounts():
     max_p = request.args.get("max_premium", type=float)
     q = request.args.get("q")
     page = request.args.get("page", default=1, type=int)
-    per_page = request.args.get("per_page", default=20, type=int)
+    per_page = request.args.get("per_page", type=int)
+    limit = request.args.get("limit", type=int)
+    if per_page is None:
+        per_page = limit if limit is not None else 20
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
 
@@ -1334,11 +1347,25 @@ def api_classified_mode():
     else:
         rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
 
+    # Build summary stats for UI metrics
+    status_counts = Counter([r.get("appetite_status") for r in rows])
+    premiums = [r.get("total_premium") for r in rows if r.get("total_premium") is not None]
+    wins = [r.get("winnability") for r in rows if r.get("winnability") is not None]
+    summary = {
+        "total": len(rows),
+        "target": status_counts.get("TARGET", 0),
+        "in": status_counts.get("IN", 0),
+        "out": status_counts.get("OUT", 0),
+        "avg_premium": float(np.mean(premiums)) if premiums else 0.0,
+        "avg_win": float(np.mean(wins)) if wins else 0.0,
+    }
+
     return jsonify({
         "count": len(rows),
         "data": rows,
         "mode": mode,
         "mode_explanation": mode_explanation,
+        "summary": summary,
     })
 
 

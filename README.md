@@ -1,4 +1,4 @@
-RiskOps Underwriting Dashboard
+AppetizerIQ Underwriting Dashboard
 
 Quick Start
 

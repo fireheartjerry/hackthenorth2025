@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-class RiskOpsChatbot:
+class AppetizerIQChatbot:
     def __init__(self):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         self.model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
@@ -74,7 +74,7 @@ class RiskOpsChatbot:
             percentiles = summarize_percentiles(df)
             
             context = f"""
-RiskOps Underwriting Dashboard Context:
+AppetizerIQ Underwriting Dashboard Context:
 - Total submissions: {summary['total_submissions']}
 - Top states: {', '.join([f"{k}({v})" for k, v in list(summary['states'].items())[:3]])}
 - Average premium: ${summary['avg_premium']:,.0f}
@@ -235,7 +235,7 @@ Current percentile ranges:
         action = self.parse_action_intent(message)
         
         # Build prompt
-        system_prompt = f"""You are an intelligent assistant for the RiskOps Underwriting Dashboard. You help underwriters analyze submissions, navigate the interface, and make data-driven decisions.
+        system_prompt = f"""You are an intelligent assistant for the AppetizerIQ Underwriting Dashboard. You help underwriters analyze submissions, navigate the interface, and make data-driven decisions.
 
 {context}
 
@@ -300,7 +300,7 @@ Remember to reference current data when relevant and suggest specific actions ba
             context = self.get_system_context()
             action = self.parse_action_intent(message)
             
-            system_prompt = f"""You are an intelligent assistant for the RiskOps Underwriting Dashboard.
+            system_prompt = f"""You are an intelligent assistant for the AppetizerIQ Underwriting Dashboard.
 
 {context}
 
@@ -341,4 +341,4 @@ Be helpful, professional, and provide actionable insights about underwriting and
 
 
 # Global chatbot instance
-chatbot = RiskOpsChatbot()
+chatbot = AppetizerIQChatbot()
