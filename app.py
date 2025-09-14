@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, make_response
+from flask import Flask, request, jsonify, render_template, make_response, Response
 import os, json, time, datetime as dt
 import requests
 import pandas as pd
@@ -19,6 +19,7 @@ from gemini_test import explain_with_gemini, nlq_with_gemini
 from utils_json import df_records_to_builtin, to_builtin
 from percentile_modes import build_percentile_filters, summarize_percentiles
 from blend import blend_modes
+from chatbot import chatbot
 
 load_dotenv()
 
@@ -1837,6 +1838,63 @@ def api_underlying():
     except Exception:
         d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
+
+
+# Chatbot API endpoints
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Handle chatbot messages"""
+    try:
+        data = request.get_json()
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", "default")
+        
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+        
+        result = chatbot.chat(message, session_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "response": "I encountered an error processing your request. Please try again.",
+            "ai_used": False
+        }), 500
+
+
+@app.route("/api/chat/stream", methods=["POST"])
+def api_chat_stream():
+    """Handle streaming chatbot responses"""
+    try:
+        data = request.get_json()
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", "default")
+        
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+        
+        def generate():
+            for chunk in chatbot.get_streaming_response(message, session_id):
+                yield f"data: {json.dumps(chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+        
+        return Response(
+            generate(),
+            content_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # For nginx
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "response": "I encountered an error processing your request. Please try again.",
+            "ai_used": False
+        }), 500
 
 
 if __name__ == "__main__":
