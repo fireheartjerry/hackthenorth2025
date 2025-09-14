@@ -52,6 +52,16 @@ def dateformat(value, format='%b %d, %Y'):
     
     return '—'
 
+# Custom Jinja2 filter for comma formatting of large numbers
+@app.template_filter('commafy')
+def commafy(value, decimals=0):
+    """Format a number with thousands separators."""
+    try:
+        fmt = f"{float(value):,.{decimals}f}"
+        return fmt
+    except (TypeError, ValueError):
+        return value
+
 FEDERATO_TOKEN = os.environ.get("FEDERATO_TOKEN")
 CLIENT_ID = os.environ.get("FEDERATO_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("FEDERATO_CLIENT_SECRET")
