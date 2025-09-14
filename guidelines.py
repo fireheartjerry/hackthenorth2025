@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List
 
 import numpy as np
 
-from scoring import score_row, sweet_spot, zscore, geo_penalty
+from scoring import score_row, sweet_spot, zscore, geo_penalty, compute_priority_score
 
 
 def _safe_float(x, default=np.nan):
@@ -120,19 +120,25 @@ def reasons_for_filters(r: Dict, filters: Dict) -> List[str]:
 
 
 def classify_for_mode_row(r: Dict, weights: Dict, filters: Dict, state_counts: Dict) -> Tuple[str, List[str], float, float]:
-    """Return (status, reasons, mode_score, priority_score)."""
+    """Return (status, reasons, mode_score, priority_score).
+
+    Both scores are normalized to a 0-10 scale for consistency with the
+    broader scoring system.
+    """
     reasons = reasons_for_filters(r, filters)
 
     # Score with geo concentration penalty baked in via score_row
-    s = float(score_row(r, weights, state_counts))
+    base = float(score_row(r, weights, state_counts))
+    mode_score = base * 10.0  # convert to 0-10 scale
+
+    comps = component_scores(r, weights)
 
     # Determine status
     if len(reasons) > 0:
         status = "OUT"
     else:
-        comps = component_scores(r, weights)
         # target if very strong score or strong components
-        if s >= 0.80 or (
+        if base >= 0.80 or (
             comps["s_prem"] >= 0.9
             and comps["s_win"] >= 0.6
             and comps["s_con"] >= 1.0
@@ -143,7 +149,27 @@ def classify_for_mode_row(r: Dict, weights: Dict, filters: Dict, state_counts: D
         else:
             status = "IN"
 
-    # Priority mirrors score here; could blend in explicit win weight again if desired
-    priority_score = s
-    return status, reasons, s, priority_score
+    # Composite priority calculation using shared helper
+    priority_score = compute_priority_score(
+        mode_score,
+        comps["s_win"],
+        comps["s_prem"],
+        comps["s_fresh"],
+    )
+
+    # Apply premium multiplier similar to main logic
+    premium = _safe_float(r.get("total_premium"))
+    premium_multiplier = 1.0
+    if not np.isnan(premium):
+        if 75_000 <= premium <= 100_000:
+            premium_multiplier = 1.3
+        elif 50_000 <= premium <= 175_000:
+            premium_multiplier = 1.1
+        if premium >= 1_000_000:
+            premium_multiplier *= 1.2
+
+    priority_score *= premium_multiplier
+    priority_score = max(0.1, min(10.0, priority_score))
+
+    return status, reasons, mode_score, priority_score
 

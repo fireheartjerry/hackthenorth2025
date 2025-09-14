@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Test script to verify the new priority scoring system
+Test script to verify the target account scoring system
 """
 import requests
 import json
 
-def test_priority_accounts():
-    """Test the priority accounts API endpoint"""
+def test_target_accounts():
+    """Test the target accounts API endpoint"""
     try:
-        url = "http://127.0.0.1:5050/api/priority-accounts"
+        url = "http://127.0.0.1:5050/api/target-accounts"
         params = {
             'per_page': 10,
             'sort_by': 'priority_score',
             'sort_dir': 'desc'
         }
         
-        print("🧪 Testing Priority Accounts API...")
+        print("🧪 Testing Target Accounts API...")
         response = requests.get(url, params=params, timeout=10)
         
         if response.status_code == 200:
@@ -24,7 +24,7 @@ def test_priority_accounts():
             print(f"📊 Total accounts: {data['pagination']['total_count']}")
             print(f"📄 Current page: {data['pagination']['page']}")
             
-            print("\n🎯 Top Priority Accounts:")
+            print("\n🎯 Top Target Accounts:")
             print("=" * 80)
             
             for i, account in enumerate(data['data'][:5], 1):
@@ -105,6 +105,6 @@ def test_classified_data():
 
 if __name__ == "__main__":
     print("🚀 Testing New Priority Scoring System\n")
-    test_priority_accounts()
+    test_target_accounts()
     test_classified_data()
     print("\n✅ Testing completed!")
