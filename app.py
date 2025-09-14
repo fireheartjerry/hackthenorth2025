@@ -8,7 +8,7 @@ from collections import Counter
 
 # Custom modules
 from utils_data import load_df
-from scoring import score_row
+from scoring import score_row, compute_priority_score
 from guidelines import classify_for_mode_row
 from modes import MODES
 from ai_suggest import summarize_dataframe
@@ -406,21 +406,19 @@ def classifyRow(row):
     # Ensure appetite score is in reasonable range
     appetite_score = max(1.0, min(10.0, appetite_score))
     
-    # Calculate composite priority score
-    # 40% appetite alignment, 30% winnability, 20% premium size, 10% freshness
+    # Calculate composite priority score using shared helper
     freshness_factor = 1.0  # Could be enhanced with submission date analysis
-    
-    priority_score = (
-        appetite_score * 0.4 +
-        (w * 10.0) * 0.3 +  # Scale winnability to 0-10 range
-        (min(premium / 200_000, 1.0) * 10.0 if pd.notna(premium) else 5.0) * 0.2 +  # Premium factor
-        freshness_factor * 10.0 * 0.1
+    premium_norm = min(premium / 200_000, 1.0) if pd.notna(premium) else 0.5
+
+    priority_score = compute_priority_score(
+        appetite_score,
+        w,
+        premium_norm,
+        freshness_factor,
     )
-    
-    # Apply premium multiplier to final score
+
+    # Apply premium multiplier and clamp
     priority_score *= premium_multiplier
-    
-    # Ensure priority score is in 0-10 range
     priority_score = max(0.1, min(10.0, priority_score))
     
     # === DETERMINE STATUS ===
@@ -735,28 +733,9 @@ def apiTargetAccounts():
         per_page = limit if limit is not None else 20
     sort_by = request.args.get("sort_by", default="priority_score")
     sort_dir = request.args.get("sort_dir", default="desc")
-    mode = request.args.get("mode")
 
-    # Start with full dataset
+    # Apply initial filters to cached dataframe
     d = df.copy()
-
-    # If a mode is specified, apply mode-specific filters and scoring
-    if mode and mode in MODES:
-        preset = MODES[mode]
-        filters = preset.get("filters", {})
-        weights = preset.get("weights", {})
-        d = apply_hard_filters(d, filters)
-        scounts = Counter(d["primary_risk_state"].fillna("UNK"))
-        rows = []
-        for r in d.to_dict(orient="records"):
-            stat, reasons, s, pscore = classify_for_mode_row(r, weights, filters, scounts)
-            r["appetite_status"] = stat
-            r["appetite_reasons"] = reasons
-            r["priority_score"] = float(pscore) * 10.0  # scale to 0-10 for consistency
-            rows.append(r)
-        d = pd.DataFrame(rows)
-
-    # Apply UI filters
     if state:
         d = d[d["primary_risk_state"].astype(str).str.upper() == state.upper()]
     if status:
@@ -768,63 +747,78 @@ def apiTargetAccounts():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
-    
-    # Focus on higher-priority submissions for review
-    d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
+
+    # Re-score rows using balanced growth mode for consistency
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+    preset = MODES.get("balanced_growth", {})
+    weights = preset.get("weights", {})
+    filters_cfg = preset.get("filters", {})
+    rows = []
+    for r in d.to_dict(orient="records"):
+        stat, reasons, mscore, pscore = classify_for_mode_row(r, weights, filters_cfg, scounts)
+        r["appetite_status"] = stat
+        r["appetite_reasons"] = reasons
+        r["mode_score"] = mscore
+        r["priority_score"] = pscore
+        rows.append(r)
+
+    # Focus on higher-priority submissions for priority review
+    rows = [
+        r for r in rows
+        if r.get("priority_score", 0) >= 1.0
+        and r.get("appetite_status") in {"TARGET", "IN", "OUT"}
+    ]
 
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
-    if sort_by in d.columns:
-        d = d.sort_values([sort_by], ascending=ascending)
-    else:
-        d = d.sort_values(["priority_score"], ascending=False)
-    
+    valid_keys = {
+        "id", "account_name", "primary_risk_state", "line_of_business",
+        "total_premium", "tiv", "winnability", "appetite_status",
+        "priority_score", "mode_score",
+    }
+    key = sort_by if sort_by in valid_keys else "priority_score"
+    rows.sort(
+        key=lambda r: r.get(key) if r.get(key) is not None else -float("inf"),
+        reverse=not ascending,
+    )
+
     # Calculate pagination
-    total_count = len(d)
+    total_count = len(rows)
     total_pages = (total_count + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
-    
-    # Get paginated data
-    paginated_data = d.iloc[start_idx:end_idx]
-    
+    paginated_rows = rows[start_idx:end_idx]
+
     # Convert to response format
     response_data = []
-    for _, row in paginated_data.iterrows():
+    for r in paginated_rows:
+        r = sanitize_row(r)
         response_data.append({
-            "id": int(row["id"]),
-            "account_name": str(row["account_name"]),
-            "appetite_status": str(row["appetite_status"]),
-            "total_premium": float(row["total_premium"]),
-            "primary_risk_state": str(row["primary_risk_state"]),
-            "winnability": float(row["winnability"]) if pd.notna(row["winnability"]) else 0.0,
-            "priority_score": float(row["priority_score"]) if pd.notna(row["priority_score"]) else 0.0,
-            "tiv": float(row["tiv"]) if pd.notna(row["tiv"]) else 0.0,
-            "line_of_business": str(row["line_of_business"]) if pd.notna(row["line_of_business"]) else "",
-            "appetite_reasons": row.get("appetite_reasons", []) if isinstance(row.get("appetite_reasons"), list) else [],
-            "created_at": str(row["created_at"]) if pd.notna(row["created_at"]) else "",
-            "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else "",
+            "id": r.get("id"),
+            "account_name": r.get("account_name"),
+            "appetite_status": r.get("appetite_status"),
+            "total_premium": r.get("total_premium"),
+            "primary_risk_state": r.get("primary_risk_state"),
+            "winnability": r.get("winnability") or 0.0,
+            "priority_score": r.get("priority_score") or 0.0,
+            "mode_score": r.get("mode_score") or 0.0,
+            "tiv": r.get("tiv") or 0.0,
+            "line_of_business": r.get("line_of_business", ""),
+            "appetite_reasons": r.get("appetite_reasons", []),
+            "created_at": r.get("created_at"),
+            "effective_date": r.get("effective_date"),
         })
-    
+
     return jsonify({
         "data": response_data,
         "pagination": {
             "page": page,
             "per_page": per_page,
-            "total_count": total_count,
             "total_pages": total_pages,
+            "total_count": total_count,
+            "has_prev": page > 1,
             "has_next": page < total_pages,
-            "has_prev": page > 1
         },
-        "filters": {
-            "state": state,
-            "status": status,
-            "min_premium": min_p,
-            "max_premium": max_p,
-            "search": q,
-            "sort_by": sort_by,
-            "sort_dir": sort_dir
-        }
     })
 
 
@@ -1293,13 +1287,13 @@ def api_classified_mode():
     scounts = Counter(d["primary_risk_state"].fillna("UNK"))
     rows = []
     for r in d.to_dict(orient="records"):
-        stat, reasons, s, pscore = classify_for_mode_row(
+        stat, reasons, mscore, pscore = classify_for_mode_row(
             r, weights, filters, scounts
         )
         r["appetite_status"] = stat
         r["appetite_reasons"] = reasons
         r["priority_score"] = float(pscore)
-        r["mode_score"] = round(float(pscore), 4)
+        r["mode_score"] = round(float(mscore), 4)
         rows.append(sanitize_row(r))
 
     # Cut to top N% if provided in filters
