@@ -9,6 +9,7 @@ class RiskOpsChatbot {
         
         this.initializeWidget();
         this.bindEvents();
+        this.enableDragging();
         this.loadSuggestions();
         this.updateContext();
     }
@@ -101,7 +102,10 @@ class RiskOpsChatbot {
         chatButton.innerHTML = `
             <div class="chat-toggle-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <circle cx="9" cy="10" r="1"/>
+                    <circle cx="13" cy="10" r="1"/>
+                    <circle cx="17" cy="10" r="1"/>
                 </svg>
             </div>
             <div class="chat-toggle-badge hidden" id="chat-badge">1</div>
@@ -119,8 +123,8 @@ class RiskOpsChatbot {
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
-                width: 60px;
-                height: 60px;
+                width: 56px;
+                height: 56px;
                 border-radius: 50%;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 border: none;
@@ -133,6 +137,7 @@ class RiskOpsChatbot {
                 align-items: center;
                 justify-content: center;
                 position: relative;
+                padding: 0;
             }
             
             .chat-toggle-btn:hover {
@@ -164,8 +169,9 @@ class RiskOpsChatbot {
                 height: 600px;
                 background: rgba(15, 23, 42, 0.95);
                 backdrop-filter: blur(20px);
-                border: 1px solid rgba(148, 163, 184, 0.2);
-                border-radius: 16px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                overflow: hidden;
                 z-index: 999;
                 display: flex;
                 flex-direction: column;
@@ -184,7 +190,8 @@ class RiskOpsChatbot {
                 align-items: center;
                 justify-content: space-between;
                 background: rgba(30, 41, 59, 0.8);
-                border-radius: 16px 16px 0 0;
+                user-select: none;
+                cursor: move;
             }
             
             .chat-header-content {
@@ -366,8 +373,13 @@ class RiskOpsChatbot {
                 color: white;
             }
             
+            .chat-input-container {
+                border-top: 1px solid rgba(148, 163, 184, 0.2);
+                background: rgba(15, 23, 42, 0.9);
+            }
+
             .chat-input-area {
-                padding: 16px;
+                padding: 12px 16px;
                 display: flex;
                 gap: 12px;
                 align-items: flex-end;
@@ -588,24 +600,64 @@ class RiskOpsChatbot {
             this.hideConfirmation();
         });
     }
+
+    enableDragging() {
+        const widget = document.getElementById('chat-widget');
+        const header = widget.querySelector('.chat-header');
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const rect = widget.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            widget.style.bottom = 'auto';
+            widget.style.right = 'auto';
+            widget.style.left = `${startLeft}px`;
+            widget.style.top = `${startTop}px`;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            widget.style.left = `${startLeft + dx}px`;
+            widget.style.top = `${startTop + dy}px`;
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+    }
     
     toggleWidget() {
         const widget = document.getElementById('chat-widget');
         const badge = document.getElementById('chat-badge');
-        
+        const toggleBtn = document.getElementById('chat-toggle');
+
         if (this.isOpen) {
             this.closeWidget();
         } else {
             widget.classList.remove('hidden');
+            toggleBtn.classList.add('hidden');
             this.isOpen = true;
             badge.classList.add('hidden');
             document.getElementById('chat-input').focus();
         }
     }
-    
+
     closeWidget() {
         const widget = document.getElementById('chat-widget');
+        const toggleBtn = document.getElementById('chat-toggle');
         widget.classList.add('hidden');
+        toggleBtn.classList.remove('hidden');
         this.isOpen = false;
     }
     
