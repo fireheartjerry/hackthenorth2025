@@ -766,7 +766,14 @@
                     }
                 });
                 // Persona open/close from header (use onclick to avoid double-bind)
-                const _openPersona = () => { document.getElementById('persona_modal')?.classList?.remove('hidden'); initPersonaFlow(); closeGlobalMenu(); };
+                const _openPersona = () => { 
+                    console.log('_openPersona called'); 
+                    const modal = document.getElementById('persona_modal');
+                    console.log('Modal element:', modal);
+                    modal?.classList?.remove('hidden'); 
+                    initPersonaFlow(); 
+                    closeGlobalMenu(); 
+                };
                 const _closePersona = () => { document.getElementById('persona_modal')?.classList?.add('hidden'); };
                 const _btnPersona = document.getElementById('btn_persona_global'); if (_btnPersona) _btnPersona.onclick = _openPersona;
                 const _btnPersonaClose = document.getElementById('persona_close'); if (_btnPersonaClose) _btnPersonaClose.onclick = _closePersona;
@@ -780,30 +787,47 @@
                 let totalSteps = 0;
 
                 function initPersonaFlow() {
+                    console.log('initPersonaFlow called');
                     currentStep = 1;
                     totalSteps = document.querySelectorAll('.persona-step').length;
+                    console.log('Found', totalSteps, 'steps');
+                    
+                    // Initialize first step
+                    const firstStep = document.querySelector('[data-step="1"]');
+                    if (firstStep) {
+                        firstStep.style.display = 'block';
+                        firstStep.classList.add('active', 'visible');
+                    }
+                    
                     updateProgressBar();
-                    showStep(1);
                     updateNavigation();
                     bindSliderUpdates();
                     bindFormUpdates();
                 }
 
                 function showStep(step) {
+                    console.log('showStep called with step:', step);
                     // Hide all steps
-                    document.querySelectorAll('.persona-step').forEach(s => s.classList.remove('active'));
+                    document.querySelectorAll('.persona-step').forEach(s => {
+                        s.classList.remove('active', 'visible');
+                        s.style.display = 'none';
+                    });
+                    
                     // Show current step
                     const currentStepEl = document.querySelector(`[data-step="${step}"]`);
+                    console.log('Current step element:', currentStepEl);
                     if (currentStepEl) {
+                        // Make it visible but start with fade-in animation
+                        currentStepEl.style.display = 'block';
                         currentStepEl.classList.add('active');
-                        // Add entrance animation
-                        currentStepEl.style.opacity = '0';
-                        currentStepEl.style.transform = 'translateY(20px)';
+                        console.log('Added active class and display:block to step', step);
+                        
+                        // Trigger fade-in animation after a brief delay
                         setTimeout(() => {
-                            currentStepEl.style.transition = 'all 0.3s ease-out';
-                            currentStepEl.style.opacity = '1';
-                            currentStepEl.style.transform = 'translateY(0)';
+                            currentStepEl.classList.add('visible');
                         }, 50);
+                    } else {
+                        console.error('Could not find step element for step:', step);
                     }
                 }
 
