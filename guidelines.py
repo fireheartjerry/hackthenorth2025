@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List
 
 import numpy as np
 
-from scoring import score_row, sweet_spot, zscore, geo_penalty
+from scoring import score_row, sweet_spot, zscore, geo_penalty, compute_priority_score
 
 
 def _safe_float(x, default=np.nan):
@@ -149,13 +149,26 @@ def classify_for_mode_row(r: Dict, weights: Dict, filters: Dict, state_counts: D
         else:
             status = "IN"
 
-    # Composite priority calculation mirroring main app logic
-    priority_score = (
-        mode_score * 0.4
-        + comps["s_win"] * 10.0 * 0.3
-        + comps["s_prem"] * 10.0 * 0.2
-        + comps["s_fresh"] * 10.0 * 0.1
+    # Composite priority calculation using shared helper
+    priority_score = compute_priority_score(
+        mode_score,
+        comps["s_win"],
+        comps["s_prem"],
+        comps["s_fresh"],
     )
+
+    # Apply premium multiplier similar to main logic
+    premium = _safe_float(r.get("total_premium"))
+    premium_multiplier = 1.0
+    if not np.isnan(premium):
+        if 75_000 <= premium <= 100_000:
+            premium_multiplier = 1.3
+        elif 50_000 <= premium <= 175_000:
+            premium_multiplier = 1.1
+        if premium >= 1_000_000:
+            premium_multiplier *= 1.2
+
+    priority_score *= premium_multiplier
     priority_score = max(0.1, min(10.0, priority_score))
 
     return status, reasons, mode_score, priority_score

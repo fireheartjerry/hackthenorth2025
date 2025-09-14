@@ -8,7 +8,7 @@ from collections import Counter
 
 # Custom modules
 from utils_data import load_df
-from scoring import score_row
+from scoring import score_row, compute_priority_score
 from guidelines import classify_for_mode_row
 from modes import MODES
 from ai_suggest import summarize_dataframe
@@ -396,21 +396,19 @@ def classifyRow(row):
     # Ensure appetite score is in reasonable range
     appetite_score = max(1.0, min(10.0, appetite_score))
     
-    # Calculate composite priority score
-    # 40% appetite alignment, 30% winnability, 20% premium size, 10% freshness
+    # Calculate composite priority score using shared helper
     freshness_factor = 1.0  # Could be enhanced with submission date analysis
-    
-    priority_score = (
-        appetite_score * 0.4 +
-        (w * 10.0) * 0.3 +  # Scale winnability to 0-10 range
-        (min(premium / 200_000, 1.0) * 10.0 if pd.notna(premium) else 5.0) * 0.2 +  # Premium factor
-        freshness_factor * 10.0 * 0.1
+    premium_norm = min(premium / 200_000, 1.0) if pd.notna(premium) else 0.5
+
+    priority_score = compute_priority_score(
+        appetite_score,
+        w,
+        premium_norm,
+        freshness_factor,
     )
-    
-    # Apply premium multiplier to final score
+
+    # Apply premium multiplier and clamp
     priority_score *= premium_multiplier
-    
-    # Ensure priority score is in 0-10 range
     priority_score = max(0.1, min(10.0, priority_score))
     
     # === DETERMINE STATUS ===
