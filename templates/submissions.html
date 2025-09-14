@@ -665,8 +665,10 @@
                         </div>
                     </td>
                     <td class="td py-4 px-4">
-                        ${appetiteBadge}
-                        ${r.target_opportunity ? '<span class="pill pill-indigo ml-2">TOP</span>' : ''}
+                        <div class="flex items-center gap-2">
+                            ${appetiteBadge}
+                            ${r.target_opportunity ? '<span class="pill pill-indigo">TOP</span>' : ''}
+                        </div>
                     </td>
                     <td class="td py-4 px-4 col-account" title="${(r.account_name || '').replace(/"/g,'&quot;')}">
                         <div class="font-semibold text-white name">${r.account_name || "—"}</div>
