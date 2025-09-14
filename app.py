@@ -651,13 +651,17 @@ def insights():
 @app.route("/detail/<int:pid>")
 def detail(pid):
     mode = request.args.get("mode")
+
+    # Always work off the same cached dataframe used elsewhere so that
+    # appetite status remains consistent between list and detail views.
+    df, _ = refreshCache()
+
     if mode and mode in MODES:
         try:
-            ddf = load_df("data.json")
-            dd = ddf[ddf["id"] == pid]
+            dd = df[df["id"] == pid]
             if dd.empty:
-                return render_template("detail.html", item=None)
-            scounts = Counter(ddf["primary_risk_state"].fillna("UNK"))
+                return render_template("detail.html", item=None, mode=mode)
+            scounts = Counter(df["primary_risk_state"].fillna("UNK"))
             preset = MODES[mode]
             r = dd.iloc[0].to_dict()
             status, reasons, s, pscore = classify_for_mode_row(
@@ -666,15 +670,15 @@ def detail(pid):
             r["appetite_status"] = status
             r["appetite_reasons"] = reasons
             r["priority_score"] = float(pscore)
-            return render_template("detail.html", item=r)
+            return render_template("detail.html", item=r, mode=mode)
         except Exception:
             pass
-    df, _ = refreshCache()
+
     d = df[df["id"] == pid]
     if d.empty:
-        return render_template("detail.html", item=None)
+        return render_template("detail.html", item=None, mode=mode)
     item = dfToDict(d)[0]
-    return render_template("detail.html", item=item)
+    return render_template("detail.html", item=item, mode=mode)
 
 
 @app.route("/api/policies")

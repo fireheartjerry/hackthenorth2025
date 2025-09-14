@@ -19,21 +19,23 @@
             <div class="flex items-center gap-2 mt-2">
                 <span class="text-xs opacity-70">ID {{ item.id }}</span>
                 <span class="text-xs opacity-70">•</span>
-                <span id="mode_label" class="text-xs opacity-70"
-                    >Mode: default</span
-                >
+                <span id="mode_label" class="text-xs opacity-70">
+                    Mode: {{ mode or 'default' }}
+                </span>
                 {% if item.appetite_status == 'TARGET' %}
-                <span class="appetite-indicator appetite-target pill"
-                    >🎯 TARGET OPPORTUNITY</span
-                >
+                <span class="appetite-indicator appetite-target pill">
+                    🎯 TARGET OPPORTUNITY
+                </span>
                 {% elif item.appetite_status == 'IN' %}
-                <span class="appetite-indicator appetite-in pill"
-                    >✅ IN-APPETITE</span
-                >
+                <span class="appetite-indicator appetite-in pill">
+                    ✅ IN-APPETITE
+                </span>
+                {% elif item.appetite_status == 'OUT' %}
+                <span class="appetite-indicator appetite-out pill">
+                    ❌ OUT-OF-APPETITE
+                </span>
                 {% else %}
-                <span class="appetite-indicator appetite-out pill"
-                    >❌ OUT-OF-APPETITE</span
-                >
+                <span class="appetite-indicator pill">ℹ️ STATUS UNKNOWN</span>
                 {% endif %}
             </div>
         </div>
