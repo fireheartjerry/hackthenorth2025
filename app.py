@@ -11,6 +11,7 @@ from utils_data import load_df
 from scoring import score_row
 from guidelines import classify_for_mode_row
 from modes import MODES
+from persona_store import load_store as persona_load_store, save_store as persona_save_store, list_personas as persona_list, add_persona as persona_add, get_persona as persona_get, set_active as persona_set_active, get_active as persona_get_active
 from ai_suggest import summarize_dataframe
 from persona_seed import seeds_from_answers
 from ai_constraints import propose_with_gemini
@@ -74,6 +75,32 @@ USE_LOCAL_DATA = os.environ.get("USE_LOCAL_DATA", "false").lower() == "true"
 
 CACHE_TTL = 300
 _cache_data = {"ts": 0, "df": None, "raw": None}
+
+# Persona registry (slugs loaded from personas.json). We mirror saved personas into MODES
+_PERSONA_INDEX = {}  # slug -> title
+
+def _load_personas_into_modes():
+    global _PERSONA_INDEX
+    store = persona_load_store()
+    items = store.get("items", {}) or {}
+    _PERSONA_INDEX = {slug: rec.get("title") or slug for slug, rec in items.items()}
+    # Mirror saved personas into MODES by their slug key
+    for slug, rec in items.items():
+        preset = rec.get("preset") or {}
+        if isinstance(preset, dict) and preset:
+            MODES[slug] = preset
+    # Set MODES["custom"] to active persona if present
+    active_slug = store.get("active")
+    if active_slug and active_slug in items:
+        active_preset = items[active_slug].get("preset")
+        if isinstance(active_preset, dict) and active_preset:
+            MODES["custom"] = active_preset
+
+# Load personas at startup
+try:
+    _load_personas_into_modes()
+except Exception:
+    pass
 
 ACCEPT_STATES = {"OH", "PA", "MD", "CO", "CA", "FL", "NC", "SC", "GA", "VA", "UT"}
 TARGET_STATES = {"OH", "PA", "MD", "CO", "CA", "FL"}
@@ -449,7 +476,42 @@ def classifyDataFrame(df):
     df["appetite_reasons"] = reasons
     df["appetite_score"] = appetites
     df["priority_score"] = priorities
+    # Mark target opportunities globally on the full dataset (top 30% of in-appetite by priority)
+    try:
+        df = mark_target_opportunities_df(df)
+    except Exception:
+        # Non-fatal if marking fails; continue without the flag
+        pass
     return df
+
+
+def mark_target_opportunities_df(frame):
+    """Return a copy of frame with boolean column 'target_opportunity' set True
+    for the top ceil(30%) rows among in-appetite (TARGET/IN) by priority_score.
+
+    This operates on the provided frame only; callers should pass a filtered
+    subset when computing list-specific target opportunities.
+    """
+    if frame is None or len(frame) == 0:
+        return frame
+    d = frame.copy()
+    # Initialize column
+    d["target_opportunity"] = False
+    try:
+        in_mask = d["appetite_status"].isin(["TARGET", "IN"]).fillna(False)
+        in_df = d[in_mask]
+        n = len(in_df)
+        if n > 0:
+            top_n = int(np.ceil(0.30 * n))
+            # Sort by priority_score descending; NaNs go last
+            in_sorted = in_df.sort_values(["priority_score"], ascending=[False])
+            ids = in_sorted.head(max(1, top_n))["id"].tolist()
+            if ids:
+                d.loc[d["id"].isin(ids), "target_opportunity"] = True
+    except Exception:
+        # If anything goes wrong, leave column as False
+        pass
+    return d
 
 
 def refreshCache():
@@ -523,8 +585,17 @@ def dfToDict(df):
 def home():
     df, _ = refreshCache()
     total = len(df)
-    in_ct = int((df["appetite_status"] == "IN").sum()) if not df.empty else 0
-    tgt_ct = int((df["appetite_status"] == "TARGET").sum()) if not df.empty else 0
+    # In-appetite includes both IN and TARGET statuses
+    in_ct = int(df["appetite_status"].isin(["IN", "TARGET"]).sum()) if not df.empty else 0
+    # Target opportunities are the top 30% of in-appetite by priority_score
+    if not df.empty and "target_opportunity" in df.columns:
+        tgt_ct = int((df["target_opportunity"] == True).sum())
+    else:
+        try:
+            _tmp = mark_target_opportunities_df(df)
+            tgt_ct = int((_tmp["target_opportunity"] == True).sum())
+        except Exception:
+            tgt_ct = 0
     out_ct = int((df["appetite_status"] == "OUT").sum()) if not df.empty else 0
     avg_premium = float(df["total_premium"].mean()) if not df.empty else 0.0
     avg_premium_str = f"${avg_premium:,.0f}"
@@ -570,8 +641,8 @@ def home():
         except Exception:
             avg_win = 0.0
 
-    # Opportunities = targets + in-appetite
-    opp_ct = int(tgt_ct + in_ct)
+    # Opportunities = all in-appetite (includes targets)
+    opp_ct = int(in_ct)
     return render_template(
         "index.html",
         total=total,
@@ -613,14 +684,21 @@ def submissions():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]  # Handle NaN values explicitly
-    # Sort: TARGET -> IN -> OUT, then by priority score desc, premium desc
+    # Recompute target opportunities within the filtered set to keep 30% rule list-specific
+    try:
+        d = mark_target_opportunities_df(d)
+    except Exception:
+        pass
+
+    # Sort: target_opportunity first, then TARGET -> IN -> OUT, then by priority score desc, premium desc
     try:
         d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
         d["__s"] = pd.Categorical(
             d["appetite_status"], categories=["TARGET", "IN", "OUT"], ordered=True
         )
-        d = d.sort_values(["__s", "priority_score", "total_premium"], ascending=[True, False, False])
-        d = d.drop(columns=["__s"])
+        d = d.sort_values(["__top", "__s", "priority_score", "total_premium"], ascending=[False, True, False, False])
+        d = d.drop(columns=["__top", "__s"])
     except Exception:
         d = d.sort_values(["priority_score"], ascending=False)
     rows = dfToDict(d)
@@ -705,7 +783,14 @@ def apiClassified():
     if q:
         m = d["account_name"].astype(str).str.contains(q, case=False, na=False)
         d = d[m.fillna(False)]
-    d = d.sort_values(["priority_score"], ascending=False)
+    # Mark targets within the filtered set then sort with them first
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        d = d.sort_values(["__top", "priority_score"], ascending=[False, False]).drop(columns=["__top"])
+    except Exception:
+        d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 
@@ -741,15 +826,25 @@ def apiPriorityAccounts():
         d = d[m.fillna(False)]
     
     # Focus on higher-priority submissions for priority review
-    # Show submissions with priority_score >= 1.0 and preferably IN or TARGET status
-    d = d[(d["priority_score"] >= 1.0) & (d["appetite_status"].isin(["TARGET", "IN", "OUT"]))]
-    
+    d = d[(d["priority_score"] >= 1.0)]
+
     # Apply sorting
     ascending = sort_dir.lower() == "asc"
-    if sort_by in d.columns:
-        d = d.sort_values([sort_by], ascending=ascending)
-    else:
-        d = d.sort_values(["priority_score"], ascending=False)
+    # Recompute list-local target opportunities and sort them first, then by requested sort
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        if sort_by in d.columns:
+            d = d.sort_values(["__top", sort_by], ascending=[False, ascending])
+        else:
+            d = d.sort_values(["__top", "priority_score"], ascending=[False, False])
+        d = d.drop(columns=["__top"])
+    except Exception:
+        if sort_by in d.columns:
+            d = d.sort_values([sort_by], ascending=ascending)
+        else:
+            d = d.sort_values(["priority_score"], ascending=False)
     
     # Calculate pagination
     total_count = len(d)
@@ -773,6 +868,7 @@ def apiPriorityAccounts():
             "priority_score": float(row["priority_score"]) if pd.notna(row["priority_score"]) else 0.0,
             "tiv": float(row["tiv"]) if pd.notna(row["tiv"]) else 0.0,
             "line_of_business": str(row["line_of_business"]) if pd.notna(row["line_of_business"]) else "",
+            "target_opportunity": bool(row.get("target_opportunity", False)),
             "appetite_reasons": row.get("appetite_reasons", []) if isinstance(row.get("appetite_reasons"), list) else [],
             "created_at": str(row["created_at"]) if pd.notna(row["created_at"]) else "",
             "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else "",
@@ -798,6 +894,100 @@ def apiPriorityAccounts():
             "sort_dir": sort_dir
         }
     })
+
+
+@app.route("/api/metrics_mode")
+def api_metrics_mode():
+    """Return KPI metrics for the given analysis mode without trimming to top_pct.
+
+    Provides counts and percents for TARGET/IN/OUT based on mode-driven classification,
+    plus totals, avg premium, avg winnability and opportunities.
+    """
+    mode = (request.args.get("mode") or "balanced_growth").strip()
+    df = load_df("data.json")
+    if df.empty:
+        return jsonify({"ok": True, "metrics": {
+            "total": 0, "targets": 0, "inCt": 0, "outCt": 0,
+            "pctTgt": 0, "pctIn": 0, "pctOut": 0,
+            "avgPremium": 0.0, "winRate": 0.0, "opportunities": 0,
+        }})
+
+    # Determine filters/weights for the requested mode
+    name_map = {
+        "unicorn_hunting": "unicorn",
+        "balanced_growth": "balanced",
+        "loose_fits": "loose",
+        "turnaround_bets": "turnaround",
+        "unicorn": "unicorn",
+        "balanced": "balanced",
+        "loose": "loose",
+        "turnaround": "turnaround",
+    }
+
+    if mode == "custom" and "custom" in MODES:
+        preset = MODES["custom"]
+        filters = preset.get("filters", {})
+        weights = preset.get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        d = apply_hard_filters(df, filters)
+    else:
+        kind = name_map.get(mode, "balanced")
+        filters, _summary = build_percentile_filters(df, kind=kind, overrides=None)
+        d = apply_hard_filters(df, filters)
+        weights = MODES.get("balanced_growth", {}).get("weights", {})
+
+    if d.empty:
+        return jsonify({"ok": True, "metrics": {
+            "total": 0, "targets": 0, "inCt": 0, "outCt": 0,
+            "pctTgt": 0, "pctIn": 0, "pctOut": 0,
+            "avgPremium": 0.0, "winRate": 0.0, "opportunities": 0,
+        }})
+
+    # Classify all rows (no top_pct cut) to get status counts
+    scounts = Counter(d["primary_risk_state"].fillna("UNK"))
+    t = i = o = 0
+    wins = []
+    prems = []
+    for r in d.to_dict(orient="records"):
+        status, reasons, s, pscore = classify_for_mode_row(r, weights, filters, scounts)
+        if status == "TARGET":
+            t += 1
+        elif status == "IN":
+            i += 1
+        else:
+            o += 1
+        try:
+            v = r.get("winnability")
+            if v is not None and v == v:
+                wins.append(float(v))
+        except Exception:
+            pass
+        try:
+            v = r.get("total_premium")
+            if v is not None and v == v:
+                prems.append(float(v))
+        except Exception:
+            pass
+
+    total = int(t + i + o)
+    def _pct(n, d):
+        try:
+            return int(round(((n / d) * 100.0))) if d else 0
+        except Exception:
+            return 0
+
+    metrics = {
+        "total": total,
+        "targets": int(t),
+        "inCt": int(i),
+        "outCt": int(o),
+        "pctTgt": _pct(t, total),
+        "pctIn": _pct(i, total),
+        "pctOut": _pct(o, total),
+        "avgPremium": float(np.mean(prems)) if prems else 0.0,
+        "winRate": float(np.mean(wins) * 100.0) if wins else 0.0,
+        "opportunities": int(t + i),
+    }
+    return jsonify({"ok": True, "metrics": metrics})
 
 
 @app.route("/api/refresh", methods=["POST"]) 
@@ -931,9 +1121,20 @@ def apiNlq():
 @app.route("/api/modes")
 def api_modes():
     # Return an array of objects so the UI can render key/label pairs
-    arr = [
-        {"key": k, "label": k.replace("_", " ").title()} for k in MODES.keys()
-    ]
+    arr = []
+    for k in MODES.keys():
+        if k in _PERSONA_INDEX:
+            label = f"Persona: {_PERSONA_INDEX[k]}"
+        elif k == "custom":
+            # If custom is active persona, reflect it
+            slug, rec = persona_get_active()
+            if slug and rec:
+                label = f"Persona: {rec.get('title') or slug} (Active)"
+            else:
+                label = k.replace("_", " ").title()
+        else:
+            label = k.replace("_", " ").title()
+        arr.append({"key": k, "label": label})
     return jsonify(arr)
 
 
@@ -1399,22 +1600,52 @@ def api_classified_mode():
         "turnaround": "turnaround",
     }
 
-    if mode == "custom" and "custom" in MODES:
-        # Persona-driven
-        preset = MODES["custom"]
-        filters = preset.get("filters", {})
-        d = apply_hard_filters(df, filters)
-        weights = preset.get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
-        mode_explanation = "Custom mode (persona-refined)"
+    # Check if all user filters are empty (reset state)
+    user_filters_active = any([
+        request.args.get("state"),
+        request.args.get("status"), 
+        request.args.get("min_premium"),
+        request.args.get("max_premium"),
+        request.args.get("q")
+    ])
+
+    # 1) If mode refers to a concrete preset in MODES (including saved personas), use it
+    if mode in MODES:
+        preset = MODES[mode]
+        filters = (preset or {}).get("filters", {})
+        weights = (preset or {}).get("weights", MODES.get("balanced_growth", {}).get("weights", {}))
+        
+        # If no user filters are active, show ALL data but use mode weights for scoring
+        if not user_filters_active:
+            d = df  # Don't apply hard filters - show all data
+        else:
+            d = apply_hard_filters(df, filters)
+            
+        if mode in _PERSONA_INDEX or mode == "custom":
+            # Persona-selected
+            title = _PERSONA_INDEX.get(mode)
+            if mode == "custom":
+                _slug, _rec = persona_get_active()
+                if _rec:
+                    title = _rec.get("title") or title
+            mode_explanation = f"Custom persona — {title or mode}"
+        else:
+            mode_explanation = f"Preset mode — {mode.replace('_',' ').title()}"
     else:
+        # 2) Otherwise, fall back to percentile-driven dynamic filters by kind
         kind = name_map.get(mode, "balanced")
-        # Collect overrides
         overrides = {}
         for k in ("top_pct", "max_lr_pct", "min_win_pct", "max_tiv_pct", "fresh_pct"):
             if k in request.args:
                 overrides[k] = request.args.get(k)
         filters, _summary = build_percentile_filters(df, kind=kind, overrides=overrides)
-        d = apply_hard_filters(df, filters)
+        
+        # If no user filters are active, show ALL data but use mode weights for scoring
+        if not user_filters_active:
+            d = df  # Don't apply hard filters - show all data
+        else:
+            d = apply_hard_filters(df, filters)
+            
         weights = MODES.get("balanced_growth", {}).get("weights", {})
         mode_explanation = f"{kind.title()} mode — dynamic percentile-based filters"
 
@@ -1448,6 +1679,23 @@ def api_classified_mode():
         r["mode_score"] = round(float(pscore), 4)
         rows.append(sanitize_row(r))
 
+    # Mark target opportunities in this list (top 30% by priority among in-appetite)
+    try:
+        in_rows = [r for r in rows if str(r.get("appetite_status")) in ("TARGET", "IN")]
+        k = len(in_rows)
+        if k > 0:
+            top_n = max(1, int(np.ceil(0.30 * k)))
+            in_rows_sorted = sorted(in_rows, key=lambda r: (r.get("priority_score") or 0.0), reverse=True)
+            top_set = {r.get("id") for r in in_rows_sorted[:top_n]}
+            for r in rows:
+                r["target_opportunity"] = bool(r.get("id") in top_set)
+        else:
+            for r in rows:
+                r["target_opportunity"] = False
+    except Exception:
+        for r in rows:
+            r["target_opportunity"] = False
+
     # Cut to top N% if provided in filters
     top_pct = None
     try:
@@ -1464,7 +1712,7 @@ def api_classified_mode():
     if status_filter:
         rows = [r for r in rows if str(r.get("appetite_status")) == status_filter]
 
-    # Sorting
+    # Sorting (always put target_opportunity first)
     sort_by = request.args.get("sort_by")
     sort_dir = (request.args.get("sort_dir") or "desc").lower()
     reverse = sort_dir != "asc"
@@ -1494,10 +1742,12 @@ def api_classified_mode():
         "total_premium", "tiv", "winnability", "appetite_status",
         "priority_score", "mode_score",
     }
-    if sort_by in valid_keys:
-        rows.sort(key=lambda r: sort_key(r, sort_by), reverse=reverse)
-    else:
-        rows.sort(key=lambda r: r.get("priority_score"), reverse=True)
+    # Primary sort by target_opportunity desc, then requested sort
+    rows.sort(
+        key=lambda r: (1 if r.get("target_opportunity") else 0,
+                       sort_key(r, sort_by) if sort_by in valid_keys else (r.get("priority_score") or 0.0)),
+        reverse=True,
+    )
 
     return jsonify({
         "count": len(rows),
@@ -1505,6 +1755,67 @@ def api_classified_mode():
         "mode": mode,
         "mode_explanation": mode_explanation,
     })
+
+
+@app.route("/api/persona/list")
+def api_persona_list():
+    """List saved personas."""
+    items = persona_list()
+    # Shallow list for UI
+    out = []
+    for slug, rec in items.items():
+        out.append({
+            "slug": slug,
+            "title": rec.get("title") or slug,
+            "saved_at": rec.get("saved_at"),
+        })
+    active_slug, _rec = persona_get_active()
+    return jsonify({"active": active_slug, "items": out})
+
+
+@app.route("/api/persona/save", methods=["POST"])
+def api_persona_save():
+    """Save the current custom persona (or provided preset) under a name and make it selectable."""
+    try:
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip() or None
+        preset = data.get("preset")
+        # If no preset provided, try using current MODES["custom"]
+        if not isinstance(preset, dict) or not preset:
+            preset = MODES.get("custom")
+        if not isinstance(preset, dict) or not preset:
+            return jsonify({"ok": False, "error": "No custom persona available to save"}), 400
+        if not name:
+            name = time.strftime("Persona %Y-%m-%d %H:%M")
+        slug, rec = persona_add(name, preset)
+        # Mirror into MODES and refresh index
+        _load_personas_into_modes()
+        return jsonify({"ok": True, "slug": slug, "record": rec})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/persona/activate", methods=["POST"])
+def api_persona_activate():
+    """Set a saved persona as active (also mirrors to MODES['custom'])."""
+    try:
+        data = request.get_json(silent=True) or {}
+        slug = data.get("slug")
+        if not slug:
+            return jsonify({"ok": False, "error": "Missing slug"}), 400
+        rec = persona_get(slug)
+        if not rec:
+            return jsonify({"ok": False, "error": "Persona not found"}), 404
+        persona_set_active(slug)
+        # Mirror into MODES
+        preset = rec.get("preset") or {}
+        if isinstance(preset, dict) and preset:
+            MODES[slug] = preset
+            MODES["custom"] = preset
+        _load_personas_into_modes()
+        return jsonify({"ok": True, "active": slug})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 @app.route("/api/persona/seed", methods=["POST"])
@@ -1658,7 +1969,13 @@ def api_underlying():
         d = d[d[group].astype(str) == label]
     if series_by and series_val is not None and series_by in d.columns:
         d = d[d[series_by].astype(str) == series_val]
-    d = d.sort_values(["priority_score"], ascending=False)
+    try:
+        d = mark_target_opportunities_df(d)
+        d = d.copy()
+        d["__top"] = d["target_opportunity"].astype(int)
+        d = d.sort_values(["__top", "priority_score"], ascending=[False, False]).drop(columns=["__top"])
+    except Exception:
+        d = d.sort_values(["priority_score"], ascending=False)
     return jsonify({"count": len(d), "data": dfToDict(d)})
 
 

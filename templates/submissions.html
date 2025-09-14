@@ -81,7 +81,7 @@
                     <button id="clear_categories" class="text-xs text-gray-400 hover:text-gray-200 transition-colors">Clear All</button>
                     <button id="apply_ai_sorting" class="glass-btn-small ai-btn disabled" disabled>
                         <i class="fa-solid fa-sparkles"></i>
-                        <span>AI Sort</span>
+                        <span>Filter</span>
                     </button>
                 </div>
             </div>
@@ -666,7 +666,7 @@
                                       Number(r.winnability > 1 ? r.winnability : r.winnability * 100).toFixed(0) : '—';
             
             return `
-                <tr class="table-row ${appetiteClass}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
+                <tr class="table-row ${appetiteClass} ${r.target_opportunity ? 'target-opportunity-row' : ''}" data-id="${r.id}" onclick="navigateToDetail(${r.id}, event)">
                     <td class="td py-4 px-3 text-center">
                         <input type="checkbox" class="table-checkbox row-checkbox" data-id="${r.id}" onclick="event.stopPropagation()">
                     </td>
@@ -677,6 +677,7 @@
                     </td>
                     <td class="td py-4 px-4">
                         ${appetiteBadge}
+                        ${r.target_opportunity ? '<span class="pill pill-indigo ml-2">TOP</span>' : ''}
                     </td>
                     <td class="td py-4 px-4 col-account" title="${(r.account_name || '').replace(/"/g,'&quot;')}">
                         <div class="font-semibold text-white name">${r.account_name || "—"}</div>
@@ -747,7 +748,7 @@
         // Pagination slice
         const pageRows = updatePagination(rows);
         cardsGrid.innerHTML = pageRows.map(r => `
-            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')}" href="/detail/${r.id}">
+            <a class="subs-card opportunity-card ${r.appetite_status==='TARGET'?'target-opportunity': (r.appetite_status==='IN'?'in-opportunity':'out-opportunity')} ${r.target_opportunity ? 'target-opportunity-glow' : ''}" href="/detail/${r.id}">
                 <div class=\"flex items-start justify-between mb-1\">
                     <div class=\"font-medium\">${r.account_name || '-'}</div>
                     ${r.appetite_status ? `<span class=\"pill ${r.appetite_status==='TARGET'?'pill-indigo': (r.appetite_status==='IN'?'pill-emerald':'pill-rose')}\">${r.appetite_status}</span>` : ''}
@@ -757,6 +758,7 @@
                     <span>Score ${Number(r.priority_score||0).toFixed(1)}</span>
                     <span>Win ${Number((r.winnability>1?r.winnability:(r.winnability||0)*100)).toFixed(0)}%</span>
                 </div>
+                ${r.target_opportunity ? '<div class="top-banner">TOP TARGET</div>' : ''}
             </a>
         `).join('');
     }
@@ -1168,7 +1170,7 @@
             if (el) el.value = '';
         });
         // Reset mode to a stable default
-        setActiveMode('balanced_growth');
+        // Keep current mode; only clear filters
         applyPreset('all');
     }
 
@@ -1465,7 +1467,7 @@
         document.getElementById('f_min').value = '';
         document.getElementById('f_max').value = '';
         document.getElementById('f_q').value = '';
-        setActiveMode('balanced_growth');
+        // Keep current mode; only clear filters
         applyPreset('all');
     }
 
@@ -1482,7 +1484,7 @@
         const wrap = document.getElementById('f_mode_wrap');
         try {
             const j = await fetchJSON("/api/modes");
-            const modes = (j.modes || []).filter(Boolean);
+            const modes = Array.isArray(j) ? j : [];
             const sel = document.getElementById("f_mode");
             if (!sel) return;
             if (!modes.length) {
@@ -1492,11 +1494,12 @@
             }
             wrap?.classList?.remove('hidden');
             sel.innerHTML = modes
-                .map((m) => `<option value="${m}">${m.replace(/_/g,' ')}</option>`)
+                .map((m) => `<option value="${m.key}">${m.label || m.key}</option>`)
                 .join("");
             // default to ACTIVE_MODE if available
             const active = localStorage.getItem('ACTIVE_MODE') || 'balanced_growth';
-            sel.value = modes.includes(active) ? active : (modes.includes('balanced_growth') ? 'balanced_growth' : (modes[0] || ''));
+            const keys = modes.map(m => m.key);
+            sel.value = keys.includes(active) ? active : (keys.includes('balanced_growth') ? 'balanced_growth' : (keys[0] || ''));
         } catch (e) {
             console.error("Failed to load modes", e);
             wrap?.classList?.add('hidden');

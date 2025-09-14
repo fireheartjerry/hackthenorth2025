@@ -57,12 +57,24 @@
   
   <script>
     (function(){
-      // Seed quick stats from backend so they are factual on first paint
+      // Global metrics from backend (full dataset)
+      window._globalMetrics = {
+        total: {{ total|int }},
+        targets: {{ tgt_ct|int }},
+        inCt: {{ in_ct|int }},
+        outCt: {{ out_ct|int }},
+        pctTgt: {{ pct_tgt|int }},
+        pctIn: {{ pct_in|int }},
+        pctOut: {{ pct_out|int }},
+        avgPremium: {{ avg_premium|round(0) }}
+      };
+      // Seed quick stats for hero (first paint)
       window._dashboardMetrics = {
         targets: {{ tgt_ct|int }},
         winRate: {{ (avg_win*100)|round(0) if avg_win is defined else 0 }},
         avgPremium: {{ avg_premium|round(0) }},
-        opportunities: {{ (tgt_ct + in_ct)|int }}
+        // Opportunities = all in-appetite (includes targets)
+        opportunities: {{ in_ct|int }}
       };
       function greet(){
         const n = localStorage.getItem('USER_NAME') || '';
@@ -101,6 +113,7 @@
       
       greet();
       updateQuickStats();
+      try { if (window._globalMetrics) updateOverviewCards(window._globalMetrics); } catch(_){}
       simulateActivityFeed();
       
       window.addEventListener('storage', (e) => {
@@ -599,7 +612,15 @@
     function updateOverviewCards(m) {
         try {
             if (!m) return;
-            const setVal = (sel, v) => { const el = document.querySelector(sel); if (el) el.textContent = String(Math.round(v || 0)); };
+            const setVal = (sel, v) => {
+                const el = document.querySelector(sel);
+                if (!el) return;
+                const val = Math.round(v || 0);
+                // Update displayed value immediately
+                el.textContent = String(val);
+                // Sync data-target so the counter animation animates to the latest value
+                try { el.dataset.target = String(val); } catch(_) {}
+            };
             const setPct = (card, pct) => {
                 const fill = document.querySelector(`${card} .progress-fill`);
                 const txt = document.querySelector(`${card} .progress-text`);
@@ -624,8 +645,7 @@
             setVal('.out-metric .metric-value', m.outCt);
             setPct('.out-metric', m.pctOut);
 
-            // Re-run counters animation for a nice effect
-            animateCounters();
+            // No animation on update to avoid race conditions with prior timers
         } catch (e) {
             console.warn('Overview KPI update failed:', e);
         }
@@ -701,7 +721,8 @@
             updateModeChip();
             updateLastUpdated('worklist_last');
 
-            // Update hero + KPI tiles based on current filtered rows
+            // Update hero + KPI tiles based strictly on the visible worklist
+            // so cards and hero stay in sync with what the user sees.
             const metrics = computeMetricsFromRows(window._worklistRows);
             updateHeroQuickStats(metrics);
             updateOverviewCards(metrics);
@@ -764,13 +785,14 @@
     function renderWorklistList(rows, mode){
         const el = document.getElementById('worklist');
         el.innerHTML = rows.map(r => `
-            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row ${r.target_opportunity ? 'target-opportunity-glow' : ''}">
               <div class="row-main">
                 <div class="row-title">${r.account_name || "-"}</div>
                 <div class="row-sub">${r.primary_risk_state || "-"} · ${r.line_of_business || "-"} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
               </div>
               <div class="row-badges">
                 ${badge(r.appetite_status)}
+                ${r.target_opportunity ? '<span class="pill pill-indigo">TOP</span>' : ''}
                 <span class="chip">Score ${Number(r.priority_score || 0).toFixed(2)}</span>
               </div>
             </a>
@@ -781,7 +803,7 @@
         const el = document.getElementById('worklist');
         el.innerHTML = `
           <div class="worklist-cards">${rows.map(r => `
-            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="work-card ${r.appetite_status?.toLowerCase() || ''}">
+            <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="work-card ${r.appetite_status?.toLowerCase() || ''} ${r.target_opportunity ? 'target-opportunity-glow' : ''}">
               <div class="work-card-head">
                 <div class="work-card-title">${r.account_name || '-'}</div>
                 <div class="work-card-badges">${badge(r.appetite_status)}</div>
@@ -791,6 +813,7 @@
                 <span>$${Math.round(r.total_premium || 0).toLocaleString()} premium</span>
                 <span>Score ${Number(r.priority_score || 0).toFixed(2)}</span>
               </div>
+              ${r.target_opportunity ? '<div class="top-banner">TOP TARGET</div>' : ''}
             </a>`).join('')}
           </div>`;
     }
@@ -810,7 +833,7 @@
             </div>
             <div class="kanban-items">
               ${groups[k].map(r=>`
-                <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="kanban-card">
+                <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="kanban-card ${r.target_opportunity ? 'target-opportunity-glow' : ''}">
                   <div class="k-title">${r.account_name || '-'}</div>
                   <div class="k-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'}</div>
                   <div class="k-meta">
@@ -894,6 +917,9 @@
             
             // Update results count
             updatePriorityAccountsCount();
+
+            // Note: keep overview KPIs sourced from home mode worklist, not this table,
+            // to avoid conflicting counts.
             
         } catch (error) {
             console.error('Error loading priority accounts:', error);
@@ -946,7 +972,7 @@
                     .format(account.total_premium) : '—';
 
             return `
-                <tr class="table-row hover:bg-white/5 transition-all duration-200" data-account-id="${account.id}">
+                <tr class="table-row hover:bg-white/5 transition-all duration-200 ${account.target_opportunity ? 'target-opportunity-row' : ''}" data-account-id="${account.id}">
                     <td class="table-cell">
                         <div class="flex flex-col">
                             <span class="font-medium text-white">${account.account_name || '—'}</span>
@@ -957,6 +983,7 @@
                         <span class="status-badge ${statusClass} bg-opacity-20 px-2 py-1 rounded-md text-xs font-medium">
                             ${statusEmoji} ${account.appetite_status}
                         </span>
+                        ${account.target_opportunity ? '<span class="ml-2 pill pill-indigo">TOP</span>' : ''}
                     </td>
                     <td class="table-cell">
                         <span class="font-mono text-emerald-400">${premiumFormatted}</span>
@@ -1444,6 +1471,14 @@
         updateModeChip();
     });
 
+    // React to global mode changes dispatched from the header
+    window.addEventListener('MODE_CHANGED', (e) => {
+        const m = (e?.detail && e.detail.mode) ? e.detail.mode : getActiveMode();
+        try { const sel = document.getElementById('home_mode'); if (sel) sel.value = m; } catch {}
+        loadHome();
+        try { loadPriorityAccounts(1); } catch {}
+    });
+
     // Priority Accounts Filter Controls
     function setupPriorityAccountsFilters() {
         // Table filter toggle
@@ -1706,25 +1741,29 @@
             });
         }
         
-        // Animate counters
-        animateCounters();
+        // Counters animate on first paint only via initial dataset
     }
     
     function animateCounters() {
         document.querySelectorAll('.animate-counter').forEach(counter => {
+            // Cancel any existing animation tied to this element
+            try { if (counter.__timer) { clearInterval(counter.__timer); counter.__timer = null; } } catch(_) {}
+            const cur = parseInt(counter.textContent) || 0;
             const target = parseInt(counter.dataset.target) || 0;
-            const duration = 1500;
-            const start = 0;
-            const increment = target / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(timer);
+            const duration = 800; // quicker, snappier updates
+            const steps = Math.max(1, Math.round(duration / 16));
+            const delta = (target - cur) / steps;
+            let i = 0; let val = cur;
+            if (steps === 1) { counter.textContent = String(target); return; }
+            counter.__timer = setInterval(() => {
+                i += 1; val += delta;
+                if (i >= steps) {
+                    counter.textContent = String(target);
+                    clearInterval(counter.__timer);
+                    counter.__timer = null;
+                } else {
+                    counter.textContent = String(Math.round(val));
                 }
-                counter.textContent = Math.round(current);
             }, 16);
         });
     }

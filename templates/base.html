@@ -70,7 +70,10 @@
                             <div class="p-2 text-xs opacity-80">Choose underwriting mode</div>
                             <div id="global_mode_list" class="p-2 pt-0 space-y-2"></div>
                             <div class="p-2 border-t border-white/10 flex items-center justify-between gap-2">
-                                <div class="text-xs opacity-80">Refine with Persona</div>
+                                <div class="flex items-center gap-2">
+                                  <div class="text-xs opacity-80">Persona</div>
+                                  <button id="btn_persona_save" class="pill pill-sub hover-glow text-xs" title="Save current persona">Save</button>
+                                </div>
                                 <button id="btn_persona_global" class="pill pill-sub hover-glow text-xs">Build Persona</button>
                             </div>
                         </div>
@@ -147,18 +150,10 @@
                         <span class="text-xs font-medium">Progress</span>
                         <span id="progress_text" class="text-xs opacity-70">Step 1 of 8</span>
                     </div>
-                    <div class="w-full bg-white/10 rounded-full h-2">
-                        <div id="progress_bar" class="h-2 rounded-full">
-                            <div class="progress-steps">
-                                <div class="progress-step active" data-step="1"></div>
-                                <div class="progress-step" data-step="2"></div>
-                                <div class="progress-step" data-step="3"></div>
-                                <div class="progress-step" data-step="4"></div>
-                                <div class="progress-step" data-step="5"></div>
-                                <div class="progress-step" data-step="6"></div>
-                                <div class="progress-step" data-step="7"></div>
-                                <div class="progress-step" data-step="8"></div>
-                            </div>
+                    <div class="w-full bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-full h-3 overflow-hidden shadow-inner border border-white/10">
+                        <div id="progress_bar" class="h-full bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 rounded-full transition-all duration-700 ease-out shadow-lg relative" style="width: 12.5%;">
+                            <div class="absolute inset-0 bg-gradient-to-r from-white/30 via-white/20 to-transparent rounded-full"></div>
+                            <div class="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent rounded-full"></div>
                         </div>
                     </div>
                 </div>
@@ -610,15 +605,15 @@
                                 </div>
                                 <div class="grid grid-cols-3 gap-4 text-center">
                                     <div>
-                                        <div class="text-lg font-bold text-green-400">~72%</div>
+                                        <div id="impact_win_rate" class="text-lg font-bold text-green-400">~72%</div>
                                         <div class="text-xs opacity-70">Est. Win Rate</div>
                                     </div>
                                     <div>
-                                        <div class="text-lg font-bold text-blue-400">~$385K</div>
+                                        <div id="impact_avg_premium" class="text-lg font-bold text-blue-400">~$385K</div>
                                         <div class="text-xs opacity-70">Avg. Premium</div>
                                     </div>
                                     <div>
-                                        <div class="text-lg font-bold text-purple-400">~1.3x</div>
+                                        <div id="impact_risk_multiple" class="text-lg font-bold text-purple-400">~1.3x</div>
                                         <div class="text-xs opacity-70">Risk Multiple</div>
                                     </div>
                                 </div>
@@ -672,7 +667,8 @@
             async function populateGlobalModes(){
                 try{
                     const j = await fetchJSON('/api/modes');
-                    const modes = (j?.modes || []).filter(Boolean);
+                    // API returns array of {key, label}
+                    const modes = Array.isArray(j) ? j : [];
                     const list = document.getElementById('global_mode_list');
                     if(!list) return;
                     const active = getActiveMode();
@@ -682,16 +678,19 @@
                         return;
                     }
                     list.innerHTML = modes.map(m => {
-                        const desc = MODE_DESCRIPTIONS[m] || 'Preset';
+                        const key = m.key || m;
+                        const label = m.label || (m.key ? m.key : String(m));
+                        const isPersona = String(label).toLowerCase().includes('persona');
+                        const desc = MODE_DESCRIPTIONS[key] || (isPersona ? 'Saved persona' : 'Preset');
                         return `
                         <button class="w-full text-left block p-2 rounded-lg border border-white/10 hover:border-indigo-400/50 hover:bg-white/5"
-                                data-mode="${m}" role="menuitem">
+                                data-mode="${key}" role="menuitem">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <div class="font-semibold">${prettyMode(m)}</div>
+                                    <div class="font-semibold">${label}</div>
                                     <div class="text-xs opacity-80">${desc}</div>
                                 </div>
-                                ${m===active?'<span class="chip">Active</span>':''}
+                                ${key===active?'<span class="chip">Active</span>':''}
                             </div>
                         </button>`;
                     }).join('');
@@ -702,7 +701,9 @@
                             setActiveMode(sel);
                             document.getElementById('global_mode_label').textContent = prettyMode(sel);
                             closeGlobalMenu();
-                            // Sync page-local selects if present
+                            // Broadcast a mode change so pages can react reliably
+                            try { window.dispatchEvent(new CustomEvent('MODE_CHANGED', { detail: { mode: sel } })); } catch {}
+                            // Sync page-local selects if present (best-effort)
                             try { const hm = document.getElementById('home_mode'); if (hm) { hm.value = sel; hm.dispatchEvent(new Event('change')); } } catch{}
                             try { const fm = document.getElementById('f_mode'); if (fm) { fm.value = sel; document.getElementById('btn_apply')?.click(); } } catch{}
                         });
@@ -768,6 +769,19 @@
                 // Persona open/close from header (use onclick to avoid double-bind)
                 const _openPersona = () => { document.getElementById('persona_modal')?.classList?.remove('hidden'); initPersonaFlow(); closeGlobalMenu(); };
                 const _closePersona = () => { document.getElementById('persona_modal')?.classList?.add('hidden'); };
+                // Save persona button in global dropdown
+                const _savePersona = async () => {
+                    try{
+                        const name = prompt('Save persona as:', 'My Persona');
+                        if (!name) return;
+                        const res = await fetch('/api/persona/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+                        const j = await res.json();
+                        if (!j.ok) throw new Error(j.error||'Failed to save');
+                        window.toast?.('Persona saved', 'success');
+                        await populateGlobalModes();
+                    } catch(e){ window.toast?.('Save failed: '+(e?.message||e), 'error'); }
+                };
+                const _btnPersonaSave = document.getElementById('btn_persona_save'); if (_btnPersonaSave) _btnPersonaSave.onclick = _savePersona;
                 const _btnPersona = document.getElementById('btn_persona_global'); if (_btnPersona) _btnPersona.onclick = _openPersona;
                 const _btnPersonaClose = document.getElementById('persona_close'); if (_btnPersonaClose) _btnPersonaClose.onclick = _closePersona;
                 
@@ -787,13 +801,15 @@
                     updateNavigation();
                     bindSliderUpdates();
                     bindFormUpdates();
+                    // Initialize portfolio impact with default values
+                    updatePortfolioImpact();
                 }
 
                 function showStep(step) {
                     // Hide all steps
                     document.querySelectorAll('.persona-step').forEach(s => s.classList.remove('active'));
-                    // Show current step
-                    const currentStepEl = document.querySelector(`[data-step="${step}"]`);
+                    // Show current step (scope to persona-step, not progress dots)
+                    const currentStepEl = document.querySelector(`.persona-step[data-step="${step}"]`);
                     if (currentStepEl) {
                         currentStepEl.classList.add('active');
                         // Add entrance animation
@@ -811,18 +827,10 @@
                     // Update progress text
                     document.getElementById('progress_text').textContent = `Step ${currentStep} of ${totalSteps}`;
                     
-                    // Update step indicators
-                    const progressSteps = document.querySelectorAll('.progress-step');
-                    progressSteps.forEach((step, index) => {
-                        const stepNumber = index + 1;
-                        step.classList.remove('completed', 'active');
-                        
-                        if (stepNumber < currentStep) {
-                            step.classList.add('completed');
-                        } else if (stepNumber === currentStep) {
-                            step.classList.add('active');
-                        }
-                    });
+                    // Update continuous progress bar
+                    const progressBar = document.getElementById('progress_bar');
+                    const progressPercentage = (currentStep / totalSteps) * 100;
+                    progressBar.style.width = `${progressPercentage}%`;
                 }
 
                 function updateNavigation() {
@@ -867,6 +875,7 @@
                             <span class="text-lg font-semibold text-indigo-400">${aggrLabels[val]}</span>
                             <p class="text-xs opacity-70 mt-1">${aggrDescs[val]}</p>
                         `;
+                        updatePortfolioImpact();
                     });
 
                     // Loss ratio slider
@@ -886,6 +895,7 @@
                             <span class="text-2xl font-bold text-yellow-400">${pct}%</span>
                             <p class="text-xs opacity-70 mt-1">${desc}</p>
                         `;
+                        updatePortfolioImpact();
                     });
                 }
 
@@ -907,6 +917,7 @@
                             const checkedCard = document.querySelector('input[name="objective"]:checked').closest('.objective-card');
                             checkedCard.classList.remove('border-white/20');
                             checkedCard.classList.add('border-indigo-400', 'bg-indigo-400/10');
+                            updatePortfolioImpact();
                         });
                     });
 
@@ -928,6 +939,8 @@
                             const checkedCard = document.querySelector('input[name="premium_range"]:checked').closest('.premium-card');
                             checkedCard.classList.remove('border-white/20');
                             checkedCard.classList.add('border-indigo-400', 'bg-indigo-400/10');
+                            
+                            updatePortfolioImpact();
                             
                             // Show/hide custom inputs
                             const customInputs = document.getElementById('custom_premium_inputs');
@@ -963,6 +976,7 @@
                             checkedCard.classList.add('border-indigo-400', 'bg-indigo-400/10');
                             setTivValue(radio.value);
                             updateTivInsight(radio.value);
+                            updatePortfolioImpact();
                         });
                     });
 
@@ -980,6 +994,10 @@
                     // Premium range updates for custom inputs
                     const premLoInput = document.getElementById('ans_prem_lo');
                     const premHiInput = document.getElementById('ans_prem_hi');
+                    
+                    // Add event listeners to premium inputs
+                    premLoInput?.addEventListener('input', updatePortfolioImpact);
+                    premHiInput?.addEventListener('input', updatePortfolioImpact);
 
                     // Preference checkboxes styling
                     document.querySelectorAll('.preference-card input[type="checkbox"]').forEach(cb => {
@@ -992,6 +1010,7 @@
                                 card.classList.remove('border-indigo-400', 'bg-indigo-400/10');
                                 card.classList.add('border-white/20');
                             }
+                            updatePortfolioImpact();
                         });
                     });
                 }
@@ -1158,6 +1177,62 @@
                     };
                 }
                 
+                function calculatePortfolioImpact(answers) {
+                    // Calculate expected win rate based on aggressiveness and parameters
+                    const baseWinRate = 0.65; // 65% base win rate
+                    const aggrBonus = (answers.aggressiveness - 3) * 0.02; // +/-2% per aggressiveness point from neutral
+                    const premiumBonus = answers.premium_lo > 200000 ? 0.05 : answers.premium_lo < 100000 ? -0.03 : 0;
+                    const constructionBonus = answers.strict_construction ? 0.05 : 0;
+                    const newBusinessBonus = answers.new_only ? 0.08 : 0;
+                    const lrBonus = answers.max_lr < 0.6 ? 0.03 : answers.max_lr > 0.7 ? -0.03 : 0;
+                    
+                    const expectedWinRate = Math.min(0.95, Math.max(0.45, 
+                        baseWinRate + aggrBonus + premiumBonus + constructionBonus + newBusinessBonus + lrBonus
+                    ));
+                    
+                    // Calculate average premium (midpoint of range with adjustments)
+                    const premiumMidpoint = (answers.premium_lo + answers.premium_hi) / 2;
+                    const objectiveMultiplier = answers.objective === 'growth' ? 0.85 : answers.objective === 'profit' ? 1.15 : 1.0;
+                    const expectedAvgPremium = Math.round(premiumMidpoint * objectiveMultiplier);
+                    
+                    // Calculate risk multiple based on conservativeness
+                    const baseRiskMultiple = 1.4;
+                    const aggrRiskAdjust = (answers.aggressiveness - 3) * 0.1; // More aggressive = higher risk multiple
+                    const lrRiskAdjust = (answers.max_lr - 0.65) * 2; // Higher loss ratio = higher risk
+                    const constructionRiskAdjust = answers.strict_construction ? -0.2 : 0;
+                    const tivRiskAdjust = answers.tiv_max > 100000000 ? 0.2 : answers.tiv_max < 50000000 ? -0.1 : 0;
+                    
+                    const expectedRiskMultiple = Math.max(0.8, Math.min(2.5, 
+                        baseRiskMultiple + aggrRiskAdjust + lrRiskAdjust + constructionRiskAdjust + tivRiskAdjust
+                    ));
+                    
+                    return {
+                        winRate: expectedWinRate,
+                        avgPremium: expectedAvgPremium,
+                        riskMultiple: expectedRiskMultiple
+                    };
+                }
+                
+                function updatePortfolioImpact() {
+                    try {
+                        const answers = gatherAnswers();
+                        const impact = calculatePortfolioImpact(answers);
+                        
+                        // Update the display elements
+                        const winRateEl = document.getElementById('impact_win_rate');
+                        const avgPremiumEl = document.getElementById('impact_avg_premium');
+                        const riskMultipleEl = document.getElementById('impact_risk_multiple');
+                        
+                        if (winRateEl) winRateEl.textContent = `~${Math.round(impact.winRate * 100)}%`;
+                        if (avgPremiumEl) avgPremiumEl.textContent = `~$${Math.round(impact.avgPremium / 1000)}K`;
+                        if (riskMultipleEl) riskMultipleEl.textContent = `~${impact.riskMultiple.toFixed(1)}x`;
+                        
+                        console.log('Portfolio Impact Updated:', impact);
+                    } catch (error) {
+                        console.error('Error updating portfolio impact:', error);
+                    }
+                }
+                
                 // Seed/Submit: use onclick to avoid duplicate handlers across pages
                 const _personaSeed = document.getElementById('persona_seed');
                 if (_personaSeed) _personaSeed.onclick = async ()=>{
@@ -1257,55 +1332,37 @@
                 applyVibe();
                 setSat(getSat());
                 
-                // Add progress step styles
-                const progressStyles = `
-                    .progress-steps {
-                        display: flex;
-                        width: 100%;
-                        height: 100%;
-                        align-items: center;
-                        justify-content: space-between;
-                        position: relative;
+                // Add enhanced progress bar styles
+                const progressBarStyles = `
+                    @keyframes shimmer {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(100%); }
                     }
                     
-                    .progress-step {
-                        width: 12px;
-                        height: 12px;
-                        border-radius: 50%;
-                        background: rgba(255, 255, 255, 0.3);
-                        border: 2px solid rgba(255, 255, 255, 0.5);
-                        transition: all 0.3s ease;
-                        position: relative;
-                        z-index: 2;
-                    }
-                    
-                    .progress-step.active {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        border-color: #667eea;
-                        box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
-                    }
-                    
-                    .progress-step.completed {
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                        border-color: #10b981;
-                    }
-                    
-                    .progress-steps::before {
+                    #progress_bar::after {
                         content: '';
                         position: absolute;
-                        top: 50%;
-                        left: 6px;
-                        right: 6px;
-                        height: 2px;
-                        background: rgba(255, 255, 255, 0.2);
-                        z-index: 1;
-                        transform: translateY(-50%);
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+                        animation: shimmer 2s infinite;
+                        border-radius: inherit;
+                    }
+                    
+                    #progress_bar {
+                        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3),
+                                   0 0 20px rgba(59, 130, 246, 0.2),
+                                   inset 0 1px 0 rgba(255, 255, 255, 0.3);
                     }
                 `;
                 
-                const styleSheet = document.createElement('style');
-                styleSheet.textContent = progressStyles;
-                document.head.appendChild(styleSheet);
+                const progressStyleSheet = document.createElement('style');
+                progressStyleSheet.textContent = progressBarStyles;
+                document.head.appendChild(progressStyleSheet);
+                
+                // Remove unused progress step styles since we now use continuous progress bar
 
                 // User name / greeting
                 const getName = () => localStorage.getItem('USER_NAME') || '';
