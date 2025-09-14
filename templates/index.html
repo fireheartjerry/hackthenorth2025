@@ -74,10 +74,14 @@
       function updateQuickStats() {
         // This will be populated by the main script
         const metrics = window._dashboardMetrics || {};
-        document.getElementById('active_targets').textContent = metrics.targets || '—';
+        document.getElementById('active_targets').textContent =
+          metrics.targets ? Number(metrics.targets).toLocaleString() : '—';
         document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
-        document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
-        document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
+        document.getElementById('avg_premium').textContent = metrics.avgPremium
+          ? '$' + Math.round(metrics.avgPremium / 1000).toLocaleString() + 'K'
+          : '—';
+        document.getElementById('opportunities_count').textContent =
+          metrics.opportunities ? Number(metrics.opportunities).toLocaleString() : '—';
       }
       
       function simulateActivityFeed() {
@@ -905,7 +909,7 @@
         const nextBtn = document.getElementById('next_page');
         
         if (paginationInfo) {
-            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages}`;
+            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page.toLocaleString()} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages.toLocaleString()}`;
         }
         
         if (prevBtn) {
@@ -932,7 +936,7 @@
         const lastUpdated = document.getElementById('last_updated');
         
         if (resultsCount) {
-            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count} priority accounts`;
+            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count.toLocaleString()} priority accounts`;
         }
         
         if (lastUpdated) {
@@ -1623,7 +1627,7 @@
                     current = target;
                     clearInterval(timer);
                 }
-                counter.textContent = Math.round(current);
+                counter.textContent = Math.round(current).toLocaleString();
             }, 16);
         });
     }

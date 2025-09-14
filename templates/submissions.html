@@ -517,9 +517,9 @@
     // Money short format for compact columns
     function fmtMoneyShort(v){
         const n = Number(v || 0);
-        if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
-        if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
-        if (n >= 1e3) return '$' + Math.round(n/1e3) + 'K';
+        if (n >= 1e9) return '$' + (n/1e9).toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) + 'B';
+        if (n >= 1e6) return '$' + (n/1e6).toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) + 'M';
+        if (n >= 1e3) return '$' + Math.round(n/1e3).toLocaleString() + 'K';
         return '$' + Math.round(n).toLocaleString();
     }
     
@@ -586,14 +586,14 @@
             updatePagination([]);
             return;
         }
-        
+
         console.log('Processing', rows.length, 'rows for pagination');
         // Get paginated rows
         const paginatedRows = updatePagination(rows);
         console.log('Got', paginatedRows.length, 'paginated rows for display');
-        
+
         emptyState?.classList.add("hidden");
-        countSpan.textContent = `${rows.length}`;
+        countSpan.textContent = rows.length.toLocaleString();
         
         // Calculate stats for hero and header chips (factual, from rows)
         const stats = {
@@ -690,7 +690,7 @@
         }
 
         emptyState?.classList.add('hidden');
-        if (countSpan) countSpan.textContent = `${rows.length}`;
+        if (countSpan) countSpan.textContent = rows.length.toLocaleString();
 
         // Stats
         const stats = {
@@ -721,7 +721,10 @@
     }
 
     function updateHeaderChips(stats){
-        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val ?? '—'); };
+        const set = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = typeof val === 'number' ? val.toLocaleString() : String(val ?? '—');
+        };
         set('stat_total', stats.total ?? '—');
         set('stat_target', stats.target ?? '—');
         set('stat_in', stats.in ?? '—');
@@ -743,9 +746,9 @@
         const pageEndEl = document.getElementById('page-end');
         const totalCountEl = document.getElementById('total-count');
         
-        if (pageStartEl) pageStartEl.textContent = TOTAL_ITEMS > 0 ? start : 0;
-        if (pageEndEl) pageEndEl.textContent = end;
-        if (totalCountEl) totalCountEl.textContent = TOTAL_ITEMS;
+        if (pageStartEl) pageStartEl.textContent = TOTAL_ITEMS > 0 ? start.toLocaleString() : '0';
+        if (pageEndEl) pageEndEl.textContent = end.toLocaleString();
+        if (totalCountEl) totalCountEl.textContent = TOTAL_ITEMS.toLocaleString();
         
         console.log('Updated pagination display:', start, '-', end, 'of', TOTAL_ITEMS);
         
@@ -837,7 +840,7 @@
         const targetCountEl = document.getElementById('target_count');
         const completionRateEl = document.getElementById('completion_rate');
         
-        if (targetCountEl) targetCountEl.textContent = stats.target || '—';
+        if (targetCountEl) targetCountEl.textContent = stats.target ? stats.target.toLocaleString() : '—';
         if (completionRateEl) {
             const rate = stats.total ? Math.round((stats.processed / stats.total) * 100) : 0;
             completionRateEl.textContent = `${rate}%`;
@@ -913,7 +916,7 @@
         
         function updateSelectionInfo() {
             const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
-            if (selectedCountEl) selectedCountEl.textContent = selectedCount;
+            if (selectedCountEl) selectedCountEl.textContent = selectedCount.toLocaleString();
             if (selectedInfo) {
                 selectedInfo.classList.toggle('hidden', selectedCount === 0);
             }

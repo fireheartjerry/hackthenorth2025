@@ -42,11 +42,11 @@
   <!-- Quick Assessment Summary -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white bg-opacity-5 rounded-lg">
     <div class="text-center">
-      <div class="text-lg font-semibold text-emerald-300">${{ '%.0f'|format(item.total_premium or 0) }}</div>
+      <div class="text-lg font-semibold text-emerald-300">${{ item.total_premium | commafy }}</div>
       <div class="text-xs opacity-75">Premium</div>
     </div>
     <div class="text-center">
-      <div class="text-lg font-semibold">${{ (item.tiv / 1000000) | round(1) }}M</div>
+      <div class="text-lg font-semibold">${{ (item.tiv / 1000000) | commafy(1) }}M</div>
       <div class="text-xs opacity-75">TIV</div>
     </div>
     <div class="text-center">
@@ -93,7 +93,7 @@
         <div class="kv">
           <span>Loss Value</span>
           <b class="{% if item.loss_value > 100000 %}text-rose-300{% else %}text-emerald-300{% endif %}">
-            ${{ '%.0f'|format(item.loss_value or 0) }}
+            ${{ item.loss_value | commafy }}
           </b>
         </div>
         <div class="kv">
