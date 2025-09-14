@@ -361,7 +361,7 @@
                     <div class="persona-step" data-step="4">
                         <div class="text-center mb-8">
                             <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-2xl">
-                                �
+                                🔥
                             </div>
                             <h4 class="text-lg font-semibold mb-2">How much risk can you handle?</h4>
                             <p class="text-sm opacity-70">Set your loss ratio comfort zone</p>
@@ -777,10 +777,11 @@
 
                 // Persona Step Management
                 let currentStep = 1;
-                const totalSteps = 8;
+                let totalSteps = 0;
 
                 function initPersonaFlow() {
                     currentStep = 1;
+                    totalSteps = document.querySelectorAll('.persona-step').length;
                     updateProgressBar();
                     showStep(1);
                     updateNavigation();
@@ -1195,9 +1196,6 @@
                 populateGlobalModes();
             })();
         </script>
-
-        <!-- Core helpers (toast/fetch/loading) -->
-        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
         <!-- Personalization & vibes -->
         <script>

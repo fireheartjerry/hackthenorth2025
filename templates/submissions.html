@@ -566,6 +566,7 @@
     }
     let ALL_SUBMISSIONS = [];
     let currentPreset = "all";
+    let LAST_PARAMS = {};
 
     // Enhanced table rendering with visual priorities and bulk selection
     function renderTable(rows){
@@ -789,27 +790,27 @@
     function goToPage(page) {
         console.log('goToPage called with page:', page);
         CURRENT_PAGE = page;
-        applyFiltersAndRender();
+        renderTable(ALL_SUBMISSIONS);
     }
     
     function goToFirstPage() {
         console.log('goToFirstPage called');
         CURRENT_PAGE = 1;
-        applyFiltersAndRender();
+        renderTable(ALL_SUBMISSIONS);
     }
     
     function goToLastPage() {
         console.log('goToLastPage called');
         const totalPages = Math.ceil(TOTAL_ITEMS / PAGE_SIZE);
         CURRENT_PAGE = totalPages > 0 ? totalPages : 1;
-        applyFiltersAndRender();
+        renderTable(ALL_SUBMISSIONS);
     }
     
     function goToPrevPage() {
         console.log('goToPrevPage called, current page:', CURRENT_PAGE);
         if (CURRENT_PAGE > 1) {
             CURRENT_PAGE--;
-            applyFiltersAndRender();
+            renderTable(ALL_SUBMISSIONS);
         }
     }
     
@@ -818,99 +819,8 @@
         const totalPages = Math.ceil(TOTAL_ITEMS / PAGE_SIZE);
         if (CURRENT_PAGE < totalPages) {
             CURRENT_PAGE++;
-            applyFiltersAndRender();
+            renderTable(ALL_SUBMISSIONS);
         }
-    }
-
-    // Helper function to apply filters and render
-    function applyFiltersAndRender() {
-        console.log('applyFiltersAndRender called');
-        const filteredData = applyClientSideFilters(ALL_SUBMISSIONS);
-        renderTable(filteredData);
-    }
-
-    // Client-side filtering function for pagination
-    function applyClientSideFilters(submissions) {
-        console.log('applyClientSideFilters called with', submissions.length, 'submissions');
-        
-        const state = document.getElementById("f_state")?.value.trim().toLowerCase() || "";
-        const status = document.getElementById("f_status")?.value || "";
-        const minPremium = parseFloat(document.getElementById("f_min")?.value) || 0;
-        const maxPremium = parseFloat(document.getElementById("f_max")?.value) || Infinity;
-        const query = document.getElementById("f_q")?.value.trim().toLowerCase() || "";
-        
-        let filtered = submissions.filter(submission => {
-            // State filter
-            if (state && !submission.primary_risk_state?.toLowerCase().includes(state)) {
-                return false;
-            }
-            
-            // Status filter
-            if (status && submission.appetite_status !== status) {
-                return false;
-            }
-            
-            // Premium range filter
-            const premium = parseFloat(submission.total_premium) || 0;
-            if (premium < minPremium || premium > maxPremium) {
-                return false;
-            }
-            
-            // Search query filter
-            if (query) {
-                const accountName = submission.account_name?.toLowerCase() || "";
-                if (!accountName.includes(query)) {
-                    return false;
-                }
-            }
-            
-            // Handle preset-specific filters
-            if (currentPreset === 'new-business') {
-                if (submission.renewal_or_new_business !== 'NEW_BUSINESS') {
-                    return false;
-                }
-            }
-            
-            if (currentPreset === 'recent') {
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                const submissionDate = new Date(submission.created_at);
-                if (submissionDate < sevenDaysAgo) {
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-        
-        // Apply sorting
-        if (SORT_BY) {
-            filtered.sort((a, b) => {
-                let aVal = a[SORT_BY];
-                let bVal = b[SORT_BY];
-                
-                // Handle numeric values
-                if (typeof aVal === 'string' && !isNaN(parseFloat(aVal))) {
-                    aVal = parseFloat(aVal);
-                }
-                if (typeof bVal === 'string' && !isNaN(parseFloat(bVal))) {
-                    bVal = parseFloat(bVal);
-                }
-                
-                // Handle string comparison
-                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-                
-                let result = 0;
-                if (aVal < bVal) result = -1;
-                else if (aVal > bVal) result = 1;
-                
-                return SORT_DIR === 'desc' ? -result : result;
-            });
-        }
-        
-        console.log('Filtered to', filtered.length, 'submissions');
-        return filtered;
     }
 
     // Navigation handler with better UX
@@ -1011,7 +921,7 @@
     }
 
     // Filter presets for common underwriter workflows
-    function applyPreset(preset) {
+function applyPreset(preset) {
         console.log('applyPreset called with preset:', preset);
         currentPreset = preset;
         
@@ -1051,46 +961,39 @@
                 break;
         }
         
-        // Reset to first page
-        CURRENT_PAGE = 1;
-        
-        // If we have data, apply client-side filters, otherwise load from server
-        if (ALL_SUBMISSIONS.length > 0) {
-            console.log('Using existing data for preset filter');
-            applyFiltersAndRender();
-        } else {
-            console.log('Loading fresh data for preset filter');
-            const params = { mode: getActiveMode(), sort_by: SORT_BY, sort_dir: SORT_DIR };
-            
-            // Add preset-specific server-side filters
-            switch(preset) {
-                case 'targets':
-                    params.status = 'TARGET';
-                    break;
-                case 'in-appetite':
-                    params.status = 'IN';
-                    break;
-                case 'high-value':
-                    params.min_premium = '100000';
-                    break;
-                case 'new-business':
-                    params.renewal_or_new_business = 'NEW_BUSINESS';
-                    break;
-                case 'recent':
-                    const sevenDaysAgo = new Date();
-                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                    params.created_after = sevenDaysAgo.toISOString().split('T')[0];
-                    break;
-            }
-            
-            load(params);
+        // Always load fresh data from the backend for presets
+        const params = { mode: getActiveMode(), sort_by: SORT_BY, sort_dir: SORT_DIR };
+
+        // Add preset-specific server-side filters
+        switch(preset) {
+            case 'targets':
+                params.status = 'TARGET';
+                break;
+            case 'in-appetite':
+                params.status = 'IN';
+                break;
+            case 'high-value':
+                params.min_premium = '100000';
+                break;
+            case 'new-business':
+                params.renewal_or_new_business = 'NEW_BUSINESS';
+                break;
+            case 'recent':
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                params.created_after = sevenDaysAgo.toISOString().split('T')[0];
+                break;
         }
+
+        CURRENT_PAGE = 1;
+        load(params);
     }
 
     async function load(params = {}) {
         console.log('load() called with params:', params);
         // Always include an explicit mode so sorting/filtering doesn't change the cohort
         if (!params.mode) params.mode = getActiveMode();
+        LAST_PARAMS = params;
         const qs = new URLSearchParams(params).toString();
         console.log('Fetching data with query string:', qs);
         const tbody = document.getElementById("tbody");
@@ -1166,7 +1069,7 @@
             applyBtn.onclick = () => {
                 console.log('Apply filters button clicked');
                 CURRENT_PAGE = 1; // Reset to first page when applying filters
-                applyFiltersAndRender();
+                applyFilters();
             };
         }
 
@@ -1206,8 +1109,7 @@
             console.log('Updated PAGE_SIZE to:', PAGE_SIZE, 'Reset CURRENT_PAGE to:', CURRENT_PAGE);
             if (pageSizeBottom && pageSizeBottom.value !== String(val)) pageSizeBottom.value = String(val);
             if (pageSizeTop && pageSizeTop.value !== String(val)) pageSizeTop.value = String(val);
-            console.log('Calling applyFiltersAndRender');
-            applyFiltersAndRender();
+            renderTable(ALL_SUBMISSIONS);
         }
         if (pageSizeBottom) pageSizeBottom.addEventListener('change', (e)=> onPageSize(e.target.value));
         if (pageSizeTop) pageSizeTop.addEventListener('change', (e)=> onPageSize(e.target.value));
@@ -1397,132 +1299,6 @@
         const mm = d.getMinutes().toString().padStart(2,'0');
         el.textContent = `Updated ${hh}:${mm}`;
     }
-
-    // Event handlers
-    document.addEventListener('DOMContentLoaded', () => {
-        // Preset filter handlers
-        document.querySelectorAll('.filter-preset').forEach(btn => {
-            btn.addEventListener('click', () => {
-                applyPreset(btn.dataset.preset);
-            });
-        });
-
-        // Manual filter handlers
-        document.getElementById("btn_apply").onclick = () => {
-            const params = {
-                state: document.getElementById("f_state").value || "",
-                status: document.getElementById("f_status").value || "",
-                min_premium: document.getElementById("f_min").value || "",
-                max_premium: document.getElementById("f_max").value || "",
-                q: document.getElementById("f_q").value || "",
-                mode: document.getElementById("f_mode").value || "",
-                sort_by: SORT_BY,
-                sort_dir: SORT_DIR,
-            };
-            load(params);
-        };
-
-        document.getElementById("btn_clear").onclick = clearAllFilters;
-
-        document.getElementById("btn_export").onclick = () => {
-            toast('Export functionality will be available soon', 'info');
-        };
-
-        // NLQ handler
-        document.getElementById("btn_nlq").onclick = () => {
-            const query = document.getElementById("nlq").value.trim();
-            if (!query) {
-                toast("Please enter a question", "warning");
-                return;
-            }
-            
-            fetch("/api/nlq", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query }),
-            })
-            .then((r) => r.json())
-            .then((j) => {
-                if (j.ok) {
-                    // Apply the AI-generated filters
-                    Object.entries(j.filters).forEach(([key, value]) => {
-                        const element = document.getElementById(`f_${key}`);
-                        if (element) element.value = value;
-                    });
-                    document.getElementById("btn_apply").click();
-                    toast("AI filters applied", "success");
-                } else {
-                    toast("AI query failed: " + (j.error || "Unknown error"), "error");
-                }
-            });
-        };
-
-        // Sorting handlers
-        document.querySelectorAll(".th-sort").forEach((th) => {
-            th.onclick = () => {
-                const key = th.dataset.key;
-                if (SORT_BY === key) {
-                    SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
-                } else {
-                    SORT_BY = key;
-                    SORT_DIR = "desc";
-                }
-                
-                // Update arrow indicators
-                document.querySelectorAll(".arrow").forEach(a => a.textContent = "");
-                th.querySelector(".arrow").textContent = SORT_DIR === "asc" ? "↑" : "↓";
-                
-                // Reapply current filters with new sort
-                if (currentPreset !== 'all') {
-                    applyPreset(currentPreset);
-                } else {
-                    document.getElementById("btn_apply").click();
-                }
-            };
-        });
-
-        // Load modes and initialize
-        loadModes().then(() => {
-            applyPreset('all');
-        });
-    });
-
-    // Load available modes
-    async function loadModes() {
-        try {
-            const modes = await fetchJSON('/api/modes');
-            const sel = document.getElementById('f_mode');
-            if (sel && Array.isArray(modes)) {
-                sel.innerHTML = modes.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
-                const preferred = localStorage.getItem('ACTIVE_MODE') || 'balanced_growth';
-                const keys = modes.map(m => m.key);
-                const val = keys.includes(preferred) ? preferred : (keys.includes('balanced_growth') ? 'balanced_growth' : (keys[0] || 'balanced_growth'));
-                sel.value = val;
-                setActiveMode(val);
-                sel.addEventListener('change', () => setActiveMode(sel.value));
-            }
-        } catch (error) {
-            console.error('Failed to load modes:', error);
-        }
-    }
-    document.getElementById("btn_nlq").onclick = () => {
-        const q = document.getElementById("nlq").value || "";
-        fetchJSON("/api/nlq", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ q }),
-        })
-            .then((j) => {
-                const f = j.filters || {};
-                document.getElementById("f_state").value = f.state || "";
-                document.getElementById("f_status").value = f.status || "";
-                document.getElementById("f_min").value = f.min_premium || "";
-                document.getElementById("f_max").value = f.max_premium || "";
-                document.getElementById("f_q").value = f.search || "";
-                document.getElementById("btn_apply").click();
-            })
-            .catch((err) => toast("NLQ failed: " + err.message, "error"));
-    };
 
     async function populateModes() {
         const wrap = document.getElementById('f_mode_wrap');
