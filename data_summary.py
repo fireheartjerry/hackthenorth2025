@@ -1,23 +1,18 @@
-import json
 import pandas as pd
-from collections import Counter
-from datetime import datetime
+from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
+from utils_data import load_df
 
-def load_data():
-    with open('data.json', 'r') as f:
-        data = json.load(f)
-    
-    # Handle both possible data structures from API
-    if 'output' in data:
-        policies = data['output'][0]['data']
-    else:
-        policies = data['data']
-    
-    return policies
 
-def analyze_data(policies):
-    # Convert to DataFrame for easier analysis
-    df = pd.DataFrame(policies)
+def load_data(path: str = "data.json") -> pd.DataFrame:
+    """Load and normalize policy data using the shared helper."""
+    return load_df(path)
+
+
+def analyze_data(df: pd.DataFrame):
+    """Generate a high level summary of the provided DataFrame."""
+    # Ensure we always operate on a DataFrame
+    if df is None:
+        df = pd.DataFrame()
     
     summary = {
         "total_records": len(df),
@@ -28,42 +23,45 @@ def analyze_data(policies):
     # Analyze each field
     for column in df.columns:
         values = df[column].dropna()
-        
+
         if len(values) == 0:
             summary["field_value_summary"][column] = {
                 "type": "empty",
                 "unique_values": [],
-                "null_count": len(df)
+                "null_count": len(df),
             }
             continue
-            
-        field_type = str(values.dtype)
-        
-        if field_type in ['object', 'string']:
-            # For string fields, show unique values if few, otherwise show count
-            unique_vals = values.unique()
-            if len(unique_vals) < 20:  # Only show if manageable number of unique values
-                val_summary = list(unique_vals)
-            else:
-                val_summary = f"{len(unique_vals)} unique values"
-                
-            # Show top 5 most common values and their counts
-            value_counts = values.value_counts().head(5).to_dict()
-                
+
+        if is_numeric_dtype(values):
             summary["field_value_summary"][column] = {
-                "type": field_type,
-                "unique_values": val_summary,
-                "null_count": df[column].isna().sum(),
-                "top_values": value_counts
-            }
-        else:
-            # For numeric fields, show range and distribution
-            summary["field_value_summary"][column] = {
-                "type": field_type,
+                "type": "number",
                 "min": float(values.min()),
                 "max": float(values.max()),
                 "mean": float(values.mean()),
-                "null_count": df[column].isna().sum()
+                "null_count": df[column].isna().sum(),
+            }
+        elif is_datetime64_any_dtype(values):
+            summary["field_value_summary"][column] = {
+                "type": "datetime",
+                "min": values.min().isoformat(),
+                "max": values.max().isoformat(),
+                "null_count": df[column].isna().sum(),
+            }
+        else:
+            # For string-like fields, show unique values if few, otherwise show count
+            unique_vals = values.astype(str).unique()
+            if len(unique_vals) < 20:
+                val_summary = list(unique_vals)
+            else:
+                val_summary = f"{len(unique_vals)} unique values"
+
+            value_counts = values.astype(str).value_counts().head(5).to_dict()
+
+            summary["field_value_summary"][column] = {
+                "type": "string",
+                "unique_values": val_summary,
+                "null_count": df[column].isna().sum(),
+                "top_values": value_counts,
             }
     
     return summary
@@ -86,8 +84,8 @@ def format_summary(summary):
     return "\n".join(lines)
 
 def main():
-    policies = load_data()
-    summary = analyze_data(policies)
+    df = load_data()
+    summary = analyze_data(df)
     summary_text = format_summary(summary)
     
     # Write summary to file
