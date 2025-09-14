@@ -83,29 +83,32 @@
         document.getElementById('opportunities_count').textContent =
           metrics.opportunities ? Number(metrics.opportunities).toLocaleString() : '—';
       }
+      window.updateQuickStats = updateQuickStats;
       
-      function simulateActivityFeed() {
-        const activities = [
-          '📋 New submission from Acme Corp - $125K premium',
-          '🎯 High-priority target identified in CA',
-          '✅ Submission #1234 moved to In-Appetite',
-          '📊 Portfolio metrics updated',
-          '🔄 Data refresh completed'
-        ];
-        let currentIndex = 0;
-        
-        setInterval(() => {
-          const feed = document.getElementById('activity_feed');
-          if (feed) {
-            feed.innerHTML = `<span class="text-indigo-300">${activities[currentIndex]}</span>`;
-            currentIndex = (currentIndex + 1) % activities.length;
-          }
+      function updateActivityFeed(rows) {
+        const feed = document.getElementById('activity_feed');
+        if (!feed) return;
+        if (!rows || !rows.length) {
+          feed.innerHTML = '<span class="opacity-75">Monitoring submissions in real-time...</span>';
+          return;
+        }
+        const acts = rows.slice(0,5).map(r => {
+          const emoji = r.appetite_status === 'TARGET' ? '🎯' : (r.appetite_status === 'IN' ? '✅' : '❌');
+          return `${emoji} ${r.account_name || 'Account'} - $${Math.round(r.total_premium || 0).toLocaleString()} premium`;
+        });
+        let idx = 0;
+        clearInterval(window._feedTimer);
+        feed.innerHTML = `<span class="text-indigo-300">${acts[0]}</span>`;
+        window._feedTimer = setInterval(() => {
+          idx = (idx + 1) % acts.length;
+          feed.innerHTML = `<span class="text-indigo-300">${acts[idx]}</span>`;
         }, 3000);
       }
-      
+
+      window.updateActivityFeed = updateActivityFeed;
+
       greet();
       updateQuickStats();
-      simulateActivityFeed();
       
       window.addEventListener('storage', (e) => {
         if(e.key === 'USER_NAME') greet();
@@ -224,7 +227,7 @@
         <button class="action-button hover-lift" onclick="window.location.href='/submissions?status=TARGET'">
             <div class="action-icon">🎯</div>
             <div class="action-label">Review Targets</div>
-            <div class="action-count">{{ tgt_ct }}</div>
+            <div class="action-count" id="action_target_count">{{ tgt_ct }}</div>
         </button>
         <button class="action-button hover-lift" onclick="exportOpportunities()">
             <div class="action-icon">📊</div>
@@ -381,9 +384,6 @@
                 </select>
                 <select class="filter-select" id="state_filter">
                     <option value="">All States</option>
-                    <option value="CA">California</option>
-                    <option value="FL">Florida</option>
-                    <option value="TX">Texas</option>
                 </select>
                 <input type="text" class="filter-input" id="search_filter" placeholder="Search accounts...">
                 <button class="filter-apply-btn">Apply</button>
@@ -574,6 +574,49 @@
         el.textContent = `Last updated ${hh}:${mm}`;
     }
 
+    function updateMetricCards(summary){
+        if(!summary) return;
+        const total = summary.total || 0;
+        const tgt = summary.target || 0;
+        const inCt = summary.in || 0;
+        const outCt = summary.out || 0;
+        const avgPrem = summary.avg_premium || 0;
+
+        const targetEl = document.querySelector('[data-metric="target"] .metric-value');
+        const inEl = document.querySelector('[data-metric="in"] .metric-value');
+        const totalEl = document.querySelector('[data-metric="total"] .metric-value');
+        const outEl = document.querySelector('[data-metric="out"] .metric-value');
+        if(targetEl) targetEl.dataset.target = tgt;
+        if(inEl) inEl.dataset.target = inCt;
+        if(totalEl) totalEl.dataset.target = total;
+        if(outEl) outEl.dataset.target = outCt;
+
+        const pctTgt = total ? Math.round((tgt/total)*100) : 0;
+        const pctIn = total ? Math.round((inCt/total)*100) : 0;
+        const pctOut = total ? Math.round((outCt/total)*100) : 0;
+
+        const tgtBar = document.querySelector('[data-metric="target"] .progress-fill');
+        const tgtText = document.querySelector('[data-metric="target"] .progress-text');
+        const inBar = document.querySelector('[data-metric="in"] .progress-fill');
+        const inText = document.querySelector('[data-metric="in"] .progress-text');
+        const outBar = document.querySelector('[data-metric="out"] .progress-fill');
+        const outText = document.querySelector('[data-metric="out"] .progress-text');
+        const totalText = document.querySelector('[data-metric="total"] .progress-text');
+
+        if(tgtBar) tgtBar.style.width = pctTgt + '%';
+        if(tgtText) tgtText.textContent = `${pctTgt}% of submissions`;
+        if(inBar) inBar.style.width = pctIn + '%';
+        if(inText) inText.textContent = `${pctIn}% of submissions`;
+        if(outBar) outBar.style.width = pctOut + '%';
+        if(outText) outText.textContent = `${pctOut}% of submissions`;
+        if(totalText) totalText.textContent = `Avg premium $${Math.round(avgPrem).toLocaleString()}`;
+
+        const quickTarget = document.getElementById('action_target_count');
+        if (quickTarget) quickTarget.textContent = tgt;
+
+        animateCounters();
+    }
+
     // Worklist view state helpers
     function getWorklistView(){
         try { return localStorage.getItem('WORKLIST_VIEW') || 'list'; } catch(e){ return 'list'; }
@@ -593,6 +636,15 @@
             const sel = document.getElementById("home_mode");
             const mode = (sel?.value && sel.value !== "") ? sel.value : getActiveMode();
             const j = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(mode)}`);
+            if (j.summary) {
+                updateMetricCards(j.summary);
+                window._dashboardMetrics = window._dashboardMetrics || {};
+                window._dashboardMetrics.targets = j.summary.target || 0;
+                window._dashboardMetrics.avgPremium = j.summary.avg_premium || 0;
+                window._dashboardMetrics.winRate = (j.summary.avg_win || 0) * 100;
+                window._dashboardMetrics.opportunities = (j.summary.target || 0) + (j.summary.in || 0);
+                if (typeof updateQuickStats === 'function') updateQuickStats();
+            }
             // Fallback if custom yields no rows
             if ((j.count || 0) === 0 && mode === "custom") {
                 const last = localStorage.getItem("LAST_NON_EMPTY_MODE") || "balanced_growth";
@@ -601,6 +653,7 @@
                 if (sel) sel.value = last;
                 const jj = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(last)}`);
                 renderWorklistRows(jj.data || [], last);
+                if (typeof updateActivityFeed === 'function') updateActivityFeed(jj.data || []);
                 return;
             }
             if ((j.count || 0) > 0) {
@@ -609,6 +662,7 @@
             // cache rows so view toggle can re-render without refetch
             window._worklistRows = j.data || [];
             renderWorklistRows(window._worklistRows, mode);
+            if (typeof updateActivityFeed === 'function') updateActivityFeed(window._worklistRows);
             updateModeChip();
             updateLastUpdated('worklist_last');
         });
@@ -733,6 +787,7 @@
 
     // Priority Accounts functionality
     let PRIORITY_ACCOUNTS_DATA = [];
+    let PRIORITY_ACCOUNTS_STATES = [];
     let PRIORITY_ACCOUNTS_PAGINATION = {
         page: 1,
         per_page: 20,
@@ -751,6 +806,17 @@
         sort_dir: 'desc'
     };
 
+    function updateStateFilterOptions() {
+        const stateFilter = document.getElementById('state_filter');
+        if (!stateFilter) return;
+        const selected = stateFilter.value;
+        stateFilter.innerHTML = '<option value="">All States</option>' +
+            PRIORITY_ACCOUNTS_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (selected && PRIORITY_ACCOUNTS_STATES.includes(selected)) {
+            stateFilter.value = selected;
+        }
+    }
+
     async function loadPriorityAccounts(page = 1) {
         const tbody = document.getElementById("acct_body");
         if (!tbody) return;
@@ -763,6 +829,9 @@
                 sort_by: PRIORITY_ACCOUNTS_FILTERS.sort_by,
                 sort_dir: PRIORITY_ACCOUNTS_FILTERS.sort_dir
             });
+
+            const mode = document.getElementById('home_mode')?.value || getActiveMode();
+            if (mode) params.append('mode', mode);
 
             // Add filters if they exist
             if (PRIORITY_ACCOUNTS_FILTERS.state) params.append('state', PRIORITY_ACCOUNTS_FILTERS.state);
@@ -791,6 +860,11 @@
             
             PRIORITY_ACCOUNTS_DATA = response.data || [];
             PRIORITY_ACCOUNTS_PAGINATION = response.pagination || PRIORITY_ACCOUNTS_PAGINATION;
+
+            if (!PRIORITY_ACCOUNTS_FILTERS.state) {
+                PRIORITY_ACCOUNTS_STATES = Array.from(new Set(PRIORITY_ACCOUNTS_DATA.map(a => a.primary_risk_state).filter(Boolean))).sort();
+                updateStateFilterOptions();
+            }
             
             // Render table
             renderPriorityAccountsTable();
@@ -1332,6 +1406,10 @@
                 setActiveMode(e.target.value);
                 updateModeChip();
                 loadHome();
+                PRIORITY_ACCOUNTS_FILTERS.state = '';
+                const sf = document.getElementById('state_filter');
+                if (sf) sf.value = '';
+                loadPriorityAccounts();
             }
         });
     }
