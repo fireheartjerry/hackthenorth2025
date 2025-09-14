@@ -74,10 +74,14 @@
       function updateQuickStats() {
         // This will be populated by the main script
         const metrics = window._dashboardMetrics || {};
-        document.getElementById('active_targets').textContent = metrics.targets || '—';
+        document.getElementById('active_targets').textContent =
+          metrics.targets ? Number(metrics.targets).toLocaleString() : '—';
         document.getElementById('win_rate').textContent = metrics.winRate ? Math.round(metrics.winRate) + '%' : '—%';
-        document.getElementById('avg_premium').textContent = metrics.avgPremium ? '$' + Math.round(metrics.avgPremium/1000) + 'K' : '—';
-        document.getElementById('opportunities_count').textContent = metrics.opportunities || '—';
+        document.getElementById('avg_premium').textContent = metrics.avgPremium
+          ? '$' + Math.round(metrics.avgPremium / 1000).toLocaleString() + 'K'
+          : '—';
+        document.getElementById('opportunities_count').textContent =
+          metrics.opportunities ? Number(metrics.opportunities).toLocaleString() : '—';
       }
       
       function simulateActivityFeed() {
@@ -570,6 +574,14 @@
         el.textContent = `Last updated ${hh}:${mm}`;
     }
 
+    function formatCurrency(val){
+        const n = Number(val || 0);
+        const opts = n % 1 === 0
+            ? {minimumFractionDigits:0, maximumFractionDigits:0}
+            : {minimumFractionDigits:2, maximumFractionDigits:2};
+        return '$' + n.toLocaleString(undefined, opts);
+    }
+
     // Worklist view state helpers
     function getWorklistView(){
         try { return localStorage.getItem('WORKLIST_VIEW') || 'list'; } catch(e){ return 'list'; }
@@ -669,7 +681,7 @@
             <a href="/detail/${r.id}?mode=${encodeURIComponent(mode)}" class="row">
               <div class="row-main">
                 <div class="row-title">${r.account_name || "-"}</div>
-                <div class="row-sub">${r.primary_risk_state || "-"} · ${r.line_of_business || "-"} · $${Math.round(r.total_premium || 0).toLocaleString()}</div>
+                <div class="row-sub">${r.primary_risk_state || "-"} · ${r.line_of_business || "-"} · ${formatCurrency(r.total_premium)}</div>
               </div>
               <div class="row-badges">
                 ${badge(r.appetite_status)}
@@ -690,7 +702,7 @@
               </div>
               <div class="work-card-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'} </div>
               <div class="work-card-meta">
-                <span>$${Math.round(r.total_premium || 0).toLocaleString()} premium</span>
+                <span>${formatCurrency(r.total_premium)} premium</span>
                 <span>Score ${Number(r.priority_score || 0).toFixed(2)}</span>
               </div>
             </a>`).join('')}
@@ -716,7 +728,7 @@
                   <div class="k-title">${r.account_name || '-'}</div>
                   <div class="k-sub">${r.primary_risk_state || '-'} · ${r.line_of_business || '-'}</div>
                   <div class="k-meta">
-                    <span>$${Math.round(r.total_premium || 0).toLocaleString()}</span>
+                    <span>${formatCurrency(r.total_premium)}</span>
                     <span>Score ${Number(r.priority_score || 0).toFixed(1)}</span>
                   </div>
                 </a>`).join('')}
@@ -843,9 +855,8 @@
             const priorityClass = account.priority_score >= 7 ? 'priority-high' : 
                                 account.priority_score >= 4 ? 'priority-medium' : 'priority-low';
             
-            const premiumFormatted = account.total_premium ? 
-                new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })
-                    .format(account.total_premium) : '—';
+            const premiumFormatted = account.total_premium != null ?
+                formatCurrency(account.total_premium) : '—';
 
             return `
                 <tr class="table-row hover:bg-white/5 transition-all duration-200" data-account-id="${account.id}">
@@ -905,7 +916,7 @@
         const nextBtn = document.getElementById('next_page');
         
         if (paginationInfo) {
-            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages}`;
+            paginationInfo.textContent = `Page ${PRIORITY_ACCOUNTS_PAGINATION.page.toLocaleString()} of ${PRIORITY_ACCOUNTS_PAGINATION.total_pages.toLocaleString()}`;
         }
         
         if (prevBtn) {
@@ -932,7 +943,7 @@
         const lastUpdated = document.getElementById('last_updated');
         
         if (resultsCount) {
-            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count} priority accounts`;
+            resultsCount.textContent = `${PRIORITY_ACCOUNTS_PAGINATION.total_count.toLocaleString()} priority accounts`;
         }
         
         if (lastUpdated) {
@@ -1623,7 +1634,7 @@
                     current = target;
                     clearInterval(timer);
                 }
-                counter.textContent = Math.round(current);
+                counter.textContent = Math.round(current).toLocaleString();
             }, 16);
         });
     }

@@ -103,6 +103,14 @@
         return [header, ...rows].join("\n");
     }
 
+    function formatCurrency(val){
+        const n = Number(val || 0);
+        const opts = n % 1 === 0
+            ? {minimumFractionDigits:0, maximumFractionDigits:0}
+            : {minimumFractionDigits:2, maximumFractionDigits:2};
+        return '$' + n.toLocaleString(undefined, opts);
+    }
+
     // Fullscreen
     function openFullscreen(node) {
         const host = document.getElementById("fs_host");
@@ -1341,11 +1349,7 @@
                             r.primary_risk_state || "-"
                         } · ${
                             r.line_of_business || "-"
-                        }<br/>Premium $${Math.round(
-                            r.total_premium || 0
-                        ).toLocaleString()} · TIV $${Math.round(
-                            r.tiv || 0
-                        ).toLocaleString()} · Win ${(win || 0).toFixed(0)}%`;
+                        }<br/>Premium ${formatCurrency(r.total_premium)} · TIV ${formatCurrency(r.tiv)} · Win ${(win || 0).toFixed(0)}%`;
                     },
                 },
                 xAxis3D: axisName(
