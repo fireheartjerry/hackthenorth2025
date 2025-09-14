@@ -162,28 +162,6 @@
         </div>
     </div>
     
-    <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
-        <div class="metric-header">
-            <div class="metric-icon total-icon">📊</div>
-            {% set t = trend_total %}
-            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
-                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
-                <span class="trend-value">{{ '%+d' % t }}%</span>
-            </div>
-        </div>
-        <div class="metric-content">
-            <div class="metric-value text-blue-400 animate-counter" data-target="{{ total }}">0</div>
-            <div class="metric-label">Total Submissions</div>
-            <div class="metric-subtitle">This period</div>
-        </div>
-        <div class="metric-progress">
-            <div class="progress-bar bg-blue-500/30">
-                <div class="progress-fill bg-blue-400" style="width: 100%"></div>
-            </div>
-            <div class="progress-text">Avg premium {{ avg_premium_str }}</div>
-        </div>
-    </div>
-    
     <div class="metric-card-enhanced out-metric hover-lift" data-metric="out">
         <div class="metric-header">
             <div class="metric-icon out-icon">❌</div>
@@ -203,6 +181,28 @@
                 <div class="progress-fill bg-rose-400" style="width: {{ pct_out }}%"></div>
             </div>
             <div class="progress-text">{{ pct_out }}% of submissions</div>
+        </div>
+    </div>
+
+    <div class="metric-card-enhanced total-metric hover-lift" data-metric="total">
+        <div class="metric-header">
+            <div class="metric-icon total-icon">📊</div>
+            {% set t = trend_total %}
+            <div class="metric-trend {% if t>0 %}trend-up{% elif t<0 %}trend-down{% else %}trend-neutral{% endif %}">
+                <span class="trend-icon">{% if t>0 %}↗{% elif t<0 %}↘{% else %}→{% endif %}</span>
+                <span class="trend-value">{{ '%+d' % t }}%</span>
+            </div>
+        </div>
+        <div class="metric-content">
+            <div class="metric-value text-blue-400 animate-counter" data-target="{{ total }}">0</div>
+            <div class="metric-label">Total Submissions</div>
+            <div class="metric-subtitle">This period</div>
+        </div>
+        <div class="metric-progress">
+            <div class="progress-bar bg-blue-500/30">
+                <div class="progress-fill bg-blue-400" style="width: 100%"></div>
+            </div>
+            <div class="progress-text">Avg premium {{ avg_premium_str }}</div>
         </div>
     </div>
 </div>
@@ -542,6 +542,95 @@
     
     let ALL = [];
 
+    // Compute dashboard metrics from rows returned by /api/classified_mode
+    function computeMetricsFromRows(rows) {
+        const r = Array.isArray(rows) ? rows : [];
+        const total = r.length;
+        let tgt = 0, inn = 0, out = 0;
+        let premSum = 0, winSum = 0, winCt = 0;
+        for (const x of r) {
+            const s = (x && x.appetite_status) || '';
+            if (s === 'TARGET') tgt++; else if (s === 'IN') inn++; else if (s === 'OUT') out++;
+            const p = Number(x?.total_premium || 0);
+            if (!Number.isNaN(p)) premSum += p;
+            let w = x?.winnability;
+            if (typeof w === 'string') { w = parseFloat(w); }
+            if (typeof w === 'number' && !Number.isNaN(w)) {
+                // Normalize if provided as percentage
+                if (w > 1) w = w / 100.0;
+                winSum += w; winCt += 1;
+            }
+        }
+        const pct = (n, d) => d > 0 ? Math.round((n / d) * 100) : 0;
+        return {
+            total,
+            targets: tgt,
+            inCt: inn,
+            outCt: out,
+            pctTgt: pct(tgt, total),
+            pctIn: pct(inn, total),
+            pctOut: pct(out, total),
+            avgPremium: total ? (premSum / total) : 0,
+            winRate: winCt ? (winSum / winCt) * 100 : 0,
+            opportunities: tgt + inn,
+        };
+    }
+
+    // Update hero quick stats area using computed metrics
+    function updateHeroQuickStats(m) {
+        try {
+            if (!m) return;
+            const $ = (id) => document.getElementById(id);
+            const fmt$ = (v) => '$' + Math.round(Number(v || 0)).toLocaleString();
+            const tgtEl = $('active_targets');
+            const winEl = $('win_rate');
+            const premEl = $('avg_premium');
+            const oppEl = $('opportunities_count');
+            if (tgtEl) tgtEl.textContent = String(m.targets ?? '—');
+            if (winEl) winEl.textContent = Math.round(m.winRate || 0) + '%';
+            if (premEl) premEl.textContent = fmt$(m.avgPremium);
+            if (oppEl) oppEl.textContent = String(m.opportunities ?? '—');
+        } catch (e) {
+            console.warn('Hero quick stats update failed:', e);
+        }
+    }
+
+    // Update the four KPI tiles at top of the page
+    function updateOverviewCards(m) {
+        try {
+            if (!m) return;
+            const setVal = (sel, v) => { const el = document.querySelector(sel); if (el) el.textContent = String(Math.round(v || 0)); };
+            const setPct = (card, pct) => {
+                const fill = document.querySelector(`${card} .progress-fill`);
+                const txt = document.querySelector(`${card} .progress-text`);
+                if (fill) fill.style.width = `${Math.max(0, Math.min(100, Math.round(pct || 0)))}%`;
+                if (txt) txt.textContent = `${Math.round(pct || 0)}% of submissions`;
+            };
+
+            // Target
+            setVal('.target-metric .metric-value', m.targets);
+            setPct('.target-metric', m.pctTgt);
+
+            // In-Appetite
+            setVal('.in-metric .metric-value', m.inCt);
+            setPct('.in-metric', m.pctIn);
+
+            // Total
+            setVal('.total-metric .metric-value', m.total);
+            const avgTxt = document.querySelector('.total-metric .progress-text');
+            if (avgTxt) avgTxt.textContent = `Avg premium $${Math.round(m.avgPremium || 0).toLocaleString()}`;
+
+            // Out-of-Appetite
+            setVal('.out-metric .metric-value', m.outCt);
+            setPct('.out-metric', m.pctOut);
+
+            // Re-run counters animation for a nice effect
+            animateCounters();
+        } catch (e) {
+            console.warn('Overview KPI update failed:', e);
+        }
+    }
+
     function getActiveMode() {
         return localStorage.getItem("ACTIVE_MODE") || "balanced_growth";
     }
@@ -596,6 +685,10 @@
                 setActiveMode(last);
                 if (sel) sel.value = last;
                 const jj = await fetchJSON(`/api/classified_mode?mode=${encodeURIComponent(last)}`);
+                // Update overview + hero from fallback rows
+                const m2 = computeMetricsFromRows(jj.data || []);
+                updateHeroQuickStats(m2);
+                updateOverviewCards(m2);
                 renderWorklistRows(jj.data || [], last);
                 return;
             }
@@ -607,6 +700,11 @@
             renderWorklistRows(window._worklistRows, mode);
             updateModeChip();
             updateLastUpdated('worklist_last');
+
+            // Update hero + KPI tiles based on current filtered rows
+            const metrics = computeMetricsFromRows(window._worklistRows);
+            updateHeroQuickStats(metrics);
+            updateOverviewCards(metrics);
         });
     }
 
@@ -1327,7 +1425,10 @@
             if (e.target.value && e.target.value !== "") {
                 setActiveMode(e.target.value);
                 updateModeChip();
+                // Simulate a full dashboard refresh
                 loadHome();
+                // Also refresh the priority accounts table to keep UI consistent
+                try { loadPriorityAccounts(1); } catch (_) {}
             }
         });
     }
