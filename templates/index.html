@@ -110,8 +110,8 @@
         e.preventDefault();
         if(typeof _openPersona !== 'undefined') _openPersona();
       });
-      greet(); vibe();
-      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); vibe(); }});
+      greet(); if(typeof applyVibe !== 'undefined') applyVibe();
+      window.addEventListener('storage', (e)=>{ if(e.key==='USER_NAME'||e.key==='VIBE'){ greet(); if(typeof applyVibe !== 'undefined') applyVibe(); }});
     })();
   </script>
 </div>

@@ -1,11 +1,11 @@
-# AGENTS.md — Federato RiskOps Hackathon Brief (for Agents/Codex)
+# AGENTS.md — Federato AppetizerIQ Hackathon Brief (for Agents/Codex)
 
 > Sources: **Hack The North Federato Challenge.pdf**, **Hack The North – Federato Challenge – API Documentation.pdf**, **Hack The North – Federato Challenge – Underwriting Guidelines Sample.pdf**, **Hack The North – Federato Challenge – Underwriting Guidelines Explained.pdf**, **Hack The North – Glossary Federato Challenge.pdf**, **API workshop.pptx**.
 
 ---
 
 ## 1) Mission & Objective 
-Design a **next‑generation RiskOps underwriting dashboard** that, on user login, **surfaces and prioritizes high‑value, in‑appetite submissions** so underwriters can act faster and more effectively.
+Design a **next‑generation AppetizerIQ underwriting dashboard** that, on user login, **surfaces and prioritizes high‑value, in‑appetite submissions** so underwriters can act faster and more effectively.
 
 - **Primary Goal:** Reimagine the *landing page* experience to intelligently curate submissions aligned with **carrier appetite**.
 - **Real‑world framing:** Mirrors challenges Federato’s **Forward Deployed Engineering (FDE)** team tackles.
@@ -189,7 +189,7 @@ GEMINI_MODEL=gemini-2.0-flash-exp
 ---
 
 ## 12) Glossary (select)
-- **RiskOps:** Tools/workflows aligning individual underwriting to portfolio strategy.
+- **AppetizerIQ:** Tools/workflows aligning individual underwriting to portfolio strategy.
 - **Appetite:** Types of risk a carrier wants to write (by product, geography, size, etc.).
 - **In‑Appetite / Out‑of‑Appetite:** Matches vs violates appetite rules.
 - **Submission:** A broker/agent request to insure an exposure.

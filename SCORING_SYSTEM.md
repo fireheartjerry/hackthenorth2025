@@ -1,8 +1,8 @@
-# RiskOps Priority Scoring System Documentation
+# AppetizerIQ Priority Scoring System Documentation
 
 ## Overview
 
-The RiskOps priority scoring system evaluates insurance submissions across multiple dimensions to provide consistent appetite classification and priority ranking throughout the platform.
+The AppetizerIQ priority scoring system evaluates insurance submissions across multiple dimensions to provide consistent appetite classification and priority ranking throughout the platform.
 
 ## Scoring Components
 

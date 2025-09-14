@@ -1,5 +1,5 @@
 // Advanced Gemini-powered chatbot with live updates
-class RiskOpsChatbot {
+class AppetizerIQChatbot {
     constructor() {
         this.isOpen = false;
         this.sessionId = this.generateSessionId();
@@ -28,7 +28,7 @@ class RiskOpsChatbot {
                 <div class="chat-header-content">
                     <div class="chat-avatar">🤖</div>
                     <div class="chat-title">
-                        <h3>RiskOps AI Assistant</h3>
+                        <h3>AppetizerIQ AI Assistant</h3>
                         <span class="chat-status" id="chat-status">Ready to help</span>
                     </div>
                 </div>
@@ -44,7 +44,7 @@ class RiskOpsChatbot {
                         <div class="message-avatar">🤖</div>
                         <div class="message-content">
                             <div class="message-text">
-                                Hi! I'm your AI assistant for the RiskOps dashboard. I can help you:
+                                Hi! I'm your AI assistant for the AppetizerIQ dashboard. I can help you:
                                 <ul>
                                     <li>Filter and search submissions</li>
                                     <li>Switch between different modes</li>
@@ -1005,8 +1005,8 @@ class RiskOpsChatbot {
 
 // Initialize chatbot when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.riskOpsChatbot = new RiskOpsChatbot();
+    window.AppetizerIQChatbot = new AppetizerIQChatbot();
 });
 
 // Export for use in other scripts
-window.RiskOpsChatbot = RiskOpsChatbot;
+window.AppetizerIQChatbot = AppetizerIQChatbot;
